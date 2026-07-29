@@ -1,0 +1,16 @@
+"""Single source for every comonteur identifier. Renaming stays a one-line change (SPEC.md header)."""
+
+ADDON_ID = "comonteur"
+CLI_NAME = "comonteur"
+PREFIX = "cmt_"
+
+PROP_ID = PREFIX + "id"
+PROP_ORIGIN = PREFIX + "origin"
+PROP_REV = PREFIX + "rev"
+
+ORIGIN_AGENT = "agent"
+ORIGIN_HUMAN = "human"
+ORIGIN_SHARED = "shared"
+
+JOURNAL_DIR = ".comonteur"
+JOURNAL_FILENAME = "journal.jsonl"

@@ -210,8 +210,8 @@ of your own components is an equally valid starting point.
 
 Early. Working through the milestones in [`SPEC.md`](./SPEC.md):
 
-- [ ] **M0** — Blender 5.2 API verification spike
-- [ ] **M1** — Walking skeleton: bidirectional edit without clobbering
+- [x] **M0** — Blender 5.2 API verification spike
+- [x] **M1** — Walking skeleton: bidirectional edit without clobbering
 - [ ] **M2** — Production contract (assets, TTS, captions)
 - [ ] **M3** — Scene authoring (text, animation, components)
 - [ ] **M4** — VSE assembly

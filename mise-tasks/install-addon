@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+#MISE description="Symlink addon/comonteur into Blender's user extensions repo for dev iteration"
+# Dev-loop install: symlink so edits are live without reinstalling. The packaged
+# `blender --command extension install-file` path (M0.11) is for M5.5's `comonteur
+# setup`, which ships a zip to end users — not needed for editing this repo.
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BLENDER_VERSION="5.2"
+EXT_DIR="${HOME}/.config/blender/${BLENDER_VERSION}/extensions/user_default"
+
+mkdir -p "$EXT_DIR"
+ln -sfn "$REPO_ROOT/addon/comonteur" "$EXT_DIR/comonteur"
+
+echo "Linked $REPO_ROOT/addon/comonteur -> $EXT_DIR/comonteur"
+echo "Enable in Blender: Edit > Preferences > Add-ons > comonteur"
