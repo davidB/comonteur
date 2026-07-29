@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+#MISE description="Fetch the official Blender MCP server (.mcpb) and register it with Claude Code"
+# Fetch the official Blender MCP server (.mcpb bundle) and register it with
+# Claude Code. Claude Code has no native .mcpb installer (Desktop-only format);
+# a .mcpb is just a zip of manifest.json + a uv-managed Python project, so we
+# unpack it and point `claude mcp add` at its `uv run` entry point instead.
+#
+# Does NOT install the Blender-side add-on (mcp-*.zip, installed in-Blender via
+# the Blender Lab extensions repo) — that's a separate step, see SPEC.md M5.5.
+set -euo pipefail
+
+VERSION="${BLENDER_MCP_VERSION:-1.0.0}"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+VENDOR_DIR="$REPO_ROOT/.vendor/blender-mcp"
+URL="https://projects.blender.org/lab/blender_mcp/releases/download/v${VERSION}/blender-${VERSION}.mcpb"
+
+echo "Fetching Blender MCP server v${VERSION}..."
+mkdir -p "$VENDOR_DIR"
+curl -sL -A "Mozilla/5.0" -o "$REPO_ROOT/.vendor/blender-mcp.mcpb" "$URL"
+rm -rf "$VENDOR_DIR"
+unzip -o -q "$REPO_ROOT/.vendor/blender-mcp.mcpb" -d "$VENDOR_DIR"
+
+echo "Syncing dependencies..."
+uv sync --project "$VENDOR_DIR"
+
+echo "Registering with Claude Code (scope: user)..."
+claude mcp remove blender --scope user >/dev/null 2>&1 || true
+claude mcp add blender -s user -- uv run --project "$VENDOR_DIR" blender-mcp
+
+echo "Done. Verify with: claude mcp list"
+echo "Blender-side add-on still needs installing separately — see SPEC.md M5.5."
