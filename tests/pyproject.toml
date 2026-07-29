@@ -1,5 +1,5 @@
 [project]
-name = "comonteur"
+name = "comonteur-tests"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = []
@@ -8,7 +8,7 @@ dependencies = []
 dev = ["pytest>=8", "ruff>=0.8"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests/unit"]
+testpaths = ["unit"]
 
 [tool.ruff]
 target-version = "py311"

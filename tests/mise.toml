@@ -1,0 +1,14 @@
+[tools]
+uv = "latest"
+
+[tasks.lint]
+description = "Lint tests/ with ruff (non-mutating)"
+run = ["uv run ruff check .", "uv run ruff format --check ."]
+
+[tasks.autofix]
+description = "Apply ruff's autofixes and formatting to tests/"
+run = ["uv run ruff check --fix .", "uv run ruff format ."]
+
+[tasks.test]
+description = "Run pure-logic unit tests (pytest)"
+run = "uv run pytest"

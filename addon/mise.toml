@@ -1,0 +1,10 @@
+[tools]
+uv = "latest"
+
+[tasks.lint]
+description = "Lint addon/ with ruff (non-mutating)"
+run = ["uv run ruff check .", "uv run ruff format --check ."]
+
+[tasks.autofix]
+description = "Apply ruff's autofixes and formatting to addon/"
+run = ["uv run ruff check --fix .", "uv run ruff format ."]

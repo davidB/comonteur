@@ -1,18 +1,20 @@
-[tools]
-uv = "latest"
+monorepo_root = true
+
+[monorepo]
+config_roots = ["cli", "addon", "tests"]
 
 [tasks.lint]
-description = "Lint addon/ and tests/ with ruff (non-mutating)"
-run = ["uv run ruff check addon tests", "uv run ruff format --check addon tests"]
+description = "Run all Lint"
+depends = ["//...:lint"]
 
 [tasks.autofix]
-description = "Apply ruff's autofixes and formatting to addon/ and tests/"
-run = ["uv run ruff check --fix addon tests", "uv run ruff format addon tests"]
+description = "Run all autofix (and format)"
+depends = ["//...:autofix"]
 
 [tasks.test]
-description = "Run pure-logic unit tests (pytest)"
-run = "uv run pytest"
+description = "run all test"
+depends = ["//...:test"]
 
 [tasks.ci]
-description = "Lint + unit tests"
+description = "Lint + unit tests, addon/+tests/ (Python) and cli/ (Rust)"
 depends = ["lint", "test"]
