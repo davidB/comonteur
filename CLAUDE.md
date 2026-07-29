@@ -1,8 +1,150 @@
-## Python
+# CLAUDE.md
 
-- All Python (addon/, tests/) must be type-hinted: function args, return types, and non-obvious variables.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this repo is
+
+`comonteur` lets an AI agent build video scenes/animations/timelines inside Blender while a
+human keeps editing the same `.blend` normally — bidirectional editing without clobbering.
+This is the tool's own repo (not a video project it generates — those have their own
+generated `AGENTS.md`/`CLAUDE.md`, see `docs/data-contracts.md` §5.1b).
+
+Read `SPEC.md` first if working on design/architecture — it's a short thesis/index, not the
+full spec. It routes to:
+
+- `docs/architecture.md` — provenance, journal, batch protocol (§4)
+- `docs/data-contracts.md` — repo/project layout, `timeline.yaml`, HyperFrames adapter (§5)
+- `docs/library.md` — `addon/comonteur/` modules, asset/component system (§6, §9)
+- `docs/mcp-and-tooling.md` — MCP transport, language/tooling policy (§7, §8)
+- `docs/milestones.md` — M0–M6 plan (§10)
+- `docs/constraints-and-risks.md` — cross-cutting rules and known risks (§11, §12)
+- `docs/M0-FINDINGS.md` / `M1-FINDINGS.md` / `M3-FINDINGS.md` — verified Blender API behaviour
+
+Code comments referencing `SPEC.md §N` resolve to whichever doc above now holds that section.
+
+## Repo structure — a mise monorepo with a hard language split
+
+- `addon/` — the in-Blender library + Blender add-on (`addon/comonteur/`). Pure Python,
+  `bpy`-locked. Own `pyproject.toml`/`mise.toml`/venv (ruff only, no pytest — nothing here
+  is testable outside Blender).
+- `cli/` — everything outside the Blender process. Rust (`comonteur` crate). Ingest-only as
+  of M2 (`narrative.yaml`, `assets/manifest.json`, captions); `setup`/`new`/`doctor` are M5.5.
+- `tests/` — pure-logic Python unit tests (pytest) for modules with no `bpy` dependency
+  (journal, paths, easing map, spec parsing). Own `pyproject.toml`/`mise.toml`/venv.
+- Root `mise.toml` is orchestration only — `monorepo_root = true`, no Python project of its
+  own. `lint`/`autofix`/`test`/`ci` fan out via `//...:<task>` across `cli/`, `addon/`,
+  `tests/` automatically.
+
+**Language policy**: Python only where `bpy` forces it (`addon/`); Rust everywhere else
+(`cli/`). Don't add Python tooling outside `addon/`/`tests/`, and don't add Rust inside the
+Blender process.
+
+## Commands
+
+Run from repo root (mise monorepo — these fan out to every config root):
+
+```bash
+mise run lint       # ruff (addon/, tests/) + cargo fmt/clippy (cli/)
+mise run autofix    # ruff --fix + format, cargo fmt + clippy --fix
+mise run test       # pytest (tests/) + cargo test (cli/) — addon/ has no tests of its own
+mise run ci         # lint + test
+```
+
+Or scope to one workspace: `mise run addon:lint`, `mise run tests:test`, `mise run cli:test`, etc.
+
+Single test:
+- Rust: `cd cli && cargo test <test_name>`
+- Python: `cd tests && uv run pytest unit/test_paths.py::test_name`
+
+Dev-loop install (symlinks `addon/comonteur` into Blender's extensions dir so edits are
+live without reinstalling):
+```bash
+mise run install-addon
+```
+Then enable **comonteur** in Blender: `Edit ▸ Preferences ▸ Add-ons`.
+
+`mise run install-mcp` fetches the official Blender MCP `.mcpb` server and registers it
+with Claude Code (`claude mcp add blender ...`) — separate from the Blender-side add-on.
+
+## Architecture
+
+### Ownership: per-datablock provenance (docs/architecture.md §4.1)
+
+Every datablock the agent creates carries `cmt_id` (stable logical id), `cmt_origin`
+(`agent` | `human` | `shared`), `cmt_rev` (monotonic, bumped per agent batch). Rules:
+
+- Untagged data is human data — never modified/deleted without an explicit instruction naming it.
+- `agent`-owned: agent may mutate or delete freely.
+- `shared`-owned (human has touched agent-created data): agent may mutate only paths it
+  hasn't lost to a human edit, and may never delete it.
+- `human`-owned: agent may mutate only when explicitly instructed in the current turn.
+
+**The agent never regenerates** — its only operation on existing data is mutation. The
+scene is the source of truth; the spec (`timeline.yaml`) is an intent log, authoritative
+only for timeline assembly, not for scene contents. A `depsgraph_update_post` handler
+detects human edits to agent-owned data and flips `cmt_origin` to `shared`; fine-grained
+"which paths did I lose" is derived on demand in `provenance.claimed_paths()`, not
+observed in the handler (the handler must stay cheap — it runs on every depsgraph eval).
+
+### The mutation journal (docs/architecture.md §4.4-4.5)
+
+`.comonteur/journal.jsonl`, append-only, is the entire audit/diff/revert surface (there is
+no rebuild-from-spec recovery path). Every agent write goes through `journal.set()` —
+`exec_python` bypassing it produces untracked drift, surfaced by `introspect.drift()`.
+Agent writes are grouped into a `journal.batch(...)` context manager: exactly one labelled
+`bpy.ops.ed.undo_push()` per batch (never poison the human's undo stack), gated by
+`batch_active()`. **The agent never saves the `.blend`** — save is always a human action.
+
+### `addon/comonteur/` module map (docs/library.md §6)
+
+| Module | Responsibility |
+|---|---|
+| `provenance.py` | tag / flip handler / `claimed_paths` / ownership queries / take-ownership operators |
+| `journal.py` | `batch()` context manager, `set()`, JSONL, snapshot, revert |
+| `scene.py` | `new_scene()` — deterministic baseline, never inherits `bpy.context.scene` state |
+| `anim.py` | `tween`, `stagger`, easing map (GSAP-equivalent), F-curve helpers — real keyframes only, no baked/driver animation |
+| `text.py` | text objects, styling, fit-to-box, per-character split |
+| `library.py` | link `lib/*.blend` components and `compositions/frames/*.blend` scenes; asset catalog discovery |
+| `introspect.py` | `outline`, `describe`, `animated_paths`, `find`, `drift` — progressive disclosure, token-budgeted, never dumps a full tree |
+| `preview.py` | render frames for agent visual review (`.comonteur/review/`) |
+| `ui.py` | sidebar panel (ownership override operators) |
+| `doctor.py` | environment/setup checks |
+| `paths.py`, `const.py` | shared path resolution / constants |
+
+Reusable animation should become Actions instanced via NLA strips with a time offset, not
+re-emitted keyframes. Components are Blender's own asset system (mark Scene/node
+group/Action as an asset) — do not build a separate component registry.
+
+### MCP transport (docs/mcp-and-tooling.md §7)
+
+Uses the **official Blender Foundation MCP server** exclusively, via `execute_python` —
+no provenance/batching/journaling exists in it, all of that lives in `addon/comonteur/`.
+Raw `bpy` from the agent is not forbidden but is quarantined: effects show up in
+`introspect.drift()` and must be promoted into the journal or discarded. Do not add calls
+to other MCP tools from the official server, and do not fork it unless `execute_python`
+turns out not to run on Blender's main thread (the documented hard trigger).
+
+### Video project layout this tool operates on (docs/data-contracts.md §5.1b)
+
+Distinct from this repo's own layout. A generated project has `lib/` (human-authored
+components, git-lfs), `compositions/frames/*.blend` (one agent-generated scene per shot,
+**linked** — not appended — into `master.blend` so it stays read-only there),
+`timeline.yaml` (assembly source of truth), and `.comonteur/journal.jsonl` +
+`snapshot.json`. Don't confuse this with `addon/`, `cli/`, `skill/` which belong to the
+tool itself.
+
+## Python conventions
+
+- All Python (`addon/`, `tests/`) must be type-hinted: function args, return types, and non-obvious variables.
 - `bpy` has no type stubs in this project — use `typing.Any` for Blender RNA objects (Object, Scene, Context, etc.) rather than leaving them untyped.
 - Enforced by ruff's `ANN` rule set (`addon/pyproject.toml`, `tests/pyproject.toml`); `ANN401` (disallow `Any`) is ignored since `bpy` forces `Any` for its dynamic types.
+
+## Requirements pinned for reproducibility
+
+Blender **5.2 LTS only** (do not track 5.3+) — generated code is only reproducible
+against a fixed API. Third-party Blender add-ons need an explicit allowlist entry in
+`docs/ADDONS.md` (name, version, why, what breaks without it); prefer asset libraries
+(data) over add-on operators.
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
