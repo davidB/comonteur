@@ -3,10 +3,12 @@ and truncate. drift()/find() are deferred past M1 (not on the walking-skeleton
 checklist); add when reconcile (M4) needs them.
 """
 
+from typing import Any
+
 from . import const
 
 
-def outline(scene, max_lines=60):
+def outline(scene: Any, max_lines: int = 60) -> str:
     lines = [f"Scene: {scene.name!r} [{scene.get(const.PROP_ORIGIN, 'untagged')}]"]
     for coll in scene.collection.children:
         lines.append(f"  Collection: {coll.name!r} ({len(coll.objects)} objects)")
@@ -22,7 +24,7 @@ def outline(scene, max_lines=60):
     return "\n".join(lines)
 
 
-def describe(id_block, path="", max_lines=40):
+def describe(id_block: Any, path: str = "", max_lines: int = 40) -> str:
     cur = id_block
     for part in filter(None, path.split(".")):
         cur = getattr(cur, part)
@@ -31,8 +33,8 @@ def describe(id_block, path="", max_lines=40):
     return f"{type(cur).__name__} at {path or '<root>'}:\n{body}"
 
 
-def animated_paths(scene):
-    out = []
+def animated_paths(scene: Any) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
     for obj in scene.objects:
         action = obj.animation_data.action if obj.animation_data else None
         if not action:

@@ -2,6 +2,7 @@
 
 import os
 import sys
+from typing import Any
 
 import pytest
 
@@ -10,47 +11,47 @@ import paths  # noqa: E402
 
 
 class Vec:
-    def __init__(self, *v):
+    def __init__(self, *v: float) -> None:
         self._v = list(v)
 
-    def __getitem__(self, i):
+    def __getitem__(self, i: int) -> float:
         return self._v[i]
 
-    def __setitem__(self, i, val):
+    def __setitem__(self, i: int, val: float) -> None:
         self._v[i] = val
 
 
 class Obj:
-    def __init__(self):
+    def __init__(self) -> None:
         self.location = Vec(0.0, 0.0, 0.0)
-        self.child = None
+        self.child: Any = None
 
 
-def test_resolve_plain_attr():
+def test_resolve_plain_attr() -> None:
     o = Obj()
     assert paths.resolve(o, "location") is o.location
 
 
-def test_resolve_indexed():
+def test_resolve_indexed() -> None:
     o = Obj()
     o.location[1] = 0.5
     assert paths.resolve(o, "location[1]") == 0.5
 
 
-def test_set_indexed():
+def test_set_indexed() -> None:
     o = Obj()
     paths.set_(o, "location[1]", 0.42)
     assert o.location[1] == 0.42
 
 
-def test_set_plain_attr():
+def test_set_plain_attr() -> None:
     o = Obj()
     o.child = Obj()
     paths.set_(o, "child.location[2]", 9.0)
     assert o.child.location[2] == 9.0
 
 
-def test_bad_segment_raises():
+def test_bad_segment_raises() -> None:
     o = Obj()
     with pytest.raises(ValueError):
         paths.resolve(o, "loc[[1]")

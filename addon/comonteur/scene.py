@@ -1,20 +1,22 @@
 """scene.new_scene() — deterministic baseline, SPEC.md §6.1."""
 
+from typing import Any
+
 import bpy
 
 from . import const, provenance
 
 
 def new_scene(
-    name,
+    name: str,
     *,
-    kind="2d",
-    fps=30,
-    resolution=(1920, 1080),
-    frame_range=(1, 90),
-    transparent=True,
-    view_transform=None,
-):
+    kind: str = "2d",
+    fps: int = 30,
+    resolution: tuple[int, int] = (1920, 1080),
+    frame_range: tuple[int, int] = (1, 90),
+    transparent: bool = True,
+    view_transform: str | None = None,
+) -> Any:
     existing = find(name)
     if existing is not None:
         return existing
@@ -35,7 +37,7 @@ def new_scene(
     return scn
 
 
-def find(cmt_id):
+def find(cmt_id: str) -> Any:
     for scn in bpy.data.scenes:
         if scn.get(const.PROP_ID) == cmt_id:
             return scn
@@ -46,7 +48,15 @@ def find(cmt_id):
 # drivable, so a handler syncs scene[param] into the bound text object's data.body.
 
 
-def set_param(scn, name, value, *, min=None, max=None, subtype=None):
+def set_param(
+    scn: Any,
+    name: str,
+    value: Any,
+    *,
+    min: float | None = None,
+    max: float | None = None,
+    subtype: str | None = None,
+) -> None:
     scn[name] = value
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         ui = scn.id_properties_ui(name)
@@ -56,7 +66,7 @@ def set_param(scn, name, value, *, min=None, max=None, subtype=None):
             ui.update(subtype=subtype)
 
 
-def bind_param(obj, name):
+def bind_param(obj: Any, name: str) -> None:
     """Strings aren't drivable (§9/§11): tag obj so the sync handler mirrors
     scn[name] into obj.data.body whenever the scene custom property changes.
     """
@@ -64,7 +74,7 @@ def bind_param(obj, name):
 
 
 @bpy.app.handlers.persistent
-def _sync_string_params(scn, depsgraph):
+def _sync_string_params(scn: Any, depsgraph: Any) -> None:
     for obj in scn.objects:
         name = obj.get(const.PROP_PARAM)
         if not name or obj.type != "FONT":
@@ -74,11 +84,11 @@ def _sync_string_params(scn, depsgraph):
             obj.data.body = value
 
 
-def register():
+def register() -> None:
     if _sync_string_params not in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.append(_sync_string_params)
 
 
-def unregister():
+def unregister() -> None:
     if _sync_string_params in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(_sync_string_params)

@@ -5,6 +5,7 @@ comes back per-module").
 """
 
 import math
+from typing import Any, Iterable
 
 from . import journal
 
@@ -30,7 +31,7 @@ _EASING = {
 }
 
 
-def _parse_ease(ease):
+def _parse_ease(ease: str | None) -> tuple[str, str]:
     if ease is None:
         return "BEZIER", "EASE_IN_OUT"
     if ease.startswith("cubic-bezier(") or ease == "CustomEase":
@@ -41,7 +42,15 @@ def _parse_ease(ease):
     return interpolation, easing
 
 
-def _keyframe(obj, path, index, frame, value, interpolation, easing):
+def _keyframe(
+    obj: Any,
+    path: str,
+    index: int,
+    frame: float,
+    value: float,
+    interpolation: str,
+    easing: str,
+) -> None:
     obj.keyframe_insert(path, index=index, frame=frame)
     # 5.2's layered-Action rework replaced Action.fcurves (see docs/M3-FINDINGS.md
     # Check 3) with layers/strips/channelbags; fcurve_ensure_for_datablock() is the
@@ -56,7 +65,16 @@ def _keyframe(obj, path, index, frame, value, interpolation, easing):
         kf.handle_left_type = kf.handle_right_type = "AUTO_CLAMPED"
 
 
-def tween(obj, path, index, frm, to, start, dur, ease=None):
+def tween(
+    obj: Any,
+    path: str,
+    index: int,
+    frm: float,
+    to: float,
+    start: float,
+    dur: float,
+    ease: str | None = None,
+) -> None:
     """Set `path[index]` to `frm` at `start` and `to` at `start+dur`, both real
     keyframes. Must run inside journal.batch() (see module docstring).
     """
@@ -69,14 +87,14 @@ def tween(obj, path, index, frm, to, start, dur, ease=None):
     _keyframe(obj, path, index, start + dur, to, interpolation, easing)
 
 
-def stagger(objs, path, index, offset, **tween_kwargs):
+def stagger(objs: Iterable[Any], path: str, index: int, offset: float, **tween_kwargs: Any) -> None:
     """tween() each object in objs, incrementing `start` by `offset` per object."""
     base_start = tween_kwargs.pop("start")
     for i, obj in enumerate(objs):
         tween(obj, path, index=index, start=base_start + i * offset, **tween_kwargs)
 
 
-def instance_as_nla(obj, track_name, frame_offset):
+def instance_as_nla(obj: Any, track_name: str, frame_offset: float) -> Any:
     """Push obj's current action onto an NLA track at frame_offset, so reusable
     motion is an Action instance (§6.2), not re-emitted keyframes.
     """

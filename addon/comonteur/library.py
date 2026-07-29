@@ -5,6 +5,7 @@ Asset Browser needed.
 """
 
 import os
+from typing import Any
 
 import bpy
 
@@ -13,12 +14,12 @@ from . import provenance
 _CATALOG_FILE = "blender_assets.cats.txt"
 
 
-def _catalog_names(blend_path):
+def _catalog_names(blend_path: str) -> dict[str, str]:
     # ponytail: line format is "uuid:catalog/path:display_name" per Blender's asset
     # catalog sidecar; falls back to the raw uuid if the file is missing or a line
     # doesn't parse, so a bad sidecar degrades discover() rather than crashing it.
     cats_path = os.path.join(os.path.dirname(blend_path), _CATALOG_FILE)
-    names = {}
+    names: dict[str, str] = {}
     if not os.path.exists(cats_path):
         return names
     with open(cats_path) as f:
@@ -32,7 +33,9 @@ def _catalog_names(blend_path):
     return names
 
 
-def discover(blend_path, kinds=("actions", "scenes", "node_groups")):
+def discover(
+    blend_path: str, kinds: tuple[str, ...] = ("actions", "scenes", "node_groups")
+) -> list[dict[str, Any]]:
     """List assets in blend_path — description, tags, catalog. Linking (not
     appending) is required to read .asset_data headless; the linked datablocks stay
     in bpy.data as zero-user until link() actually uses one.
@@ -42,7 +45,7 @@ def discover(blend_path, kinds=("actions", "scenes", "node_groups")):
         for kind in kinds:
             setattr(data_to, kind, list(getattr(data_from, kind, [])))
 
-    found = []
+    found: list[dict[str, Any]] = []
     for kind in kinds:
         for db in getattr(data_to, kind):
             meta = db.asset_data
@@ -60,7 +63,7 @@ def discover(blend_path, kinds=("actions", "scenes", "node_groups")):
     return found
 
 
-def link(blend_path, kind, name):
+def link(blend_path: str, kind: str, name: str) -> Any:
     """Link one component (Scene/Action/node group) from blend_path, tagging
     provenance if it isn't already tagged (M0.6: custom props survive linking).
     """

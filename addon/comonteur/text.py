@@ -4,12 +4,22 @@ Objects, not a Geometry Nodes String to Curves tree — GN instances aren't
 independently keyframeable, and §6.2 requires real F-curves.
 """
 
+from typing import Any
+
 import bpy
 
 from . import provenance
 
 
-def create(scene, body, *, name=None, size=1.0, font=None, color=None):
+def create(
+    scene: Any,
+    body: str,
+    *,
+    name: str | None = None,
+    size: float = 1.0,
+    font: Any = None,
+    color: tuple[float, ...] | None = None,
+) -> Any:
     name = name or body[:24] or "Text"
     data = bpy.data.curves.new(name, type="FONT")
     data.body = body
@@ -24,7 +34,13 @@ def create(scene, body, *, name=None, size=1.0, font=None, color=None):
     return obj
 
 
-def style(obj, *, size=None, font=None, color=None):
+def style(
+    obj: Any,
+    *,
+    size: float | None = None,
+    font: Any = None,
+    color: tuple[float, ...] | None = None,
+) -> Any:
     data = obj.data
     if size is not None:
         data.size = size
@@ -43,7 +59,9 @@ def style(obj, *, size=None, font=None, color=None):
     return obj
 
 
-def fit_to_box(obj, width, height, *, min_size=0.01, step=0.9):
+def fit_to_box(
+    obj: Any, width: float, height: float, *, min_size: float = 0.01, step: float = 0.9
+) -> Any:
     """No layout engine (§11): measure obj.dimensions after a depsgraph update,
     shrink iteratively until it fits.
     """
@@ -54,7 +72,7 @@ def fit_to_box(obj, width, height, *, min_size=0.01, step=0.9):
     return obj
 
 
-def split_chars(obj, *, spacing=0.0, space_width_factor=0.3):
+def split_chars(obj: Any, *, spacing: float = 0.0, space_width_factor: float = 0.3) -> list[Any]:
     """Replace obj with one FONT object per character, left to right, positioned by
     each character's measured advance width — the fallback from docs/M3-FINDINGS.md
     Check 1 (GN String to Curves gives one multi-spline object, not N keyframeable

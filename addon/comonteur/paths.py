@@ -3,11 +3,12 @@ outside Blender against plain Python objects (SPEC.md §8, "pure-logic modules")
 """
 
 import re
+from typing import Any
 
 _PART_RE = re.compile(r"^([a-zA-Z_][a-zA-Z0-9_]*)(\[(\d+)\])?$")
 
 
-def _step(obj, part):
+def _step(obj: Any, part: str) -> Any:
     m = _PART_RE.match(part)
     if not m:
         raise ValueError(f"bad path segment: {part!r}")
@@ -16,14 +17,14 @@ def _step(obj, part):
     return obj[int(idx)] if idx is not None else obj
 
 
-def resolve(obj, path):
+def resolve(obj: Any, path: str) -> Any:
     cur = obj
     for part in path.split("."):
         cur = _step(cur, part)
     return cur
 
 
-def set_(obj, path, value):
+def set_(obj: Any, path: str, value: Any) -> None:
     *head, last = path.split(".")
     cur = obj
     for part in head:

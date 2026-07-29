@@ -1,3 +1,9 @@
+## Python
+
+- All Python (addon/, tests/) must be type-hinted: function args, return types, and non-obvious variables.
+- `bpy` has no type stubs in this project — use `typing.Any` for Blender RNA objects (Object, Scene, Context, etc.) rather than leaving them untyped.
+- Enforced by ruff's `ANN` rule set (`addon/pyproject.toml`, `tests/pyproject.toml`); `ANN401` (disallow `Any`) is ignored since `bpy` forces `Any` for its dynamic types.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 

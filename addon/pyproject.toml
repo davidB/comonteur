@@ -12,4 +12,8 @@ target-version = "py311"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "I"]  # ruff defaults (E/F) + isort
+select = ["E4", "E7", "E9", "F", "I", "ANN"]  # ruff defaults (E/F) + isort + type annotations
+ignore = ["ANN401"]  # bpy has no type stubs; Any is the honest type for its objects
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["ANN"]

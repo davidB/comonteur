@@ -15,10 +15,10 @@ sys.path.insert(0, os.path.join(REPO_ROOT, "addon"))
 
 import comonteur as cmt  # noqa: E402
 
-R = []
+R: list[tuple[str, str, str]] = []
 
 
-def report(id_, status, detail=""):
+def report(id_: str, status: str, detail: str = "") -> None:
     R.append((id_, status, detail))
     print(f"[{id_}] {status}: {detail}")
 

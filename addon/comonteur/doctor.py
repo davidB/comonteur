@@ -9,10 +9,10 @@ import bpy
 from . import const
 
 
-def run(project_root=None):
-    results = []
+def run(project_root: str | None = None) -> list[tuple[str, str, str]]:
+    results: list[tuple[str, str, str]] = []
 
-    def check(name, ok, detail=""):
+    def check(name: str, ok: bool, detail: str = "") -> None:
         results.append((name, "PASS" if ok else "FAIL", detail))
 
     check("blender-version", bpy.app.version[:2] == (5, 2), f"got {bpy.app.version_string}")
@@ -29,11 +29,11 @@ def run(project_root=None):
     return results
 
 
-def _any_addon_enabled(needle):
+def _any_addon_enabled(needle: str) -> bool:
     return any(needle in name for name in bpy.context.preferences.addons.keys())
 
 
-def _journal_readable(project_root):
+def _journal_readable(project_root: str) -> bool:
     path = os.path.join(project_root, const.JOURNAL_DIR, const.JOURNAL_FILENAME)
     if not os.path.exists(path):
         return True  # no journal yet is not a failure
@@ -47,6 +47,6 @@ def _journal_readable(project_root):
         return False
 
 
-def print_report(results):
+def print_report(results: list[tuple[str, str, str]]) -> None:
     for name, status, detail in results:
         print(f"[{name}] {status}{': ' + detail if detail else ''}")

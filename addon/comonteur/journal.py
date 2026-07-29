@@ -7,35 +7,37 @@ import datetime
 import json
 import os
 import uuid
+from collections.abc import Iterator
+from typing import Any
 
 import bpy
 
 from . import const, paths
 
-_state = {"active": False, "batch_id": None, "writes": [], "touched": []}
+_state: dict[str, Any] = {"active": False, "batch_id": None, "writes": [], "touched": []}
 
 
-def batch_active():
+def batch_active() -> bool:
     return _state["active"]
 
 
-def _now():
+def _now() -> str:
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _journal_path():
+def _journal_path() -> str:
     root = os.path.dirname(bpy.data.filepath) if bpy.data.filepath else os.getcwd()
     d = os.path.join(root, const.JOURNAL_DIR)
     os.makedirs(d, exist_ok=True)
     return os.path.join(d, const.JOURNAL_FILENAME)
 
 
-def _append(entry):
+def _append(entry: dict[str, Any]) -> None:
     with open(_journal_path(), "a") as f:
         f.write(json.dumps(entry) + "\n")
 
 
-def _read_all():
+def _read_all() -> Iterator[dict[str, Any]]:
     path = _journal_path()
     if not os.path.exists(path):
         return
@@ -46,12 +48,12 @@ def _read_all():
                 yield json.loads(line)
 
 
-def target_of(id_block):
+def target_of(id_block: Any) -> str:
     return f"{type(id_block).__name__}:{id_block.get(const.PROP_ID, id_block.name)}"
 
 
 @contextlib.contextmanager
-def batch(label):
+def batch(label: str) -> Iterator[str]:
     """One labelled undo_push per batch (SPEC.md §4.5). Nesting is not supported —
     batches are the agent's unit of work, not a general transaction primitive.
     """
@@ -79,7 +81,7 @@ def batch(label):
             bpy.ops.ed.undo_push(message=f"comonteur: {label}")
 
 
-def set(id_block, path, value):
+def set(id_block: Any, path: str, value: Any) -> None:
     if not _state["active"]:
         raise RuntimeError("journal.set() must run inside journal.batch()")
     old = paths.resolve(id_block, path)
@@ -101,7 +103,7 @@ def set(id_block, path, value):
         _state["touched"].append(id_block)
 
 
-def record_flip(id_block):
+def record_flip(id_block: Any) -> None:
     _append(
         {
             "ts": _now(),
@@ -115,7 +117,7 @@ def record_flip(id_block):
     )
 
 
-def paths_written_by_agent(id_block):
+def paths_written_by_agent(id_block: Any) -> set[str]:
     target = target_of(id_block)
     return {
         e["path"]
@@ -124,7 +126,7 @@ def paths_written_by_agent(id_block):
     }
 
 
-def last_agent_value(id_block, path):
+def last_agent_value(id_block: Any, path: str) -> Any:
     target = target_of(id_block)
     val = None
     for e in _read_all():

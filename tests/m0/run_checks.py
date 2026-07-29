@@ -4,18 +4,19 @@ Prints PASS/FAIL/INFO lines per SPEC.md §10 check id. Source for docs/M0-FINDIN
 
 import os
 import tempfile
+from typing import Any
 
 import bpy
 
-R = []  # (id, status, detail)
+R: list[tuple[str, str, str]] = []  # (id, status, detail)
 
 
-def report(id_, status, detail=""):
+def report(id_: str, status: str, detail: str = "") -> None:
     R.append((id_, status, detail))
     print(f"[{id_}] {status}: {detail}")
 
 
-def reset_file():
+def reset_file() -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
 
@@ -209,7 +210,7 @@ bpy.context.scene.collection.objects.link(dg_obj)
 fired = []
 
 
-def handler(scene, depsgraph):
+def handler(scene: Any, depsgraph: Any) -> None:
     fired.append(
         [
             (getattr(u.id, "original", u.id).name, u.is_updated_transform, u.is_updated_geometry)
@@ -235,7 +236,7 @@ reset_file()
 undo_result = {}
 
 
-def timer_cb():
+def timer_cb() -> None:
     try:
         bpy.ops.ed.undo_push(message="comonteur: m0 test")
         undo_result["ok"] = True

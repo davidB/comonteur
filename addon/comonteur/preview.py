@@ -4,13 +4,14 @@ own temp dir instead of the requested path.
 """
 
 import os
+from typing import Any, Iterable
 
 import bpy
 
 from . import const
 
 
-def frames(scene, frame_numbers, engine="WORKBENCH"):
+def frames(scene: Any, frame_numbers: Iterable[int], engine: str = "WORKBENCH") -> list[str]:
     root = os.path.dirname(bpy.data.filepath) if bpy.data.filepath else os.getcwd()
     out_dir = os.path.join(root, const.JOURNAL_DIR, "review")
     os.makedirs(out_dir, exist_ok=True)
