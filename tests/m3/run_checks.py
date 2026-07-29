@@ -61,7 +61,9 @@ letters = [cmt.text.create(scene, ch, name=f"L{ch}") for ch in "AB"]
 with cmt.journal.batch("stagger letters"):
     cmt.anim.stagger(letters, "location", index=1, offset=5, frm=-0.2, to=0.0, start=1, dur=10)
 starts = [
-    obj.animation_data.action.fcurve_ensure_for_datablock(obj, "location", index=1).keyframe_points[0].co[0]
+    obj.animation_data.action.fcurve_ensure_for_datablock(obj, "location", index=1)
+    .keyframe_points[0]
+    .co[0]
     for obj in letters
 ]
 report("M3.stagger", starts == [1, 6], f"starts={starts}")
@@ -80,7 +82,9 @@ word = cmt.text.create(scene, "Hi", name="Word")
 chars = cmt.text.split_chars(word)
 report(
     "M3.split_chars",
-    len(chars) == 2 and chars[0].data.body == "H" and chars[1].data.body == "i"
+    len(chars) == 2
+    and chars[0].data.body == "H"
+    and chars[1].data.body == "i"
     and chars[1].location.x > chars[0].location.x
     and "Word" not in scene.objects,
     f"chars={[(c.name, c.data.body, c.location.x) for c in chars]}",

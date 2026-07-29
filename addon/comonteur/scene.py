@@ -45,6 +45,7 @@ def find(cmt_id):
 # --- Brand params (§9): numeric params propagate via drivers; strings are not
 # drivable, so a handler syncs scene[param] into the bound text object's data.body.
 
+
 def set_param(scn, name, value, *, min=None, max=None, subtype=None):
     scn[name] = value
     if isinstance(value, (int, float)) and not isinstance(value, bool):

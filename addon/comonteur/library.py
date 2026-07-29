@@ -52,7 +52,9 @@ def discover(blend_path, kinds=("actions", "scenes", "node_groups")):
                     "name": db.name,
                     "description": meta.description if meta else "",
                     "tags": [t.name for t in meta.tags] if meta else [],
-                    "catalog": catalogs.get(str(meta.catalog_id), str(meta.catalog_id)) if meta else None,
+                    "catalog": catalogs.get(str(meta.catalog_id), str(meta.catalog_id))
+                    if meta
+                    else None,
                 }
             )
     return found
