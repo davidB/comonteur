@@ -108,7 +108,7 @@ Enable **comonteur** in Blender: `Edit ▸ Preferences ▸ Add-ons`.
 
 ```bash
 cd your-video-project
-npx skills add <this-repo>/skill
+npx skills add <this-repo>/skills/comonteur
 ```
 
 The skill teaches Claude the workflow and the helper library. It matters more than it
@@ -214,7 +214,7 @@ Early. Working through the milestones in [`SPEC.md`](./SPEC.md):
 - [x] **M1** — Walking skeleton: bidirectional edit without clobbering
 - [x] **M2** — Production contract (assets, TTS, captions)
 - [x] **M3** — Scene authoring (text, animation, components)
-- [ ] **M4** — VSE assembly
+- [x] **M4** — VSE assembly
 - [ ] **M5** — Validation against a real HyperFrames project
 - [ ] **M6** — Launch video, made with comonteur
 

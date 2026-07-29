@@ -29,6 +29,10 @@ Code comments referencing `SPEC.md §N` resolve to whichever doc above now holds
   is testable outside Blender).
 - `cli/` — everything outside the Blender process. Rust (`comonteur` crate). Ingest-only as
   of M2 (`narrative.yaml`, `assets/manifest.json`, captions); `setup`/`new`/`doctor` are M5.5.
+- `skills/` — Claude Code skills, one directory per skill (`skills/comonteur/SKILL.md` +
+  `references/`), installable with `npx skills add <repo>/skills/<name>`. Markdown only —
+  no build, no lint, not a mise config root. This is what teaches an agent to call the
+  library instead of writing raw `bpy`; keep it in sync when `addon/comonteur/` changes.
 - `tests/` — pure-logic Python unit tests (pytest) for modules with no `bpy` dependency
   (journal, paths, easing map, spec parsing). Own `pyproject.toml`/`mise.toml`/venv.
 - Root `mise.toml` is orchestration only — `monorepo_root = true`, no Python project of its
@@ -130,7 +134,7 @@ Distinct from this repo's own layout. A generated project has `lib/` (human-auth
 components, git-lfs), `compositions/frames/*.blend` (one agent-generated scene per shot,
 **linked** — not appended — into `master.blend` so it stays read-only there),
 `timeline.yaml` (assembly source of truth), and `.comonteur/journal.jsonl` +
-`snapshot.json`. Don't confuse this with `addon/`, `cli/`, `skill/` which belong to the
+`snapshot.json`. Don't confuse this with `addon/`, `cli/`, `skills/` which belong to the
 tool itself.
 
 ## Python conventions

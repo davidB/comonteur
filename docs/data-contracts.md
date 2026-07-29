@@ -11,7 +11,7 @@ continuity with existing code comments (`SPEC.md §5...`).
 
 Two distinct layouts share this document: the tool's own repository (this codebase),
 and the layout of a video project the tool creates and operates on. Keep them apart —
-`addon/`, `skill/` and friends belong to comonteur itself, never to a project directory.
+`addon/`, `skills/` and friends belong to comonteur itself, never to a project directory.
 
 #### 5.1a This repository (comonteur, the tool)
 
@@ -21,7 +21,8 @@ and the layout of a video project the tool creates and operates on. Keep them ap
 │   └── pyproject.toml/mise.toml   # own uv project + venv (ruff only, no pytest)
 ├── cli/                 # comonteur CLI — everything outside the Blender process (§7.5,
 │                         #   §8). Rust. Ingest-only as of M2; setup/new/doctor are M5.5.
-├── skill/               # Claude Code skill
+├── skills/              # Claude Code skills, one dir per skill (`skills/comonteur/`),
+│                         #   installed into a project's .claude/skills/ (§M5.5)
 ├── docs/                # DESIGN-RATIONALE.md, ADDONS.md, M0-FINDINGS.md
 ├── tests/
 │   └── pyproject.toml/mise.toml   # own uv project + venv (pytest + ruff)
