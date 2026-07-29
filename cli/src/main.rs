@@ -1,9 +1,11 @@
-//! comonteur CLI — SPEC.md §10 M2. Ingest-only for now (narrative/manifest/captions);
-//! `doctor`/`setup`/`new` are M5.5 scope, not built here.
+//! comonteur CLI — SPEC.md §10 M2/M4. Ingest-only (narrative/manifest/captions) plus
+//! M4's `reconcile plan` (resolves timeline.yaml into a plain-JSON assembly plan for
+//! addon/reconcile.py); `doctor`/`setup`/`new` are M5.5 scope, not built here.
 
 mod captions;
 mod manifest;
 mod narrative;
+mod timeline;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
@@ -22,6 +24,27 @@ enum Command {
     Ingest {
         #[command(subcommand)]
         target: IngestTarget,
+    },
+    /// Resolve timeline.yaml into a VSE assembly plan (SPEC.md §5.2/§10 M4)
+    Reconcile {
+        #[command(subcommand)]
+        target: ReconcileTarget,
+    },
+}
+
+#[derive(Subcommand)]
+enum ReconcileTarget {
+    /// Validate + resolve timeline.yaml (anchors -> absolute frames) into JSON that
+    /// addon/reconcile.py applies to the VSE.
+    Plan {
+        #[arg(long)]
+        timeline: PathBuf,
+        /// audio/transcript.json (captions ingest output) — required if any shot/audio
+        /// entry uses `anchor` instead of an absolute `start`.
+        #[arg(long)]
+        transcript: Option<PathBuf>,
+        #[arg(short, long)]
+        out: Option<PathBuf>,
     },
 }
 
@@ -77,6 +100,39 @@ fn main() -> Result<()> {
                 std::fs::write(&out, serde_json::to_string_pretty(&out_doc)?)
                     .with_context(|| format!("writing {}", out.display()))?;
                 println!("wrote {} ({} word(s))", out.display(), out_doc.words.len());
+            }
+        },
+        Command::Reconcile { target } => match target {
+            ReconcileTarget::Plan {
+                timeline: timeline_path,
+                transcript,
+                out,
+            } => {
+                let doc = timeline::parse(&timeline_path)?;
+                let words = transcript
+                    .as_deref()
+                    .map(timeline::load_transcript)
+                    .transpose()?;
+                let resolved = timeline::resolve(&doc, words.as_deref(), doc.fps)?;
+                let out = out.unwrap_or_else(|| {
+                    timeline_path
+                        .parent()
+                        .unwrap_or_else(|| std::path::Path::new("."))
+                        .join(".comonteur")
+                        .join("timeline.resolved.json")
+                });
+                if let Some(parent) = out.parent() {
+                    std::fs::create_dir_all(parent)
+                        .with_context(|| format!("creating {}", parent.display()))?;
+                }
+                std::fs::write(&out, serde_json::to_string_pretty(&resolved)?)
+                    .with_context(|| format!("writing {}", out.display()))?;
+                println!(
+                    "wrote {} ({} shot(s), {} audio track(s))",
+                    out.display(),
+                    resolved.shots.len(),
+                    resolved.audio.len()
+                );
             }
         },
     }

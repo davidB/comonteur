@@ -8,6 +8,7 @@ from . import (  # noqa: F401
     library,
     preview,
     provenance,
+    reconcile,
     scene,
     text,
     ui,

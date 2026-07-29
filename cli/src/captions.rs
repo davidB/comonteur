@@ -7,14 +7,14 @@
 use serde::Serialize;
 use serde_json::Value;
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, serde::Deserialize)]
 pub struct Word {
     pub word: String,
     pub start: f64,
     pub end: f64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, serde::Deserialize)]
 pub struct Captions {
     pub words: Vec<Word>,
 }

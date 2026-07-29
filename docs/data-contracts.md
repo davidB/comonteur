@@ -98,11 +98,17 @@ shots:
     anchor: {word: "observability", occurrence: 1, offset: -0.2}
     duration: 120
     in: 45
+    transition: {type: cross, duration: 0.4}
 audio:
   - id: vo
     path: audio/narration.wav
     start: 0
 ```
+
+`transition` (optional, on a shot) applies a crossfade between that shot and the one
+immediately before it; `duration` is seconds, like `anchor.offset` — both are timed
+relative to the transcript/audio, not the edit grid. `cross` is the only type as of M4
+(`docs/M4-FINDINGS.md`); more VSE effect-strip types can be added to the enum later.
 
 Reconcile: match VSE strips by `cmt_id`, update owned fields, delete agent strips no
 longer listed, never touch untagged strips. Reconcile is not exempt from provenance
@@ -111,6 +117,19 @@ human has since edited (e.g. dragging a strip's duration in the dope sheet) is c
 reconcile skips it rather than overwriting it back to the spec's value. "Authoritative for
 assembly" (§4.2) means authoritative for what the agent proposes, not a license to clobber
 a human edit — same rule as everywhere else in this document.
+
+**`cli/` resolves, `addon/` applies (M4).** `timeline.yaml` is YAML and anchors need a
+real word-timing lookup against `audio/transcript.json` — both are handled by
+`comonteur reconcile plan` (`cli/src/timeline.rs`), which validates the doc and resolves
+every `anchor` to a plain integer `start_frame` (fail loudly, per above, if the anchor
+word or its occurrence count doesn't match). It writes a resolved plan — no more YAML, no
+more anchors — to `.comonteur/timeline.resolved.json` by default (same directory as the
+journal; derived/ephemeral like `snapshot.json`, not a new top-level project file). The
+addon (`addon/comonteur/reconcile.py`) never parses YAML: it reads that JSON with the
+stdlib `json` module and reconciles it into VSE strips. This is the same split as §5.3's
+production-contract ingest (`cli/` normalizes upstream input into a plain file; the
+agent/addon consumes the file) — Python in this repo stays scoped to the Blender addon
+(`bpy`-locked) and pure-logic tests, never a second YAML-parsing runtime outside it.
 
 #### Anchor-relative timing (required)
 

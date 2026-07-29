@@ -76,3 +76,19 @@ def link(blend_path: str, kind: str, name: str) -> Any:
     if provenance.origin(obj) is None:
         provenance.tag(obj, f"{os.path.basename(blend_path)}:{name}")
     return obj
+
+
+def link_scene(blend_path: str, scene_name: str) -> Any:
+    """Link a plain generated Scene (compositions/frames/*.blend, SPEC.md §5.1b) for
+    use as a VSE Scene strip (M0.7). Unlike link(), not assets_only — these scenes are
+    agent-generated, not asset-marked (docs/M4-FINDINGS.md).
+    """
+    with bpy.data.libraries.load(blend_path, link=True) as (data_from, data_to):
+        if scene_name not in data_from.scenes:
+            raise ValueError(f"{scene_name!r} not found in scenes of {blend_path}")
+        data_to.scenes = [scene_name]
+
+    scn = data_to.scenes[0]
+    if provenance.origin(scn) is None:
+        provenance.tag(scn, f"{os.path.basename(blend_path)}:{scene_name}")
+    return scn
