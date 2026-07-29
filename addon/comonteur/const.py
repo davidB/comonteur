@@ -7,6 +7,7 @@ PREFIX = "cmt_"
 PROP_ID = PREFIX + "id"
 PROP_ORIGIN = PREFIX + "origin"
 PROP_REV = PREFIX + "rev"
+PROP_PARAM = PREFIX + "param"
 
 ORIGIN_AGENT = "agent"
 ORIGIN_HUMAN = "human"
