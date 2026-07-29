@@ -212,8 +212,8 @@ Early. Working through the milestones in [`SPEC.md`](./SPEC.md):
 
 - [x] **M0** — Blender 5.2 API verification spike
 - [x] **M1** — Walking skeleton: bidirectional edit without clobbering
-- [ ] **M2** — Production contract (assets, TTS, captions)
 - [ ] **M3** — Scene authoring (text, animation, components)
+- [x] **M2** — Production contract (assets, TTS, captions)
 - [ ] **M4** — VSE assembly
 - [ ] **M5** — Validation against a real HyperFrames project
 - [ ] **M6** — Launch video, made with comonteur

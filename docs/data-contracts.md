@@ -17,11 +17,15 @@ and the layout of a video project the tool creates and operates on. Keep them ap
 
 ```
 .
-├── addon/comonteur/     # the in-Blender library + addon (§6)
+├── addon/comonteur/     # the in-Blender library + addon (§6). bpy-locked, Python.
+│   └── pyproject.toml/mise.toml   # own uv project + venv (ruff only, no pytest)
+├── cli/                 # comonteur CLI — everything outside the Blender process (§7.5,
+│                         #   §8). Rust. Ingest-only as of M2; setup/new/doctor are M5.5.
 ├── skill/               # Claude Code skill
 ├── docs/                # DESIGN-RATIONALE.md, ADDONS.md, M0-FINDINGS.md
 ├── tests/
-├── pyproject.toml / mise.toml
+│   └── pyproject.toml/mise.toml   # own uv project + venv (pytest + ruff)
+├── mise.toml             # monorepo root only — no code, no tasks of its own to run
 ├── README.md
 └── SPEC.md
 ```
@@ -155,6 +159,13 @@ Human-recorded VO is the primary mode in the reference projects (`sox`/`rec` cap
 see §5.7), so Whisper is a primary path, not a fallback. Use synthesis timing marks
 whenever the audio *was* synthesized, since they avoid ASR error on proper nouns and
 technical terms.
+
+**Implementation (M2):** `cli/src/{narrative,manifest,captions}.rs` — a first-cut
+`narrative.yaml` schema (`shots: [{id, intent, target_duration, vo, broll}]`),
+`ffprobe`-backed manifest building, and word-level caption normalization into
+`{"words": [{"word", "start", "end"}]}`. Caption ingest normalizes JSON that already
+exists (Whisper's `segments[].words[]`, or upstream-supplied TTS timing marks) — it does
+not invoke `whisper` itself; that stays an external pipeline per §5.7.
 
 ### 5.4 HyperFrames project adapter
 

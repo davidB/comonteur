@@ -76,22 +76,43 @@ Blender Lab is at v1.0.0 and explicitly experimental. This isolation makes swapp
 transport roughly a day's work rather than a refactor, and is worth having regardless of
 the eventual decision.
 
-If a custom MCP server + CLI is ever built, the language policy is: **Rust for
-everything outside the Blender process; Python for everything inside it** (bpy is
-Python-only).
+**Language policy, in effect since M2 (no longer a future contingency):** Rust for
+everything outside the Blender process; Python for everything inside it (`bpy` is
+Python-only, so the addon never moves off Python). M2's production-contract ingest
+(`narrative.yaml`, `assets/manifest.json`, captions — §5.3) has no Python-only
+dependency and no need to run inside Blender, so it shipped as `cli/`, a Rust crate —
+the start of the eventual M5.5 CLI rather than throwaway code it later replaces. Scope
+as of M2 is **ingest-only**: `comonteur ingest {narrative,manifest,captions}`. `setup`,
+`new`, and a CLI-side `doctor` are still M5.5 territory.
 
 ---
 
 ## 8. Tooling and language policy
 
-- **v1 is pure Python.** `mise` for tool versions, `uv` for dependency and venv
-  management, `ruff` for lint + format. Simpler to develop; the MCP ecosystem already
-  requires Python and `uv`/`uvx` on the user's machine.
+- **Inside Blender (`addon/`) is pure Python** — `bpy` leaves no other option. `uv` for
+  dependency and venv management, `ruff` for lint + format. Simpler to develop; the MCP
+  ecosystem already requires Python and `uv`/`uvx` on the user's machine.
+- **Outside Blender (`cli/`) is Rust**, per §7.5 — no `uv`/`uvx`/Python required to
+  install or run it, which matters for the eventual M5.5 distribution story (single
+  binary).
+- The repo is a **mise monorepo**, and `pyproject.toml`/`uv.lock` moved with it: root
+  `mise.toml` is orchestration only (`monorepo_root = true`, `[monorepo] config_roots =
+  ["cli", "addon", "tests"]`, no tasks of its own beyond aggregation) and has **no
+  Python project file anymore**. `addon/` and `tests/` each own a `pyproject.toml` +
+  `mise.toml` + venv, exactly like `cli/` owns its `Cargo.toml` + `mise.toml`:
+  `addon/` only needs `ruff` (it has no pytest suite of its own — see below); `tests/`
+  needs `pytest` + `ruff`. Root `lint`/`autofix`/`test` are pure aggregators using the
+  recursive glob `//...:<task>`, which picks up every config root automatically — adding
+  a fourth workspace later needs no root `mise.toml` edit. Run `mise run cli:test` /
+  `addon:lint` / `tests:test` from anywhere in the repo; root `ci` depends on `lint` +
+  `test`, which fan out through the glob.
 - Blender **5.2 LTS, pinned** (released 2026-07-14, supported to July 2028). Every line
   the agent emits is only reproducible against a pinned `bpy`. Do not track 5.3+.
 - Type hints throughout; `bpy` stubs (`fake-bpy-module`) for editor support.
-- Tests: pure-logic modules (journal, easing map, spec parsing, manifest) unit-tested
-  outside Blender. Blender-dependent modules tested via `blender -b -P tests/run.py`.
+- Tests: pure-logic Python modules (journal, easing map, spec parsing) unit-tested
+  outside Blender via `tests/unit/`; narrative/manifest/captions ingest is Rust, tested
+  via `cargo test` (`cli/src/*.rs`, inline `#[cfg(test)]`). Blender-dependent modules
+  tested via `blender -b -P tests/run.py`.
 
 ### 8.1 Third-party Blender add-ons — explicit allowlist
 

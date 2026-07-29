@@ -54,6 +54,12 @@ project layout valid; journal readable. Cheap to write, pays for itself immediat
 ### M2 — Production contract
 `narrative.yaml` + manifest ingest, ffprobe, TTS timing-mark captions, Whisper fallback.
 
+Shipped as `cli/` — a Rust crate, ingest-only (`comonteur ingest {narrative,manifest,
+captions}`), not the full M5.5 CLI shape. First outside-Blender code in the repo; see
+§7.5/§8 for the language-policy decision this pulled forward. Whisper transcription
+itself stays an external pipeline (§5.7) — `captions` ingest normalizes its
+`transcript.json` output rather than invoking `whisper`.
+
 ### M3 — Scene authoring
 `anim.py`, `text.py`, fit-to-box, per-character stagger via String to Curves, Actions/NLA,
 asset-library component discovery, brand params.
