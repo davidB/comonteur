@@ -117,27 +117,102 @@ ownership system.
 
 ---
 
-## Quick start
+## Workflows
 
-```bash
-mise run new-project my-launch-video
-cd my-launch-video
-blender master.blend     # leave this open
-```
+You work in two places: **Blender**, and the **chat with Claude**. You don't drive a CLI —
+Claude runs the tooling for you (there's a table of what it runs at the end of this
+section).
 
-Then, in Claude Code:
+### The loop, whichever workflow you're in
 
-```
-Read production/narrative.yaml and build the opening shot:
-a title card reading "Ship faster", fading up with a back-ease,
-over the first 3 seconds of the voiceover.
-```
+1. Open `master.blend` in Blender and **leave it open**. Claude talks to that live session.
+2. Ask for one shot at a time:
 
-Claude creates the scene, animates it, and renders a preview to check its own work.
-Switch to Blender — it's there, live, fully editable.
+   ```
+   Read narrative.yaml and build the opening shot: a title card reading
+   "Ship faster", fading up with a back-ease, over the first 3 seconds
+   of the voiceover.
+   ```
 
-Nudge the keyframe. Change the font. Then ask Claude to adjust the next shot. Your edit
-survives.
+3. Claude builds `compositions/frames/<shot>.blend`, renders review frames into
+   `.comonteur/review/`, looks at them, and reports what it did — including anything it
+   routed around because you'd claimed it.
+4. Switch to Blender. It's there, live, fully editable. Nudge the keyframe, change the
+   font, drag the strip. That data flips to **shared** and Claude works around your edit.
+5. Ask for the next shot, or for a change to this one. Your edits survive.
+6. When the shots exist: *"assemble the timeline"* — Claude resolves `timeline.yaml` and
+   reconciles it into `master.blend`'s sequencer. Then *"render shots 1–3"*.
+7. **You save the `.blend`.** Claude never does — saving under you could destroy unsaved
+   work it can't see. It'll remind you.
+
+What differs between workflows is only how the project *starts*.
+
+### A. A video from scratch
+
+Nothing upstream — a brief, your own components, maybe some footage and a voiceover.
+
+1. In an empty directory, install the skill: `npx skills add <this-repo>/skills/comonteur`.
+   Without it Claude writes raw `bpy` and works outside the ownership system.
+2. *"Scaffold a comonteur project here for a 90-second launch video."* Claude creates the
+   [project layout](#project-layout), sets up Git LFS, and writes a first `narrative.yaml`
+   from what you describe.
+3. Drop assets in `assets/` and voiceover in `audio/`, then *"ingest the assets and
+   captions"*.
+4. Open `master.blend`, and follow the loop above.
+
+Details for the agent: [`skills/comonteur/references/workflows.md`](./skills/comonteur/references/workflows.md),
+[`SKILL.md`](./skills/comonteur/SKILL.md).
+
+### B. A video from an existing HyperFrames project folder
+
+You shipped it in HTML and want an editable Blender project out of it.
+
+Say *"import this HyperFrames project"*. Claude copies the tree (most of it maps 1:1),
+translates the metadata (`STORYBOARD.md` → `narrative.yaml`, `hyperframes.json` +
+`index.html` → `timeline.yaml`), converts the `.woff2` fonts Blender can't load, then
+rebuilds each shot as a Blender scene and previews it.
+
+**One thing it will stop and ask you.** HyperFrames has no timeline file — durations live
+inside the HTML/JS. Claude recovers the cut list from three sources and shows it to you as
+a table before building anything. Confirm it; everything downstream depends on it.
+
+HTML → timeline is **not** lossless. The import ends with a list of what didn't survive:
+timings it had to ask about, effects it approximated. That's honest, not a failure.
+
+Details: [`references/hyperframes-import.md`](./skills/comonteur/references/hyperframes-import.md).
+Status: M5, in progress.
+
+### C. From scratch, with the HyperFrames harness
+
+HyperFrames is two things: a production **harness** (script → shot list → asset prep → TTS
+→ word-level captions) and an HTML **renderer**. Keep the harness, skip the renderer.
+
+1. Run the harness for production prep only — its output already matches comonteur's
+   production contract.
+2. **No HTML compositions are written.** Shots are authored in Blender from the first
+   frame, so there's no conversion step and nothing gets lost — unlike workflow B, which
+   exists only because the HTML already happened.
+3. Then the loop above. If there's a voiceover, Claude anchors shots to transcript words
+   rather than absolute frames, so re-recording the VO doesn't invalidate the edit.
+
+Details: [`docs/data-contracts.md`](./docs/data-contracts.md) §5.3–§5.4, and
+[Relation to HyperFrames](#relation-to-hyperframes) below.
+
+### Under the hood
+
+You don't normally type these — Claude runs them. Listed so you know what's happening.
+
+| Command | What it does |
+|---|---|
+| `comonteur ingest narrative narrative.yaml` | Validates the shot list |
+| `comonteur ingest manifest assets/ -o assets/manifest.json` | Content-addressed asset manifest (via `ffprobe`) |
+| `comonteur ingest captions <in> --kind whisper\|tts -o captions/vo.json` | Normalizes word-level timing |
+| `comonteur reconcile plan --timeline timeline.yaml …` | Resolves `timeline.yaml` (anchors → frames) into a plan the add-on applies |
+| `mise run install-addon` | Symlinks the add-on into Blender's extensions dir |
+| `mise run install-mcp` | Fetches and registers Blender's official MCP server |
+
+Project scaffolding (`comonteur new`), a journal CLI and `doctor` are planned (M5.5) —
+today Claude does that work directly.
 
 ## How collaboration works
 
@@ -160,22 +235,27 @@ You can override ownership either way from the comonteur sidebar panel in Blende
 
 ### Reviewing what Claude did
 
-```bash
-mise run log            # human-readable journal
-mise run log --batch b_0f3a
-mise run revert b_0f3a  # undo one labelled batch
-```
+Every change is in `.comonteur/journal.jsonl` — append-only JSONL, one line per property
+written, with the before and after. Readable with any text tool; no binary diffing.
+
+Changes are grouped into labelled batches, each landing as exactly one Blender undo step —
+so `Ctrl+Z` undoes a whole batch, cleanly, and the label tells you which. Reverting an
+older batch from the journal is designed but not yet built (M5.5); today, undo and the
+journal's before/after values are what you have.
 
 ## Project layout
 
+A video project — distinct from this repo:
+
 ```
-production/     script, assets, voiceover, captions — the "what"
-lib/            your Blender components (brand, titles) — human-authored
-lib/gen/        Claude-generated scenes — yours to edit too
-spec/           timeline assembly
-master.blend    the edit: links everything above
-render/         outputs
-.comonteur/       change journal
+narrative.yaml           script/shot intent (STORYBOARD.md kept alongside)
+assets/  audio/  captions/   media + word-level timing, manifest.json generated
+lib/                     your Blender components (brand, titles) — human-authored, git-lfs
+compositions/frames/     one .blend per shot, Claude-generated, yours to edit too
+timeline.yaml            the assembly — authoritative for the edit, not for scene contents
+master.blend             links the above into a VSE timeline
+.comonteur/              journal, snapshot, review frames
+renders/  thumbnail/  meta.json    deliverables
 ```
 
 ---
@@ -199,9 +279,10 @@ with a thin adapter: shots, durations, assets, voiceover and word-level captions
 about rendering crosses that line.
 
 HTML still has one honest advantage: **previz**. Browser rendering is instant and
-Blender's isn't, so structure and pacing are cheaper to iterate in HTML. Lock the
-structure there, then commit to Blender for the finish. Shot order and durations survive
-the jump; per-shot timing largely doesn't.
+Blender's isn't, so structure and pacing are cheaper to iterate in HTML. If you want that,
+lock the structure there and then import (workflow B) — but expect the round trip to cost
+you: shot order and durations survive, per-shot timing largely doesn't. Workflow C skips
+it deliberately, authoring in Blender from the first frame.
 
 You don't need HyperFrames at all. A folder of footage, a voiceover and a `.blend` full
 of your own components is an equally valid starting point.

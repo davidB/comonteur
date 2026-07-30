@@ -3,7 +3,8 @@ name: comonteur
 description: >
   Build and edit video scenes, shots, animations and timelines inside Blender through the
   comonteur helper library, in a project that has `master.blend`, `timeline.yaml` or
-  `.comonteur/`. Use for: creating or changing a shot (`compositions/frames/*.blend`),
+  `.comonteur/`, or starting one from scratch. Use for: scaffolding a new video project,
+  creating or changing a shot (`compositions/frames/*.blend`),
   title cards and kinetic text, keyframes and GSAP-named eases, staggered reveals,
   linking components from `lib/*.blend`, rendering review frames, assembling the VSE
   timeline from `timeline.yaml`, and importing an existing HyperFrames project. Read this
@@ -70,6 +71,9 @@ Each of these is a silent-corruption bug, not a style preference.
 
 ## The loop
 
+This is the loop for **one shot**. For the work around it — starting a project, ingesting
+upstream material, assembling, delivering — read `references/workflows.md` first.
+
 1. **Read the intent** — `narrative.yaml` (and `STORYBOARD.md` if present) for what the
    shot says; `timeline.yaml` for where it sits.
 2. **Read the scene before writing to it** — `cmt.introspect.outline(scn)`,
@@ -92,12 +96,13 @@ your work in memory only.
 
 | Read | When |
 |---|---|
+| `references/workflows.md` | Starting a project, or deciding which workflow a directory is: project-level order of work, ingest, rendering and delivery. |
 | `references/api.md` | Writing any scene content: scenes, text, animation, eases, components, preview, provenance. |
 | `references/timeline.md` | Assembling or changing the edit: `timeline.yaml`, anchors, `reconcile`, VSE strips, audio, transitions. |
 | `references/hyperframes-import.md` | Converting an existing HyperFrames project into a comonteur project. |
 
 Read the matching reference before the first call in that area — these are command
-contracts, not background reading. Do not read all three speculatively.
+contracts, not background reading. Do not read them all speculatively.
 
 ## Ownership, in eight lines
 
