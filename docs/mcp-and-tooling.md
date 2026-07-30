@@ -11,9 +11,11 @@ continuity with existing code comments (`SPEC.md §7...`, `§8...`).
 `anan0110692/blender-mcp-vse` or any other unless a concrete need appears that cannot be
 met from the helper library — record the reason if so.
 
-- Add-on: Blender Lab extension, requires Blender 5.1+. Installed by dragging the
-  extension into Blender **twice** (first adds the Blender Lab repository, then installs
-  the add-on), or via Install from Disk.
+- Add-on: Blender Lab extension, requires Blender 5.1+. `comonteur:setup` installs it
+  headlessly — `extension repo-add lab_blender_org --url https://lab.blender.org/` then
+  `extension install mcp --sync --enable`, which is the same repository id and package the
+  GUI produces. The GUI fallback is dragging the extension in **twice** (first drop adds the
+  repository, second installs), or Install from Disk.
 - Server: `.mcpb` bundle for clients that support it, else from source.
 
 Consequences to design around:
@@ -153,14 +155,16 @@ and prefer it — no download, and the add-on is symlinked so edits stay live.
 Delivery of the two binaries-ish artifacts is **release asset when present, pinned source
 otherwise**: `scripts/setup --ref <tag>` tries the GitHub release binary (no Rust needed), and
 falls back to `curl` of that tag's source tarball + `cargo install --path <tmp>/cli`, which
-also yields `addon/comonteur` to copy into Blender's extensions dir. The fallback is what works
+also yields `addon/comonteur`, packaged with `extension build` and installed with
+`extension install-file -r user_default -e` (a checkout symlinks instead, to keep edits live).
+The fallback is what works
 today, pre-1.0; the release path is what should work later, without changing the command
 anyone types. Nothing is fetched unpinned, and the scaffold itself never touches the network —
 templates ship inside the skill.
 
-**Decision: mise is the only tool a user installs by hand**, plus Blender itself and Blender's
-MCP add-on (both live inside Blender's own UI, out of reach of a package manager). Everything
-else — the CLI, the comonteur add-on, the MCP server, `ffmpeg` — is installed by
+**Decision: mise is the only tool a user installs by hand**, plus Blender itself (a ~300MB
+GUI installer, out of reach of a package manager here). Everything else — the CLI, both
+Blender add-ons via `blender --command extension`, the MCP server, `ffmpeg` — is installed by
 `scripts/setup` and verified by `scripts/doctor` / `mise run comonteur:doctor`.
 
 Blender is deliberately **not** pinned per-project even though mise's registry carries it

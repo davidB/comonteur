@@ -91,8 +91,12 @@ it to one command.
 
 In scope:
 - Install both Blender extensions — the Blender Lab MCP addon and the `comonteur` addon.
-  Prefer `blender --command extension install-file` (available since 4.2 — **verify in
-  M0.11**); fall back to copying into the platform extensions directory.
+  **Done in bash already** (`skills/comonteur/templates/mise-tasks/comonteur/setup`): the MCP
+  add-on via `extension repo-add` + `extension install --sync --enable`, comonteur via
+  `extension build` + `extension install-file -r user_default -e`, both enabled with
+  `bpy.ops.preferences.addon_enable` (there is no `--command` for enabling). The Rust
+  `comonteur setup` inherits the same sequence; keep the copy-into-extensions-dir fallback
+  for a machine with no `blender` on PATH.
 - Register the MCP server: `claude mcp add`, or write a project-local `.mcp.json`.
 - Install the Claude Code skill into `.claude/skills/`.
 - Scaffold a new project (`comonteur init` — additive, never overwrites; §8.2).

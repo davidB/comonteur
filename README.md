@@ -112,16 +112,16 @@ outside the ownership system.
 directory of Markdown. On another harness, point it at that directory (or symlink it where
 your agent looks for instructions); nothing in the skill is Claude-specific.
 
-### 3. Two steps inside Blender's own UI
+### 3. Nothing, if Blender was installed first
 
-**Install Blender's official MCP add-on** —
-[blender.org/lab/mcp-server](https://www.blender.org/lab/mcp-server/). Drag the extension
-into Blender **twice**: the first drop adds the Blender Lab repository, the second installs
-the add-on (this also gets you update notifications). Or download the `.zip` and use
-*Install from Disk*.
+`setup` installs and enables both add-ons — comonteur and Blender's official
+[MCP add-on](https://www.blender.org/lab/mcp-server/) — through
+`blender --command extension`. Run it **with Blender closed**: add-ons are enabled from a
+background Blender, and a GUI session exiting afterwards writes its own preferences over that.
 
-**Enable comonteur** — `Edit ▸ Preferences ▸ Add-ons`. `setup` put it in Blender's extensions
-directory; only you can switch it on.
+Installed Blender only after running `setup`? Re-run `setup`. Prefer the GUI? Drag the MCP
+extension into Blender **twice** (first drop adds the Blender Lab repository, second installs
+the add-on) and tick comonteur in `Edit ▸ Preferences ▸ Add-ons`.
 
 Re-run the doctor at any point — `mise run comonteur:doctor` inside a project, or
 `bash .claude/skills/comonteur/scripts/doctor` — it's the single answer to "is my setup

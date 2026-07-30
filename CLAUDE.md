@@ -98,7 +98,8 @@ live without reinstalling):
 ```bash
 mise run install-addon
 ```
-Then enable **comonteur** in Blender: `Edit ▸ Preferences ▸ Add-ons`.
+It also enables the add-on, so run it with Blender closed — enabling happens in a background
+Blender and a GUI session exiting afterwards overwrites those preferences.
 
 `mise run install-mcp` fetches the official Blender MCP `.mcpb` server and registers it
 with Claude Code (`claude mcp add blender ...`) — separate from the Blender-side add-on.

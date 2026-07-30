@@ -44,5 +44,6 @@ inside a batch, not raw `bpy` calls, or this bug comes back per-module.
   something worth diffing against. `claimed_paths()` alone doesn't need a snapshot; it
   derives from the journal directly, per §4.3.
 - `anim.py`, `text.py`, Actions/NLA — M3.
-- Packaged install (`blender --command extension install-file`) — `mise-tasks/install-addon`
-  symlinks into the user extensions repo for dev iteration instead; M5.5 does the zip.
+- Packaged install (`blender --command extension install-file`) — now done by
+  `comonteur:setup` for end users; `mise-tasks/install-addon` still symlinks into the user
+  extensions repo for dev iteration, so edits stay live.

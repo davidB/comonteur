@@ -5,7 +5,8 @@
 # is a project. `comonteur doctor` in Rust is M5.5 scope and takes over this name.
 set -uo pipefail  # no -e: every check must run even after one fails
 
-EXT_DIR="${HOME}/.config/blender/${BLENDER_PIN}/extensions/user_default"
+# :-5.2 because #MISE env only applies when run as a mise task — this is also run by path.
+BLENDER_PIN="${BLENDER_PIN:-5.2}"
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 FIX="mise run comonteur:setup  (or: bash $SCRIPT_DIR/setup)"
 failed=0
@@ -44,10 +45,27 @@ else
   bad "comonteur CLI not on PATH" "$FIX"
 fi
 
-if [[ -e "$EXT_DIR/comonteur" ]]; then
-  ok "add-on installed ($EXT_DIR/comonteur)"
+# Ask Blender itself rather than stat the extensions dir: a present directory says nothing
+# about the add-on being registered or enabled. One launch reports both add-ons.
+if command -v blender >/dev/null 2>&1; then
+  status="$(blender -b --python-expr '
+import bpy, addon_utils
+avail = {m.__name__ for m in addon_utils.modules()}
+on = set(bpy.context.preferences.addons.keys())
+for m in ("bl_ext.user_default.comonteur", "bl_ext.lab_blender_org.mcp"):
+    print("CMT", m, "installed" if m in avail else "missing", "enabled" if m in on else "disabled")
+' 2>/dev/null | grep '^CMT ')"
+  for module in bl_ext.user_default.comonteur bl_ext.lab_blender_org.mcp; do
+    label="${module##*.} add-on"
+    case "$(echo "$status" | grep -F " $module ")" in
+      *" installed enabled") ok "$label" ;;
+      *" installed disabled") warn "$label installed but not enabled" \
+        "$FIX  (or tick it in Edit > Preferences > Add-ons)" ;;
+      *) bad "$label not installed in Blender" "$FIX" ;;
+    esac
+  done
 else
-  bad "add-on not in Blender's extensions dir" "$FIX"
+  skip "add-ons unchecked — no blender on PATH"
 fi
 
 if command -v claude >/dev/null 2>&1; then
@@ -81,4 +99,4 @@ if (( failed )); then
   echo "Something required is missing (see ✗ above)."
   exit 1
 fi
-echo "Ready. Enable comonteur in Blender: Edit > Preferences > Add-ons."
+echo "Ready."
