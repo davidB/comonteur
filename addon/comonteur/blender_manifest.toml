@@ -4,7 +4,10 @@ id = "comonteur"
 version = "0.1.0"
 name = "comonteur"
 tagline = "Agent/human co-editing for Blender video production"
-maintainer = "comonteur <noreply@example.com>"
+maintainer = "David Bernard"
 type = "add-on"
-license = ["SPDX:Apache-2.0"]
+# GPL-3.0-or-later is required for add-ons by the extensions platform, not a preference:
+# https://docs.blender.org/manual/en/5.2/advanced/extensions/licenses.html
+license = ["SPDX:GPL-3.0-or-later"]
+copyright = ["2026 David Bernard"]
 blender_version_min = "5.2.0"

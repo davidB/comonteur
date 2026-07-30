@@ -2,9 +2,28 @@
 uv = "latest"
 
 [tasks.lint]
-description = "Lint addon/ with ruff (non-mutating)"
-run = ["uv run ruff check .", "uv run ruff format --check ."]
+description = "Lint addon/ with ruff (non-mutating), extension structure,..."
+run = [
+  "uv run ruff check .",
+  "uv run ruff format --check .",
+  # May be moved in a dedicated task and
+  # not wired into `lint`: that would make `mise run ci` require Blender on PATH, and lint's
+  # only tool is uv. Note `validate` checks manifest structure and the `copyright` format but
+  # NOT the SPDX id — a wrong license string still passes. Review the manifest by eye.
+  "blender --command extension validate comonteur",
+]
 
 [tasks.autofix]
 description = "Apply ruff's autofixes and formatting to addon/"
 run = ["uv run ruff check --fix .", "uv run ruff format ."]
+
+[tasks.build]
+description = "Build the publishable extension zip into addon/build/"
+depends = ["validate"]
+run = [
+  # `extension build` does not create --output-dir and hard-fails without it
+  "mkdir -p build",
+  "blender --command extension build --source-dir comonteur --output-dir build",
+  # the builder skips symlinks, so a symlinked LICENSE would silently not ship
+  "unzip -Z1 build/comonteur-*.zip | rg -qx LICENSE",
+]

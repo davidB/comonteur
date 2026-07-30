@@ -59,6 +59,13 @@ mise run ci         # lint + test
 
 Or scope to one workspace: `mise run addon:lint`, `mise run tests:test`, `mise run cli:test`, etc.
 
+Extension packaging (needs Blender 5.2 on `PATH`, so deliberately outside `lint`/`ci`):
+
+```bash
+mise run addon:validate   # manifest structure + copyright format (not the SPDX id)
+mise run addon:build      # publishable zip into addon/build/, asserts LICENSE shipped
+```
+
 User-facing bootstrap (see `docs/mcp-and-tooling.md` §8.2):
 
 ```bash
@@ -175,6 +182,12 @@ Blender **5.2 LTS only** (do not track 5.3+) — generated code is only reproduc
 against a fixed API. Third-party Blender add-ons need an explicit allowlist entry in
 `docs/ADDONS.md` (name, version, why, what breaks without it); prefer asset libraries
 (data) over add-on operators.
+
+License is **GPL-3.0-or-later repo-wide** — required by the extensions platform for add-ons, so
+do not "restore" Apache-2.0 when editing `blender_manifest.toml`. The GPL text exists twice on
+purpose (root `LICENSE` and `addon/comonteur/LICENSE`): the extension builder skips symlinks, so a
+symlinked copy would not ship in the zip. Verify with `mise run addon:build`, which asserts
+`LICENSE` is inside the archive.
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence

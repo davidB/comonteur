@@ -342,4 +342,9 @@ Not yet — the architecture is still moving. Issues and design discussion welco
 
 ## License
 
-TBD. Apache 2.0 is the likely choice, matching HyperFrames.
+[GPL-3.0-or-later](LICENSE), for the whole repo — `addon/`, `cli/` and `skills/` alike.
+
+Not a preference: the Blender extensions platform
+[requires GPL-3.0-or-later for add-ons](https://docs.blender.org/manual/en/5.2/advanced/extensions/licenses.html),
+and `addon/comonteur/` links `bpy`. The Rust CLI and the skill are technically separate programs
+that could have stayed permissive, but one license across the repo beats explaining a split.

@@ -30,6 +30,9 @@ Cross-cutting; violating any of these produces bugs that are hard to attribute.
 - Render budget: Workbench/OpenGL previews in the agent loop; full renders at the end,
   local, not CI.
 - MCP socket is an RCE surface: localhost-only, and see §7.2.
+- License: **GPL-3.0-or-later**, repo-wide. Forced by the extensions platform for add-ons; not a
+  preference to revisit per-directory. `extension validate` does *not* check the SPDX id, so a
+  wrong license passes CI silently — verify the manifest by eye.
 
 ---
 
