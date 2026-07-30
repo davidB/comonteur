@@ -4,6 +4,12 @@
 #
 # Per shot: id (stable, matches compositions/frames/<id>.blend), intent, and optionally
 # target_duration (seconds), vo (line of narration), broll (asset reference).
+#
+# This project — fill these in once, they orient everyone who opens the file:
+#   video:      one line — what this video is and who it's for
+#   voiceover:  none | human-recorded | TTS
+#   brand:      lib/brand.blend — colours, fonts, node groups, marked as assets
+#   fps / resolution: see timeline.toml
 [[shots]]
 id = "shot-01"
 intent = "Replace me — what this shot has to communicate, in one or two sentences."

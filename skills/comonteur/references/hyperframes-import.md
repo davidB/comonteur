@@ -25,6 +25,10 @@ Do these in order and stop at the first thing you cannot resolve.
 Carried over unchanged: `assets/**`, `capture/`, `renders/`, `thumbnail/`, root
 `meta.json`, `CLAUDE.md` / `AGENTS.md`, `frame.md`.
 
+`CLAUDE.md` / `AGENTS.md` are unchanged in the strict sense — leave them exactly as they
+are. comonteur ships its contract in this skill and never writes or edits a project's
+agent-instruction files.
+
 `compositions/frames/NN-slug.html` → `compositions/frames/NN-slug.blend`, **same path**,
 one Blender scene each, `cmt_id = NN-slug`.
 

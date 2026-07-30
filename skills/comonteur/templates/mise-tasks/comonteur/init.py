@@ -30,13 +30,14 @@ from pathlib import Path
 from _common import TaskError, die, tasks_dir
 
 # Copied verbatim if absent. `mise.toml` is deliberately not here — see plan().
+# No `AGENTS.md`/`CLAUDE.md`: the agent contract lives in the skill (`SKILL.md` and
+# `references/`), which is what an agent actually loads. A project's own agent-instruction
+# files are the human's, and comonteur never writes or edits them.
 ROOT_FILES = [
     "narrative.toml",
     "timeline.toml",
     "meta.json",
     ".gitignore",
-    "AGENTS.md",
-    "CLAUDE.md",
 ]
 
 DIRS = [
@@ -92,17 +93,11 @@ def plan(target: Path, template: Path) -> tuple[list[str], list[str]]:
 def apply(target: Path, template: Path, created: list[str]) -> None:
     for d in DIRS:
         (target / d).mkdir(parents=True, exist_ok=True)
-    name = target.name
     for rel in created:
         dest = target / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         # copy2 keeps the executable bit, which is what makes the copies runnable as tasks.
         shutil.copy2(template / rel, dest)
-        if rel.endswith(".md"):
-            dest.write_text(
-                dest.read_text(encoding="utf-8").replace("__PROJECT_NAME__", name),
-                encoding="utf-8",
-            )
 
 
 def setup_git(target: Path, lfs: bool) -> list[str]:

@@ -54,19 +54,15 @@ def test_plan_never_recreates_an_existing_file(template: Path, tmp_path: Path) -
     assert (target / "timeline.toml").read_text() == "mine"
 
 
-def test_apply_is_idempotent_and_substitutes_the_project_name(
-    template: Path, tmp_path: Path
-) -> None:
+def test_apply_is_idempotent(template: Path, tmp_path: Path) -> None:
     target = tmp_path / "my-video"
     target.mkdir()
 
     created, _ = init.plan(target, template)
     init.apply(target, template, created)
 
-    assert (target / "AGENTS.md").read_text() == "AGENTS.md for my-video"
-    assert "__PROJECT_NAME__" not in (target / "CLAUDE.md").read_text()
-    # Non-markdown files are copied verbatim — the placeholder only lives in the docs.
-    assert "__PROJECT_NAME__" in (target / "meta.json").read_text()
+    # Everything is copied verbatim: no template file is rewritten on the way in.
+    assert (target / "meta.json").read_text() == "meta.json for __PROJECT_NAME__"
     for d in init.DIRS:
         assert (target / d).is_dir()
 

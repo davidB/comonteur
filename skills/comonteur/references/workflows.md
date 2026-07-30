@@ -11,6 +11,22 @@ If the project has `mise-tasks/comonteur/` (or `mise tasks` lists `comonteur:*`)
 can re-run exactly what you ran, the tools are pinned so it behaves the same tomorrow, and
 `mise tasks` is a menu they can read without a chat transcript.
 
+The menu, as `init` installs it:
+
+| Task | What it does |
+|---|---|
+| `comonteur:doctor` | toolchain + project checks |
+| `comonteur:install` | install/repair the toolchain (both add-ons + MCP server), then doctor |
+| `comonteur:install_addon` / `install_mcp` | the two halves of `install`, runnable on their own |
+| `comonteur:init` | top up this project's scaffold (add-only) |
+| `comonteur:ingest_narrative` | validate `narrative.toml` |
+| `comonteur:ingest_manifest` | `assets/` → `assets/manifest.json` |
+| `comonteur:ingest_captions <in.json> [--kind whisper\|tts]` | captions → `.comonteur/` |
+| `comonteur:convert_fonts` | `.woff`/`.woff2` → `.ttf`/`.otf` |
+| `comonteur:reconcile` | `timeline.toml` → `.comonteur/timeline.resolved.json` |
+| `comonteur:edit` | open `master.blend` |
+| `comonteur:render` | render the timeline to `renders/` |
+
 If a repeatable command has no task, **add one** under `mise-tasks/comonteur/` (a
 `#!/usr/bin/env -S uv run --script` shebang, a `#MISE description=` line, `#USAGE arg`/`flag`
 headers for any arguments —
@@ -52,9 +68,11 @@ If it's ambiguous, ask.
    uv run <skill>/scripts/init.py <dir>   # dir defaults to .
    ```
 
-   It creates the §5.1b tree, all eleven `comonteur:*` tasks (`mise-tasks/comonteur/`, from
-   `<skill>/templates/`), and stub `narrative.toml` / `timeline.toml` / `meta.json` /
-   `AGENTS.md`. It is **add-only**: an existing folder with footage, a `.blend`, or its own
+   It creates the §5.1b tree, every `comonteur:*` task (`mise-tasks/comonteur/`, from
+   `<skill>/templates/`), and stub `narrative.toml` / `timeline.toml` / `meta.json`. It
+   writes no `AGENTS.md`/`CLAUDE.md` — this skill *is* the contract, and a project's own
+   agent-instruction files belong to the human. It is **add-only**: an existing folder with
+   footage, a `.blend`, or its own
    `mise.toml` is a normal input — nothing already there is overwritten, and re-running it
    tops up what's missing and prints what it kept. Everything after this step, `install` and
    `doctor` included, is `mise run comonteur:*` from inside the project. Tell the human to
@@ -98,8 +116,8 @@ If it's ambiguous, ask.
 5. **Create `master.blend` and `lib/brand.blend`** — brand colours, fonts and node groups
    first, marked as assets, so shots link them instead of redefining them eight times.
 
-6. **Fill in the project's `AGENTS.md`** (`init` writes the skeleton, with `CLAUDE.md`
-   pointing at it): what this video is, its fps/resolution, where the brand lives.
+6. **Fill in `narrative.toml`'s "This project" header** — what this video is, whether there
+   is a voiceover, where the brand lives.
 
 7. **Hand back.** Tell the human to open `master.blend` — `mise run comonteur:edit` — and
    leave it open; you talk to that live session. Then the per-shot loop in `../SKILL.md`, one
