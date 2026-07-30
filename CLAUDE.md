@@ -102,7 +102,7 @@ bootstrap. The add-on is the one artifact still delivered, and `install_addon` o
 whole question (checkout → symlink; `--source`/`--copy` → package; otherwise fetch `--ref`).
 
 **Every task has exactly one copy, in `skills/comonteur/templates/mise-tasks/comonteur/`** —
-which is also what `init` installs into a project, so a project gets all twelve tasks including
+which is also what `init` installs into a project, so a project gets all thirteen tasks including
 `install`/`init`/`doctor`/`install_*` and can repair itself. Two directory symlinks point at that
 one copy: `skills/comonteur/scripts` (short bootstrap path) and `mise-tasks/comonteur` (so a
 checkout gets the whole `comonteur:*` menu). Edit the template copy, never a symlink; adding a
@@ -127,7 +127,9 @@ in `[monorepo] config_roots`.
 The task scripts are `*.py` with underscored names (`ingest_narrative.py`) because mise strips
 the `.py` from a file task's name and Python cannot import a hyphenated module — the tests
 import them directly. Keep `#!/usr/bin/env -S uv run --script` plus a PEP 723 header on each;
-all of them are stdlib-only (`dependencies = []`) — keep it that way. There is no bash left
+all are stdlib-only (`dependencies = []`) except `convert_fonts.py`, which needs a Brotli
+decoder for WOFF2 — keep it that way, and make a second exception only for a codec the
+stdlib genuinely lacks. There is no bash left
 here: shelling out is `subprocess` with a list, tool lookup is `shutil.which` (PATHEXT on
 Windows), archives are `tarfile`/`zipfile`, downloads are `urllib.request`, and no path under
 `~/.config/blender/...` is ever hardcoded — `install_addon.py` asks Blender where its

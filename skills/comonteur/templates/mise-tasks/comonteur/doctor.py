@@ -36,6 +36,7 @@ from _common import (
 FIX = "mise run comonteur:install"
 TASK_SCRIPTS = [
     "_common",
+    "convert_fonts",
     "doctor",
     "edit",
     "ingest_captions",

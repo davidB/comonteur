@@ -89,8 +89,8 @@ performance requirement, and shipping it meant a per-OS/arch release-asset matri
 It is now **four `uv run --script` Python files**, one per subcommand, in
 `skills/comonteur/templates/mise-tasks/comonteur/`:
 `ingest_narrative.py`, `ingest_manifest.py`, `ingest_captions.py`, `reconcile.py`. The
-orchestration tasks (`install`, `init`, `doctor`, `edit`, `render`, `install_addon`,
-`install_mcp`) followed later, from bash for the same reason a compiled CLI had to go: bash
+orchestration tasks (`install`, `init`, `doctor`, `edit`, `render`, `convert_fonts`,
+`install_addon`, `install_mcp`) followed later, from bash for the same reason a compiled CLI had to go: bash
 hardcoded `~/.config/blender/...`, `readlink -f`, `curl | tar` and `sed -i`, none of which
 exist on Windows, and it had no error reporting worth the name. There is no
 `comonteur` binary, no release asset, and no install step — the scripts ship inside the skill
@@ -129,7 +129,9 @@ ported to `tests/unit/` — the timeline cases carry the most coverage there for
 - **Outside Blender is Python too**, per §7.5 — `uv run --script` task files with PEP 723
   inline dependency headers, so each is self-contained and `uv` provisions its own
   interpreter on first run. All four are stdlib-only — `dependencies = []` on every one,
-  since `tomllib` and `json` cover the whole surface.
+  since `tomllib` and `json` cover the whole surface. Of the tasks added since, only
+  `convert_fonts` declares a dependency (`fonttools[woff]`): WOFF2 is Brotli-compressed and
+  the stdlib has no decoder for it.
 - The repo is a **mise monorepo**: root `mise.toml` is orchestration only
   (`monorepo_root = true`, `[monorepo] config_roots = ["addon", "tests"]`, no tasks of its
   own beyond aggregation) and has **no Python project file**. `addon/` and `tests/` each own

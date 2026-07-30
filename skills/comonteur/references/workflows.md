@@ -84,6 +84,7 @@ If it's ambiguous, ask.
 4. **Ingest what exists.** Assets and captions only — skip either if there is none:
 
    ```bash
+   mise run comonteur:convert_fonts        # .woff/.woff2 -> .ttf/.otf, Blender reads sfnt only
    mise run comonteur:ingest_manifest
    mise run comonteur:ingest_captions <input.json> --kind whisper
    ```

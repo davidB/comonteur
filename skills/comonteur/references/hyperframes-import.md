@@ -56,6 +56,7 @@ installs them — see `workflows.md`):
 
 ```bash
 mise run comonteur:ingest_narrative    # validate what you wrote
+mise run comonteur:convert_fonts       # web fonts are .woff2; Blender cannot load those
 mise run comonteur:ingest_manifest     # assets/ -> assets/manifest.json
 ```
 
