@@ -1,4 +1,4 @@
-"""Pure-logic tests for the `comonteur:reconcile` task script — timeline.yaml validation
+"""Pure-logic tests for the `comonteur:reconcile` task script — timeline.toml validation
 and anchor→frame resolution (SPEC.md §5.2/§10 M4).
 
 Ported from cli/src/timeline.rs's #[cfg(test)] module when the Rust CLI was dissolved into
@@ -155,12 +155,13 @@ def test_resolve_audio_tracks() -> None:
     assert resolved["audio"] == [{"id": "vo", "path": "audio/vo.wav", "start_frame": 12}]
 
 
-def test_load_parses_real_yaml(tmp_path: Path) -> None:
-    path = tmp_path / "timeline.yaml"
+def test_load_parses_real_toml(tmp_path: Path) -> None:
+    path = tmp_path / "timeline.toml"
     path.write_text(
-        "fps: 30\nresolution: [1920, 1080]\nshots:\n  - id: shot-01\n"
-        "    source: {kind: scene, blend: compositions/frames/shot-01.blend, scene: GEN_hook}\n"
-        "    start: 0\n    duration: 90\naudio: []\n"
+        'fps = 30\nresolution = [1920, 1080]\n\n[[shots]]\nid = "shot-01"\n'
+        'source = {kind = "scene", blend = "compositions/frames/shot-01.blend", '
+        'scene = "GEN_hook"}\n'
+        "start = 0\nduration = 90\n"
     )
     doc = timeline.parse(path)
     assert len(doc["shots"]) == 1

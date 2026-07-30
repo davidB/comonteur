@@ -38,7 +38,7 @@ Decide before touching anything, by looking at the directory:
 | Nothing, or only raw material (a brief, footage, a `.wav`) | **A — from scratch** |
 | `index.html` + `hyperframes.json` + `compositions/frames/*.html` | **B — import** → `hyperframes-import.md`, stop reading here |
 | Harness output (script, shot list, `assets/`, TTS audio, captions) but **no** HTML compositions | **C — harness upstream, Blender rendering** |
-| `master.blend` + `timeline.yaml` + `.comonteur/` | An existing comonteur project — go straight to the per-shot loop |
+| `master.blend` + `timeline.toml` + `.comonteur/` | An existing comonteur project — go straight to the per-shot loop |
 
 If it's ambiguous, ask.
 
@@ -51,7 +51,7 @@ If it's ambiguous, ask.
    ```
 
    It creates the §5.1b tree, all nine `comonteur:*` tasks (`mise-tasks/comonteur/`, from
-   `<skill>/templates/`), and stub `narrative.yaml` / `timeline.yaml` / `meta.json` /
+   `<skill>/templates/`), and stub `narrative.toml` / `timeline.toml` / `meta.json` /
    `AGENTS.md`. It is **add-only**: an existing folder with footage, a `.blend`, or its own
    `mise.toml` is a normal input — nothing already there is overwritten, and re-running it
    tops up what's missing and prints what it kept. Everything after this step, `setup` and
@@ -69,14 +69,14 @@ If it's ambiguous, ask.
    decline, initialize without and don't raise it again. Never run `git init` inside a folder
    that is already in a git work tree — `init --git` refuses, deliberately.
 
-3. **Write `narrative.yaml`** from what the human described — `shots: [{id, intent,
+3. **Write `narrative.toml`** from what the human described — `shots: [{id, intent,
    target_duration, vo, broll}]` — then validate it, don't eyeball it:
 
    ```bash
    mise run comonteur:ingest_narrative
    ```
 
-   Keep any prose brief (`STORYBOARD.md`, `design.md`) verbatim alongside it. The YAML is
+   Keep any prose brief (`STORYBOARD.md`, `design.md`) verbatim alongside it. The TOML is
    the machine-readable projection, not a replacement for the human's own words.
 
 4. **Ingest what exists.** Assets and captions only — skip either if there is none:
@@ -117,11 +117,11 @@ of workflow B's lossiness applies — do not import your own output.
    contract (§5.3): shot list, `assets/`, `audio/`, word-level captions. `init` on
    that folder is safe — it adds what's missing and keeps what the harness produced.
 2. Map its files onto §5.1b names using the metadata table in `hyperframes-import.md` §2
-   (`STORYBOARD.md` → `narrative.yaml`, `audio_meta.json` → `audio/meta.json`, tokens →
+   (`STORYBOARD.md` → `narrative.toml`, `audio_meta.json` → `audio/meta.json`, tokens →
    `lib/brand.blend`). **Metadata only** — that document's §3 timing recovery and §5 shot
    rebuilding are for imports and have no equivalent here.
 3. Then A's steps 2–8, skipping what the harness already produced.
-4. **Prefer `anchor` over absolute `start`** in `timeline.yaml` (`timeline.md`). TTS gets
+4. **Prefer `anchor` over absolute `start`** in `timeline.toml` (`timeline.md`). TTS gets
    re-synthesized; anchors survive it, absolute frames don't.
 
 ## Rendering and delivery — all three workflows

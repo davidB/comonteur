@@ -8,7 +8,7 @@ an index. Don't load the whole spec; follow the index to the one file that cover
 task:
 
 - `docs/architecture.md` — provenance, journal, batch protocol (§4)
-- `docs/data-contracts.md` — repo/project layout, `timeline.yaml`, HyperFrames adapter (§5)
+- `docs/data-contracts.md` — repo/project layout, `timeline.toml`, HyperFrames adapter (§5)
 - `docs/library.md` — `addon/comonteur/` modules, asset/component system (§6, §9)
 - `docs/mcp-and-tooling.md` — MCP transport, language/tooling policy (§7, §8)
 - `docs/milestones.md` — M0–M6 plan (§10)

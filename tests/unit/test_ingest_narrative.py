@@ -50,16 +50,16 @@ def test_non_positive_duration_errors() -> None:
     assert any("target_duration" in e for e in narrative.validate(doc))
 
 
-def test_load_parses_real_yaml(tmp_path: Path) -> None:
-    path = tmp_path / "narrative.yaml"
-    path.write_text("shots:\n  - id: shot-01\n    intent: Hook\n    target_duration: 6\n")
+def test_load_parses_real_toml(tmp_path: Path) -> None:
+    path = tmp_path / "narrative.toml"
+    path.write_text('[[shots]]\nid = "shot-01"\nintent = "Hook"\ntarget_duration = 6\n')
     doc = narrative.parse(path)
     assert len(doc["shots"]) == 1
     assert doc["shots"][0]["id"] == "shot-01"
 
 
 def test_parse_raises_on_invalid_doc(tmp_path: Path) -> None:
-    path = tmp_path / "narrative.yaml"
-    path.write_text("shots: []\n")
+    path = tmp_path / "narrative.toml"
+    path.write_text("shots = []\n")
     with pytest.raises(SystemExit):
         narrative.parse(path)

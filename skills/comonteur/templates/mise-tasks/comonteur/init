@@ -69,7 +69,7 @@ for task in "$TEMPLATE"/mise-tasks/comonteur/*; do
   chmod +x "$target/mise-tasks/comonteur/$(basename "$task")"
 done
 
-for f in narrative.yaml timeline.yaml meta.json .gitignore AGENTS.md CLAUDE.md; do
+for f in narrative.toml timeline.toml meta.json .gitignore AGENTS.md CLAUDE.md; do
   copy "$f"
 done
 

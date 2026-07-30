@@ -91,11 +91,11 @@ command -v git-lfs >/dev/null 2>&1 && ok "git-lfs" \
 
 # Project checks run only inside a project. mise sets MISE_PROJECT_ROOT; a direct run uses $PWD.
 root="${MISE_PROJECT_ROOT:-$PWD}"
-if [[ -f "$root/narrative.yaml" || -f "$root/timeline.yaml" ]]; then
+if [[ -f "$root/narrative.toml" || -f "$root/timeline.toml" ]]; then
   echo
   echo "project ($root)"
-  [[ -f "$root/narrative.yaml" ]] && ok "narrative.yaml" || warn "no narrative.yaml" "shot intents live here"
-  [[ -f "$root/timeline.yaml" ]] && ok "timeline.yaml" || warn "no timeline.yaml" "the assembly lives here"
+  [[ -f "$root/narrative.toml" ]] && ok "narrative.toml" || warn "no narrative.toml" "shot intents live here"
+  [[ -f "$root/timeline.toml" ]] && ok "timeline.toml" || warn "no timeline.toml" "the assembly lives here"
   [[ -f "$root/master.blend" ]] && ok "master.blend" \
     || warn "no master.blend yet" "create and save it in Blender — the agent never saves for you"
   [[ -d "$root/.comonteur" ]] && ok ".comonteur/ (journal, review frames)" \

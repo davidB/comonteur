@@ -1,23 +1,24 @@
 #!/usr/bin/env -S uv run --script
-#MISE description="Resolve timeline.yaml (anchors -> frames) into .comonteur/timeline.resolved.json"
+#MISE description="Resolve timeline.toml (anchors -> frames) into .comonteur/timeline.resolved.json"
 #MISE dir="{{config_root}}"
-#MISE sources=["timeline.yaml", "audio/transcript.json"]
+#MISE sources=["timeline.toml", "audio/transcript.json"]
 #MISE outputs=[".comonteur/timeline.resolved.json"]
 #MISE tools={uv = "latest"}
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["pyyaml"]
+# dependencies = []
 # ///
 # Step 1 of assembly. Step 2 runs inside Blender: cmt.reconcile.apply() — the add-on never
-# parses YAML and never reads a transcript.
-"""`timeline.yaml` → resolved assembly plan — SPEC.md §5.2/§10 M4. `timeline.yaml` is the
+# parses a spec file and never reads a transcript.
+"""`timeline.toml` → resolved assembly plan — SPEC.md §5.2/§10 M4. `timeline.toml` is the
 only file this task resolves rather than merely validates: the anchor-relative timing
 pipeline ("re-transcribe, re-resolve, done") needs a real word-timing lookup. The output is
 plain JSON (integer frame numbers, no more anchors) that `addon/comonteur/reconcile.py`
 reads with the stdlib `json` module and turns into VSE strips.
 
-The add-on never imports this script and never parses YAML — Blender's bundled interpreter
-cannot see a uv environment and ships no PyYAML. This side emits JSON; that side reads it.
+The add-on never imports this script and never parses a spec file: parsing, validation and
+anchor resolution are this side's job, and Blender's bundled interpreter cannot see a uv
+environment anyway. This side emits JSON; that side reads it.
 """
 
 from __future__ import annotations
@@ -25,10 +26,11 @@ from __future__ import annotations
 import json
 import math
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
-DEFAULT_TIMELINE = Path("timeline.yaml")
+DEFAULT_TIMELINE = Path("timeline.toml")
 DEFAULT_TRANSCRIPT = Path("audio/transcript.json")
 DEFAULT_OUT = Path(".comonteur/timeline.resolved.json")
 
@@ -42,18 +44,13 @@ def _round_half_away(x: float) -> int:
 
 
 def load(path: Path) -> dict[str, Any]:
-    import yaml  # imported here so a missing-file error surfaces before an import error
-
     try:
-        with path.open(encoding="utf-8") as f:
-            doc = yaml.safe_load(f)
+        with path.open("rb") as f:
+            return tomllib.load(f)
     except OSError as e:
         raise SystemExit(f"reading {path}: {e}") from e
-    except yaml.YAMLError as e:
+    except tomllib.TOMLDecodeError as e:
         raise SystemExit(f"parsing {path}: {e}") from e
-    if not isinstance(doc, dict):
-        raise SystemExit(f"parsing {path}: expected a mapping at the top level")
-    return doc
 
 
 def load_transcript(path: Path) -> list[dict[str, Any]]:
@@ -83,7 +80,7 @@ def validate(doc: dict[str, Any]) -> list[str]:
     shots = doc.get("shots") or []
     audio = doc.get("audio") or []
     if not shots:
-        errors.append("timeline.yaml: `shots` is empty")
+        errors.append("timeline.toml: `shots` is empty")
 
     shot_ids: set[str] = set()
     for i, shot in enumerate(shots):
@@ -171,7 +168,7 @@ def resolve_position(
 def resolve(
     doc: dict[str, Any], transcript: list[dict[str, Any]] | None, fps: int
 ) -> dict[str, Any]:
-    """`timeline.yaml` (already validated) + an optional transcript → a plan with plain
+    """`timeline.toml` (already validated) + an optional transcript → a plan with plain
     integer frame numbers and no more anchors, ready for `reconcile.py` to apply.
     """
     shots: list[dict[str, Any]] = []
@@ -236,7 +233,7 @@ def main(argv: list[str]) -> None:
 
     fps = doc.get("fps")
     if not isinstance(fps, int) or isinstance(fps, bool) or fps <= 0:
-        raise SystemExit(f"timeline.yaml: `fps` must be a positive integer, got {fps!r}")
+        raise SystemExit(f"timeline.toml: `fps` must be a positive integer, got {fps!r}")
 
     resolved = resolve(doc, words, fps)
     out_path.parent.mkdir(parents=True, exist_ok=True)

@@ -141,7 +141,7 @@ end of this section).
 2. Ask for one shot at a time:
 
    ```
-   Read narrative.yaml and build the opening shot: a title card reading
+   Read narrative.toml and build the opening shot: a title card reading
    "Ship faster", fading up with a back-ease, over the first 3 seconds
    of the voiceover.
    ```
@@ -152,7 +152,7 @@ end of this section).
 4. Switch to Blender. It's there, live, fully editable. Nudge the keyframe, change the
    font, drag the strip. That data flips to **shared** and the agent works around your edit.
 5. Ask for the next shot, or for a change to this one. Your edits survive.
-6. When the shots exist: *"assemble the timeline"* — the agent resolves `timeline.yaml` and
+6. When the shots exist: *"assemble the timeline"* — the agent resolves `timeline.toml` and
    reconciles it into `master.blend`'s sequencer. Then *"render shots 1–3"*.
 7. **You save the `.blend`.** The agent never does — saving under you could destroy unsaved
    work it can't see. It'll remind you.
@@ -179,7 +179,7 @@ Nothing upstream — a brief, your own components, maybe some footage and a voic
    them rather than deciding for you.
 
 2. Tell the agent what the video is — *"a 90-second launch video for X, here's the script"* —
-   and it fills in `narrative.yaml`, validates it, and ingests your assets and voiceover.
+   and it fills in `narrative.toml`, validates it, and ingests your assets and voiceover.
 3. Open `master.blend` (`mise run comonteur:edit`), and follow the loop above.
 
 Details for the agent: [`skills/comonteur/references/workflows.md`](./skills/comonteur/references/workflows.md),
@@ -190,8 +190,8 @@ Details for the agent: [`skills/comonteur/references/workflows.md`](./skills/com
 You shipped it in HTML and want an editable Blender project out of it.
 
 Say *"import this HyperFrames project"*. The agent copies the tree (most of it maps 1:1),
-translates the metadata (`STORYBOARD.md` → `narrative.yaml`, `hyperframes.json` +
-`index.html` → `timeline.yaml`), converts the `.woff2` fonts Blender can't load, then
+translates the metadata (`STORYBOARD.md` → `narrative.toml`, `hyperframes.json` +
+`index.html` → `timeline.toml`), converts the `.woff2` fonts Blender can't load, then
 rebuilds each shot as a Blender scene and previews it.
 
 **One thing it will stop and ask you.** HyperFrames has no timeline file — durations live
@@ -233,10 +233,10 @@ that set the machine up — is re-runnable from the project afterwards:
 | `comonteur:setup [--ref <tag>]` | Install/repair: add-on, MCP server, then doctor |
 | `comonteur:init [dir] [--git] [--lfs]` | Initialize or top up a project — add-only, never overwrites |
 | `comonteur:doctor` | Toolchain **and** project checks, one ✓/✗ list |
-| `comonteur:ingest_narrative` | Validates `narrative.yaml` |
+| `comonteur:ingest_narrative` | Validates `narrative.toml` |
 | `comonteur:ingest_manifest` | `assets/` → `assets/manifest.json` (sha256 + `ffprobe`) |
 | `comonteur:ingest_captions <in.json> [--kind whisper\|tts]` | Normalizes word-level timing |
-| `comonteur:reconcile` | `timeline.yaml` → resolved plan the add-on applies |
+| `comonteur:reconcile` | `timeline.toml` → resolved plan the add-on applies |
 | `comonteur:edit` / `comonteur:render` | Open `master.blend` / render the timeline |
 
 Shipped as files in `mise-tasks/comonteur/` — the `edit`/`render`/`setup` ones are thin bash
@@ -287,11 +287,11 @@ A video project — distinct from this repo:
 
 ```
 mise.toml                pinned tools; mise-tasks/comonteur/ holds the comonteur:* tasks
-narrative.yaml           script/shot intent (STORYBOARD.md kept alongside)
+narrative.toml           script/shot intent (STORYBOARD.md kept alongside)
 assets/  audio/  captions/   media + word-level timing, manifest.json generated
 lib/                     your Blender components (brand, titles) — human-authored, git-lfs
 compositions/frames/     one .blend per shot, agent-generated, yours to edit too
-timeline.yaml            the assembly — authoritative for the edit, not for scene contents
+timeline.toml            the assembly — authoritative for the edit, not for scene contents
 master.blend             links the above into a VSE timeline
 .comonteur/              journal, snapshot, review frames
 renders/  thumbnail/  meta.json    deliverables

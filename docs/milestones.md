@@ -52,7 +52,7 @@ both enabled; MCP socket reachable; `ffmpeg`/`ffprobe` on PATH; git-lfs initiali
 project layout valid; journal readable. Cheap to write, pays for itself immediately.
 
 ### M2 — Production contract
-`narrative.yaml` + manifest ingest, ffprobe, TTS timing-mark captions, Whisper fallback.
+`narrative.toml` + manifest ingest, ffprobe, TTS timing-mark captions, Whisper fallback.
 
 Originally shipped as `cli/`, a Rust crate (`comonteur ingest {narrative,manifest,captions}`).
 Now `comonteur:ingest_{narrative,manifest,captions}` — one `uv run --script` Python file each,
@@ -65,7 +65,7 @@ transcription itself stays an external pipeline (§5.7) — captions ingest norm
 asset-library component discovery, brand params.
 
 ### M4 — VSE assembly
-`reconcile.py`, `timeline.yaml` → strips, scene strips from `compositions/frames/*`, audio,
+`reconcile.py`, `timeline.toml` → strips, scene strips from `compositions/frames/*`, audio,
 transitions.
 
 ### M5 — Validation

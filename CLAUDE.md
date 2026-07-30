@@ -13,7 +13,7 @@ Read `SPEC.md` first if working on design/architecture — it's a short thesis/i
 full spec. It routes to:
 
 - `docs/architecture.md` — provenance, journal, batch protocol (§4)
-- `docs/data-contracts.md` — repo/project layout, `timeline.yaml`, HyperFrames adapter (§5)
+- `docs/data-contracts.md` — repo/project layout, `timeline.toml`, HyperFrames adapter (§5)
 - `docs/library.md` — `addon/comonteur/` modules, asset/component system (§6, §9)
 - `docs/mcp-and-tooling.md` — MCP transport, language/tooling policy (§7, §8)
 - `docs/milestones.md` — M0–M6 plan (§10)
@@ -45,14 +45,17 @@ Code comments referencing `SPEC.md §N` resolve to whichever doc above now holds
   automatically.
 
 **Language policy**: Python everywhere. It used to be "Rust outside Blender, Python inside",
-but `cli/` was 1151 lines of YAML/JSON-in, JSON-out with no performance requirement, and
+but `cli/` was 1151 lines of TOML/JSON-in, JSON-out with no performance requirement, and
 shipping it meant maintaining a per-OS release matrix for a validator. It is now four mise
 task scripts. Do not reintroduce a compiled tool for spec parsing.
 
 **The wall the compiler used to enforce, now a rule**: `addon/comonteur/` never imports a
-task script and never parses YAML. Blender's bundled interpreter cannot see a uv environment
-and ships no PyYAML, so such an import can only fail confusingly. The task scripts emit plain
-JSON; the add-on reads that with the stdlib `json` module. Nothing crosses that line.
+task script and never parses a spec file. Parsing, validation and anchor resolution belong to
+the outside-Blender step — the add-on's input is the resolved plan, not the source document.
+(`tomllib` is stdlib, so the add-on *could* read `timeline.toml`; that it can is not a reason
+to. Importing a task script remains impossible either way: Blender's bundled interpreter
+cannot see a uv environment.) The task scripts emit plain JSON; the add-on reads that with the
+stdlib `json` module. Nothing crosses that line.
 
 ## Commands
 
@@ -103,13 +106,14 @@ hand-written equivalents — see §8.2 for which and why.
 
 Anything written into a *user's* project is namespaced `comonteur:` (their project may have its
 own `build`/`test`); project tasks ship as files under `mise-tasks/comonteur/` so an existing
-`mise.toml` is never rewritten. `skills/` is Markdown + bash + YAML — no lint/test root, not in
+`mise.toml` is never rewritten. `skills/` is Markdown + bash + TOML — no lint/test root, not in
 `[monorepo] config_roots`.
 
 The task scripts are `*.py` with underscored names (`ingest_narrative.py`) because mise strips
 the `.py` from a file task's name and Python cannot import a hyphenated module — the tests
 import them directly. Keep `#!/usr/bin/env -S uv run --script` plus a PEP 723 header on each;
-two need `pyyaml`, two are stdlib-only.
+all four are stdlib-only (`dependencies = []`) — keep it that way, `tomllib` and `json` cover
+the whole surface.
 
 Single test: `cd tests && uv run pytest unit/test_paths.py::test_name`
 
@@ -138,7 +142,7 @@ Every datablock the agent creates carries `cmt_id` (stable logical id), `cmt_ori
 - `human`-owned: agent may mutate only when explicitly instructed in the current turn.
 
 **The agent never regenerates** — its only operation on existing data is mutation. The
-scene is the source of truth; the spec (`timeline.yaml`) is an intent log, authoritative
+scene is the source of truth; the spec (`timeline.toml`) is an intent log, authoritative
 only for timeline assembly, not for scene contents. A `depsgraph_update_post` handler
 detects human edits to agent-owned data and flips `cmt_origin` to `shared`; fine-grained
 "which paths did I lose" is derived on demand in `provenance.claimed_paths()`, not
@@ -187,7 +191,7 @@ turns out not to run on Blender's main thread (the documented hard trigger).
 Distinct from this repo's own layout. A generated project has `lib/` (human-authored
 components, git-lfs), `compositions/frames/*.blend` (one agent-generated scene per shot,
 **linked** — not appended — into `master.blend` so it stays read-only there),
-`timeline.yaml` (assembly source of truth), and `.comonteur/journal.jsonl` +
+`timeline.toml` (assembly source of truth), and `.comonteur/journal.jsonl` +
 `snapshot.json`. Don't confuse this with `addon/`, `skills/`, `tests/` which belong to the
 tool itself.
 

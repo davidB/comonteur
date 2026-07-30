@@ -48,7 +48,7 @@ already holds footage, a `.blend` or another mise project is a normal operation 
 ├── assets/                 # same as HyperFrames — manifest.json generated alongside
 ├── audio/
 ├── captions/
-├── narrative.yaml          # HyperFrames-equivalent: STORYBOARD.md kept alongside verbatim
+├── narrative.toml          # HyperFrames-equivalent: STORYBOARD.md kept alongside verbatim
 ├── capture/                # copied unchanged, if imported from a HyperFrames project — §5.4
 ├── compositions/
 │   └── frames/              # agent-generated scenes, one per shot, persistent & versioned
@@ -57,7 +57,7 @@ already holds footage, a `.blend` or another mise project is a normal operation 
 │   ├── brand.blend          #   colours, fonts, node groups (assets)
 │   └── titles.blend         #   human-authored components
 ├── master.blend              # VSE assembly only. Links compositions/** + lib/**. git-lfs.
-├── timeline.yaml             # authoritative for assembly (§5.2)
+├── timeline.toml             # authoritative for assembly (§5.2)
 ├── .comonteur/
 │   ├── journal.jsonl
 │   ├── snapshot.json         # last agent-written values, for drift/claim derivation
@@ -70,7 +70,7 @@ already holds footage, a `.blend` or another mise project is a normal operation 
 
 This is the same root layout as a HyperFrames project — see §5.4 for the field-by-field
 adapter and the two reference project trees it's built from. `lib/`, `master.blend`,
-`timeline.yaml`, `.comonteur/` are the only new names, needed because HyperFrames has no
+`timeline.toml`, `.comonteur/` are the only new names, needed because HyperFrames has no
 equivalent of a reusable Blender component library, `index.html`, `hyperframes.json`, or
 a mutation journal.
 
@@ -85,29 +85,33 @@ is lost. This is the highest-impact unknown in the design.
 
 Git LFS is mandatory for `*.blend` and all media.
 
-### 5.2 `timeline.yaml` — authoritative
+### 5.2 `timeline.toml` — authoritative
 
 The only file the agent treats as desired-state. Governs assembly only; says nothing
 about scene interiors.
 
-```yaml
-fps: 30
-resolution: [1920, 1080]
-shots:
-  - id: shot-01
-    source: {kind: scene, blend: compositions/frames/shot-01.blend, scene: GEN_hook}
-    start: 0
-    duration: 90
-  - id: shot-02
-    source: {kind: movie, path: assets/broll_terminal.mp4}
-    anchor: {word: "observability", occurrence: 1, offset: -0.2}
-    duration: 120
-    in: 45
-    transition: {type: cross, duration: 0.4}
-audio:
-  - id: vo
-    path: audio/narration.wav
-    start: 0
+```toml
+fps = 30
+resolution = [1920, 1080]
+
+[[shots]]
+id = "shot-01"
+source = {kind = "scene", blend = "compositions/frames/shot-01.blend", scene = "GEN_hook"}
+start = 0
+duration = 90
+
+[[shots]]
+id = "shot-02"
+source = {kind = "movie", path = "assets/broll_terminal.mp4"}
+anchor = {word = "observability", occurrence = 1, offset = -0.2}
+duration = 120
+in = 45
+transition = {type = "cross", duration = 0.4}
+
+[[audio]]
+id = "vo"
+path = "audio/narration.wav"
+start = 0
 ```
 
 `transition` (optional, on a shot) applies a crossfade between that shot and the one
@@ -123,20 +127,23 @@ reconcile skips it rather than overwriting it back to the spec's value. "Authori
 assembly" (§4.2) means authoritative for what the agent proposes, not a license to clobber
 a human edit — same rule as everywhere else in this document.
 
-**The task resolves, `addon/` applies (M4).** `timeline.yaml` is YAML and anchors need a
-real word-timing lookup against `audio/transcript.json` — both are handled by
+**The task resolves, `addon/` applies (M4).** `timeline.toml` needs validating and its
+anchors need a real word-timing lookup against `audio/transcript.json` — both are handled by
 `mise run comonteur:reconcile` (`skills/comonteur/templates/mise-tasks/comonteur/reconcile.py`),
 which validates the doc and resolves
 every `anchor` to a plain integer `start_frame` (fail loudly, per above, if the anchor
-word or its occurrence count doesn't match). It writes a resolved plan — no more YAML, no
+word or its occurrence count doesn't match). It writes a resolved plan — no more TOML, no
 more anchors — to `.comonteur/timeline.resolved.json` by default (same directory as the
 journal; derived/ephemeral like `snapshot.json`, not a new top-level project file). The
-addon (`addon/comonteur/reconcile.py`) never parses YAML: it reads that JSON with the
+addon (`addon/comonteur/reconcile.py`) never parses a spec file: it reads that JSON with the
 stdlib `json` module and reconciles it into VSE strips. This is the same split as §5.3's
 production-contract ingest (the task normalizes upstream input into a plain file; the
 agent/addon consumes the file). Both sides are Python now, but the boundary is unchanged and
-binding: the addon never imports a task script and never parses YAML — Blender's interpreter
-cannot see a uv environment and ships no PyYAML (§8).
+binding: parsing, validation and anchor resolution are the outside step's job, so the addon's
+input is the resolved plan and never the source document. `tomllib` is stdlib and Blender
+could technically read `timeline.toml` — that is not a reason to; the split exists so
+validation has exactly one home. Importing a task script stays impossible regardless:
+Blender's interpreter cannot see a uv environment (§8).
 
 #### Anchor-relative timing (required)
 
@@ -167,7 +174,7 @@ No rendering instructions cross this line. The boundary is conceptual — which 
 files an agent is allowed to treat as upstream-authored input — not a directory: unlike
 earlier drafts, these live at project root (§5.1b), same as in a HyperFrames project.
 
-- `narrative.yaml` — shots: intent, target duration, VO reference, b-roll reference.
+- `narrative.toml` — shots: intent, target duration, VO reference, b-roll reference.
 - `assets/manifest.json` — content-addressed; per asset: sha256, path, duration, fps,
   resolution, has_alpha, codec (from `ffprobe`).
 - `audio/*.wav`
@@ -188,7 +195,7 @@ technical terms.
 
 **Implementation (M2):** `mise-tasks/comonteur/ingest_{narrative,manifest,captions}.py` —
 a first-cut
-`narrative.yaml` schema (`shots: [{id, intent, target_duration, vo, broll}]`),
+`narrative.toml` schema (`shots: [{id, intent, target_duration, vo, broll}]`),
 `ffprobe`-backed manifest building, and word-level caption normalization into
 `{"words": [{"word", "start", "end"}]}`. Caption ingest normalizes JSON that already
 exists (Whisper's `segments[].words[]`, or upstream-supplied TTS timing marks) — it does
@@ -210,12 +217,12 @@ carry over 1:1 too: `compositions/frames/NN-slug.html` becomes
 
 | HyperFrames | comonteur |
 |---|---|
-| `STORYBOARD.md` | `narrative.yaml` — keep the `.md` verbatim alongside; it is the human-readable intent |
-| `hyperframes.json` | `timeline.yaml` (fps, resolution, duration) + `master.blend` |
+| `STORYBOARD.md` | `narrative.toml` — keep the `.md` verbatim alongside; it is the human-readable intent |
+| `hyperframes.json` | `timeline.toml` (fps, resolution, duration) + `master.blend` |
 | `audio_meta.json` | `audio/meta.json` |
 | `capture/extracted/tokens.json` | brand parameters in `lib/brand.blend` |
 | `capture/extracted/asset-descriptions.md` | `description` field per asset in the manifest |
-| `index.html` | `timeline.yaml` + `master.blend` |
+| `index.html` | `timeline.toml` + `master.blend` |
 | `snapshots/` + `descriptions.md` | `.comonteur/review/` |
 | `frame.md` | same convention, generated by the skill |
 

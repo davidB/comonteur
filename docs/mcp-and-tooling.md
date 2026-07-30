@@ -79,10 +79,10 @@ transport roughly a day's work rather than a refactor, and is worth having regar
 the eventual decision.
 
 **Language policy — Python on both sides (revised; superseded the Rust split).** M2 shipped
-the production-contract ingest (`narrative.yaml`, `assets/manifest.json`, captions — §5.3)
-plus M4's `timeline.yaml` resolution as `cli/`, a Rust crate, on the reasoning that
+the production-contract ingest (`narrative.toml`, `assets/manifest.json`, captions — §5.3)
+plus M4's `timeline.toml` resolution as `cli/`, a Rust crate, on the reasoning that
 outside-Blender code should need no Python at install time. That reasoning did not survive
-contact with distribution: the crate was 1151 lines of YAML/JSON-in, JSON-out with no
+contact with distribution: the crate was 1151 lines of TOML/JSON-in, JSON-out with no
 performance requirement, and shipping it meant a per-OS/arch release-asset matrix plus a
 `cargo install` fallback that demanded a Rust toolchain the user had no other reason to have.
 
@@ -94,7 +94,7 @@ and run in place, so `npx skills add` updates the logic and the docs together. `
 required by `addon/` and `tests/`; Rust was the only toolchain in the repo with no second use.
 
 What made this a collapse rather than a port: the CLI's argument surface had no users. Every
-wrapper passed the same hardcoded paths (`narrative.yaml`, `--timeline timeline.yaml -o
+wrapper passed the same hardcoded paths (`narrative.toml`, `--timeline timeline.toml -o
 .comonteur/timeline.resolved.json`), so `main.rs` was 140 lines of `clap` dispatch translating
 project convention into flags mise was already supplying via `#USAGE`, `dir`, and
 `sources`/`outputs`. Dissolving the CLI into tasks deleted that layer outright. The four
@@ -102,9 +102,12 @@ modules were independent — the single cross-module edge was a data shape (`cap
 which is `json.load(f)["words"]` on the Python side.
 
 **The wall Rust was enforcing for free, now a written rule:** `addon/comonteur/` never imports
-a task script and never parses YAML. Blender's bundled interpreter cannot see a uv environment
-and ships no PyYAML, so the import can only fail confusingly. The scripts emit plain JSON; the
-add-on reads it with the stdlib `json` module.
+a task script and never parses a spec file. Spec parsing, validation and anchor resolution are
+the outside step's job, so the add-on's input is the resolved plan, never the source document.
+Blender's bundled interpreter *can* parse TOML (`tomllib` is stdlib) — that is not a licence to,
+it just means the rule is now design rather than mechanism. Importing a task script remains
+mechanically impossible: Blender's interpreter cannot see a uv environment. The scripts emit
+plain JSON; the add-on reads it with the stdlib `json` module.
 
 What was given up, honestly: the compiler over ~450 lines of anchor→frame arithmetic in
 `reconcile.py`. Compensated with `mypy` over the scripts and the Rust `#[cfg(test)]` suite
@@ -121,7 +124,8 @@ ported to `tests/unit/` — the timeline cases carry the most coverage there for
   ecosystem already requires Python and `uv`/`uvx` on the user's machine.
 - **Outside Blender is Python too**, per §7.5 — `uv run --script` task files with PEP 723
   inline dependency headers, so each is self-contained and `uv` provisions its own
-  interpreter and deps on first run. Two need `pyyaml`; two are stdlib-only.
+  interpreter on first run. All four are stdlib-only — `dependencies = []` on every one,
+  since `tomllib` and `json` cover the whole surface.
 - The repo is a **mise monorepo**: root `mise.toml` is orchestration only
   (`monorepo_root = true`, `[monorepo] config_roots = ["addon", "tests"]`, no tasks of its
   own beyond aggregation) and has **no Python project file**. `addon/` and `tests/` each own
@@ -222,14 +226,14 @@ effective.
 | `#MISE sources`/`outputs` | `ingest_manifest` (sha256 + `ffprobe` per asset) and `reconcile` — mise skips them when inputs are unchanged. `ingest_manifest` needs `"!assets/manifest.json"` in sources: the output lives in the directory it describes and would otherwise invalidate itself every run |
 | `#MISE env` | `BLENDER_PIN = "5.2"` in `setup`/`doctor` — the pin appears once per script instead of in each path and comparison |
 | `#MISE tools` | `ffmpeg` for `ingest_manifest`, `uv` for the four Python tasks — the tool arrives with the task rather than being a prerequisite the user discovers by failing |
-| PEP 723 `# /// script` | the four Python tasks — deps travel with the file, so `uv run --script` provisions the interpreter and `pyyaml` on first run with no venv to manage and no lockfile to install |
+| PEP 723 `# /// script` | the four Python tasks — the header travels with the file, so `uv run --script` provisions the interpreter on first run with no venv to manage and no lockfile to install. All four declare `dependencies = []`; keep it that way |
 
 Deliberately not used: `alias` and `depends`. `alias` does not work in file tasks at all
 (verified on mise 2026.7.10: the alias is parsed but never registered, and `mise run` on it
 fails) — which is why the Python task files use underscores rather than keeping the old
 `ingest-narrative` spelling, since Python cannot import a hyphenated module name and the tests
 import these files directly. `depends` is unused because nothing here is a build graph:
-`reconcile` resolves YAML, and applying it is a separate step inside Blender.
+`reconcile` resolves the timeline, and applying it is a separate step inside Blender.
 
 **Task file naming.** mise strips a `.py` extension from a file task's name (verified:
 `reconcile.py` → `comonteur:reconcile`), so the scripts keep clean task names while remaining

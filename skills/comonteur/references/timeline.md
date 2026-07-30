@@ -1,28 +1,32 @@
-# Assembly — `timeline.yaml` → VSE strips
+# Assembly — `timeline.toml` → VSE strips
 
-`timeline.yaml` is the **only** file you treat as desired state. It governs assembly
+`timeline.toml` is the **only** file you treat as desired state. It governs assembly
 (what plays, when, for how long) and says nothing about what is inside a shot.
 
 ## Schema
 
-```yaml
-fps: 30
-resolution: [1920, 1080]
-shots:
-  - id: shot-01
-    source: {kind: scene, blend: compositions/frames/shot-01.blend, scene: GEN_hook}
-    start: 0                       # absolute frames
-    duration: 90                   # frames
-  - id: shot-02
-    source: {kind: movie, path: assets/broll_terminal.mp4}
-    anchor: {word: "observability", occurrence: 1, offset: -0.2}
-    duration: 120
-    in: 45
-    transition: {type: cross, duration: 0.4}
-audio:
-  - id: vo
-    path: audio/narration.wav
-    start: 0
+```toml
+fps = 30
+resolution = [1920, 1080]
+
+[[shots]]
+id = "shot-01"
+source = {kind = "scene", blend = "compositions/frames/shot-01.blend", scene = "GEN_hook"}
+start = 0                          # absolute frames
+duration = 90                      # frames
+
+[[shots]]
+id = "shot-02"
+source = {kind = "movie", path = "assets/broll_terminal.mp4"}
+anchor = {word = "observability", occurrence = 1, offset = -0.2}
+duration = 120
+in = 45
+transition = {type = "cross", duration = 0.4}
+
+[[audio]]
+id = "vo"
+path = "audio/narration.wav"
+start = 0
 ```
 
 - `start` **xor** `anchor` — one or the other, per shot and per audio track.
@@ -39,7 +43,8 @@ assuming it took effect.
 
 ## The two-step: the task resolves, the addon applies
 
-The addon never parses YAML and never reads a transcript. Always both steps, in order.
+The addon never parses `timeline.toml` and never reads a transcript. Always both steps, in
+order.
 
 **1. Outside Blender** — validate, and resolve every anchor to an absolute frame:
 
@@ -48,12 +53,12 @@ mise run comonteur:reconcile
 ```
 
 The task is a Python script (`mise-tasks/comonteur/reconcile.py`) and defaults to the right
-paths: `timeline.yaml`, `audio/transcript.json` when that file exists, and
+paths: `timeline.toml`, `audio/transcript.json` when that file exists, and
 `.comonteur/timeline.resolved.json` for output. Running it directly by path works the same way,
 and the flags are there if you need to override:
 
 ```bash
-./mise-tasks/comonteur/reconcile.py --timeline timeline.yaml \
+./mise-tasks/comonteur/reconcile.py --timeline timeline.toml \
   --transcript audio/transcript.json -o .comonteur/timeline.resolved.json
 ```
 
@@ -61,7 +66,7 @@ A transcript is required if any shot or audio entry uses `anchor`.
 
 The resolved JSON is plain: `{fps, resolution, shots: [{id, source, start_frame,
 duration_frames, in_frame, transition: {kind, duration_frames}}], audio: [{id, path,
-start_frame}]}`. No YAML, no anchors, no seconds.
+start_frame}]}`. No TOML, no anchors, no seconds.
 
 **2. Inside Blender**, through `execute_python`:
 
@@ -109,8 +114,9 @@ strip. Don't rename ids to tidy them up.
 
 "Authoritative for assembly" means authoritative for what you *propose*, not a licence to
 clobber. If the human dragged a strip's duration in the timeline, that field is claimed and
-reconcile **skips it** — it does not reset it to the YAML value. Report the skip; if the
-YAML and the human disagree, that is a question for them, not a conflict for you to resolve.
+reconcile **skips it** — it does not reset it to the `timeline.toml` value. Report the skip;
+if the spec and the human disagree, that is a question for them, not a conflict for you to
+resolve.
 
 One subtlety worth knowing: VSE strips are not ID datablocks, so the automatic
 `agent → shared` origin flip never fires for a strip edit. Delete-safety here rests on
@@ -121,8 +127,8 @@ One subtlety worth knowing: VSE strips are not ID datablocks, so the automatic
 
 A shot may be positioned by an absolute `start`, or by a word in the voiceover:
 
-```yaml
-anchor: {word: "observability", occurrence: 1, offset: -0.2}
+```toml
+anchor = {word = "observability", occurrence = 1, offset = -0.2}
 ```
 
 This exists because **audio processing invalidates every absolute `start` in the

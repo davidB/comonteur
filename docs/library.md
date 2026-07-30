@@ -23,7 +23,7 @@ equally to **reduce agent token consumption**: the agent calls
 | `library.py` | link `lib/*.blend` (component library) and `compositions/frames/*.blend` (per-shot scenes), asset catalog discovery |
 | `introspect.py` | `outline`, `describe`, `animated_paths`, `find`, `drift` |
 | `preview.py` | render frames for agent review |
-| `reconcile.py` | timeline.yaml → VSE |
+| `reconcile.py` | timeline.toml → VSE |
 
 ### 6.1 `new_scene()` — deterministic baseline (hard requirement)
 

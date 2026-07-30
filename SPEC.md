@@ -67,7 +67,7 @@ Explicitly rejected during design. Do not reintroduce without a decision record.
 | File | Sections | Read when... |
 |---|---|---|
 | [`docs/architecture.md`](docs/architecture.md) | §4 | Working on provenance, the journal, or the batch protocol |
-| [`docs/data-contracts.md`](docs/data-contracts.md) | §5 | Working on repo/project layout, `timeline.yaml`, the HyperFrames adapter, or reference projects |
+| [`docs/data-contracts.md`](docs/data-contracts.md) | §5 | Working on repo/project layout, `timeline.toml`, the HyperFrames adapter, or reference projects |
 | [`docs/library.md`](docs/library.md) | §6, §9 | Working inside `addon/comonteur/` (any module) or the asset/component system |
 | [`docs/mcp-and-tooling.md`](docs/mcp-and-tooling.md) | §7, §8 | Working on the MCP transport, the user-facing entry point (mise tasks, §8.2), or language/tooling/dependency choices |
 | [`docs/milestones.md`](docs/milestones.md) | §10 | Planning or checking progress against M0–M6 |

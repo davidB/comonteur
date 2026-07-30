@@ -18,7 +18,7 @@ Do these in order and stop at the first thing you cannot resolve.
 3. **Recover the timing** and get it confirmed — this is the gate.
 4. **Convert the fonts.**
 5. **Rebuild each shot** as a Blender scene, one at a time, previewing each.
-6. **Write `timeline.yaml`** and reconcile into `master.blend`.
+6. **Write `timeline.toml`** and reconcile into `master.blend`.
 
 ## 1. Identity mapping
 
@@ -43,9 +43,9 @@ the manifest's `description` field.
 
 | HyperFrames | comonteur |
 |---|---|
-| `STORYBOARD.md` | `narrative.yaml` — **keep the `.md` verbatim alongside**, it is the human-readable intent |
-| `hyperframes.json` | `timeline.yaml` (fps, resolution, duration) + `master.blend` |
-| `index.html` | `timeline.yaml` + `master.blend` |
+| `STORYBOARD.md` | `narrative.toml` — **keep the `.md` verbatim alongside**, it is the human-readable intent |
+| `hyperframes.json` | `timeline.toml` (fps, resolution, duration) + `master.blend` |
+| `index.html` | `timeline.toml` + `master.blend` |
 | `audio_meta.json` | `audio/meta.json` |
 | `capture/extracted/tokens.json` | brand parameters in `lib/brand.blend` (`cmt.scene.set_param`) |
 | `capture/extracted/asset-descriptions.md` | `description` per asset in `assets/manifest.json` |
@@ -85,7 +85,7 @@ number came from — and get it confirmed before building any scene. Every downs
 of work depends on it, and it is much cheaper to fix here.
 
 If the project has a voiceover, prefer **anchors over absolute starts** in the resulting
-`timeline.yaml` (see `timeline.md`) — the imported absolute timings are the least durable
+`timeline.toml` (see `timeline.md`) — the imported absolute timings are the least durable
 thing you are carrying over.
 
 ## 4. Fonts
@@ -115,7 +115,7 @@ rebuilding the same lockup eight times.
 
 ## 6. Assemble
 
-Write `timeline.yaml` from the confirmed cut list, then run the two-step in `timeline.md`.
+Write `timeline.toml` from the confirmed cut list, then run the two-step in `timeline.md`.
 
 No-voiceover projects (BGM + SFX only) are a **first-class case, not a degraded one**.
 Word-level caption timing simply does not apply; on-screen text duration and the music

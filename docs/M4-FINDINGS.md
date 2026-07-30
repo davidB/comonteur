@@ -46,7 +46,7 @@ derived straight from the journal (`journal.paths_written_by_agent()` vs
 `journal.last_agent_value()` vs the strip's live value) and never reads `cmt_origin` at
 all, so `reconcile.diff()`'s per-field update-skip already works correctly for strips.
 It **does** break delete-safety if that safety only checks `origin == "agent"` (§4.1's
-literal rule): a strip a human edited but that got dropped from `timeline.yaml` would
+literal rule): a strip a human edited but that got dropped from `timeline.toml` would
 still read as agent-owned and get deleted. **Fix applied in `reconcile.diff()`**: the
 delete condition is `origin == agent AND not claimed[cmt_id]` — reusing the
 already-correct claim signal instead of trusting the flip for strips specifically. No

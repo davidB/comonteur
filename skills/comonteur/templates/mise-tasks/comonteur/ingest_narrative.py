@@ -1,12 +1,12 @@
 #!/usr/bin/env -S uv run --script
-#MISE description="Validate narrative.yaml (shot intents)"
+#MISE description="Validate narrative.toml (shot intents)"
 #MISE dir="{{config_root}}"
 #MISE tools={uv = "latest"}
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["pyyaml"]
+# dependencies = []
 # ///
-"""`narrative.yaml` ingest — SPEC.md §5.3 production contract. First-cut schema (no
+"""`narrative.toml` ingest — SPEC.md §5.3 production contract. First-cut schema (no
 example given in the spec): shots with intent, target duration, VO/b-roll references.
 
 `vo`/`broll` are validated-by-tolerance only (any string) — they are consumed by M3/M4
@@ -16,23 +16,19 @@ scene authoring, not by this ingest.
 from __future__ import annotations
 
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any
-
-import yaml
 
 
 def load(path: Path) -> dict[str, Any]:
     try:
-        with path.open(encoding="utf-8") as f:
-            doc = yaml.safe_load(f)
+        with path.open("rb") as f:
+            return tomllib.load(f)
     except OSError as e:
         raise SystemExit(f"reading {path}: {e}") from e
-    except yaml.YAMLError as e:
+    except tomllib.TOMLDecodeError as e:
         raise SystemExit(f"parsing {path}: {e}") from e
-    if not isinstance(doc, dict):
-        raise SystemExit(f"parsing {path}: expected a mapping at the top level")
-    return doc
 
 
 def validate(doc: dict[str, Any]) -> list[str]:
@@ -42,7 +38,7 @@ def validate(doc: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     shots = doc.get("shots") or []
     if not shots:
-        errors.append("narrative.yaml: `shots` is empty")
+        errors.append("narrative.toml: `shots` is empty")
     seen: set[str] = set()
     for i, shot in enumerate(shots):
         shot_id = str(shot.get("id", ""))
@@ -69,7 +65,7 @@ def parse(path: Path) -> dict[str, Any]:
 
 
 def main(argv: list[str]) -> None:
-    path = Path(argv[0]) if argv else Path("narrative.yaml")
+    path = Path(argv[0]) if argv else Path("narrative.toml")
     doc = parse(path)
     print(f"OK: {len(doc.get('shots') or [])} shot(s)")
 

@@ -17,11 +17,11 @@ Raw `bpy` bypasses the ownership and journal system that makes the live human ed
 | | |
 |---|---|
 | **Video** | _one line: what this video is and who it's for_ |
-| **fps / resolution** | see `timeline.yaml` |
+| **fps / resolution** | see `timeline.toml` |
 | **Voiceover** | _none / human-recorded / TTS_ |
 | **Brand** | `lib/brand.blend` — colours, fonts, node groups, marked as assets |
 
-`narrative.yaml` is the intent, `timeline.yaml` is the assembly, `compositions/frames/*.blend`
+`narrative.toml` is the intent, `timeline.toml` is the assembly, `compositions/frames/*.blend`
 are the shots (one Blender scene each, linked read-only into `master.blend`).
 
 ## Commands
@@ -33,10 +33,10 @@ shell so the human can re-run exactly what you ran:
 mise run comonteur:doctor              # toolchain + project checks
 mise run comonteur:setup               # install/repair the toolchain
 mise run comonteur:init                # top up this project's scaffold (add-only)
-mise run comonteur:ingest_narrative    # validate narrative.yaml
+mise run comonteur:ingest_narrative    # validate narrative.toml
 mise run comonteur:ingest_manifest     # assets/ -> assets/manifest.json
 mise run comonteur:ingest_captions <in.json> [--kind whisper|tts]
-mise run comonteur:reconcile           # timeline.yaml -> .comonteur/timeline.resolved.json
+mise run comonteur:reconcile           # timeline.toml -> .comonteur/timeline.resolved.json
 mise run comonteur:edit                # open master.blend
 mise run comonteur:render              # render the timeline to renders/
 ```
