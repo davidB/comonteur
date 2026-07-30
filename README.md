@@ -2,11 +2,11 @@
 
 **Make videos with an AI agent — in Blender, where you can still edit them.**
 
-`comonteur` lets Claude build video scenes, animations and timelines inside Blender, while
-you keep working in Blender normally. You open the dope sheet and move a keyframe. Claude
-reviews the shot, changes something else, and *doesn't overwrite your edit*.
+`comonteur` lets an AI agent build video scenes, animations and timelines inside Blender,
+while you keep working in Blender normally. You open the dope sheet and move a keyframe.
+The agent reviews the shot, changes something else, and *doesn't overwrite your edit*.
 
-It's the way Claude Code works with your code — you edit in your editor, the agent edits
+It's the way a coding agent works with your code — you edit in your editor, the agent edits
 the same files, nothing gets clobbered — applied to video.
 
 > 🎬 **Watch the launch video** — made entirely with `comonteur`
@@ -32,16 +32,16 @@ file. That's the problem this project solves.
 
 ## What you get
 
-- **Bidirectional editing.** Claude creates scenes you can edit. You create scenes Claude
+- **Bidirectional editing.** The agent creates scenes you can edit. You create scenes it
   can review and edit. Neither destroys the other's work.
 - **Real Blender output.** Animations are real F-curves on real data paths. Your dope
   sheet, graph editor and NLA work normally. Nothing is baked or locked.
-- **Everything is attributable.** Every change Claude makes is journalled — what changed,
+- **Everything is attributable.** Every change the agent makes is journalled — what changed,
   when, from what to what. Reviewable and revertible, without reading a binary file.
-- **Clean undo.** Claude's changes land as single labelled undo steps. `Ctrl+Z` does what
+- **Clean undo.** The agent's changes land as single labelled undo steps. `Ctrl+Z` does what
   you expect.
 - **Your components, its assembly.** Build your brand's title cards and lower-thirds in
-  Blender, mark them as assets, and Claude uses them as components with parameters.
+  Blender, mark them as assets, and the agent uses them as components with parameters.
 - **Word-accurate captions and beat sync**, taken from TTS timing marks rather than
   speech recognition — so text reveals and cuts land exactly on the voiceover.
 
@@ -54,7 +54,7 @@ Install these yourself — everything else comes from `setup` (see
 |---|---|
 | **Blender** | 5.2 LTS, [download](https://www.blender.org/download/lts/) — pinned, do not use 5.3+ |
 | **[`mise`](https://mise.jdx.dev/getting-started.html)** | pins the rest of the tooling and runs every command |
-| **An agent** | tested with [Claude Code](https://claude.com/claude-code); any MCP-capable client can work |
+| **An agent** | any MCP-capable coding agent that can read a skill/instructions directory; developed and tested with [Claude Code](https://claude.com/claude-code) |
 | **`npx`** | Node 20+, to install the skill (`npx skills add …`) |
 
 Pulled in for you: the `comonteur` CLI, the Blender add-on, Blender's MCP server, `ffmpeg` /
@@ -88,7 +88,7 @@ machine.
 curl https://mise.run | sh          # mise, if you don't have it
 blender --version                   # expect 5.2.x — install from blender.org/download/lts
 npx --version                       # Node 20+
-claude --version                    # or another MCP-capable agent
+claude --version                    # or whichever MCP-capable agent you use
 ```
 
 ### 2. The skill, then setup
@@ -104,9 +104,13 @@ dir, registers Blender's official MCP server, and finishes with a `doctor` repor
 still missing. It takes a `--ref <tag>` and uses a published release binary when one exists,
 otherwise it builds from that tag's source — either way pinned, and no clone.
 
-The skill itself is what teaches Claude the workflow and the helper library. It matters more
-than it sounds: without it Claude writes raw `bpy` — verbose, inconsistent, and outside the
-ownership system.
+The skill itself is what teaches the agent the workflow and the helper library. It matters
+more than it sounds: without it the agent writes raw `bpy` — verbose, inconsistent, and
+outside the ownership system.
+
+`npx skills add` writes to `.claude/skills/comonteur/` — Claude Code's convention, and just a
+directory of Markdown. On another harness, point it at that directory (or symlink it where
+your agent looks for instructions); nothing in the skill is Claude-specific.
 
 ### 3. Two steps inside Blender's own UI
 
@@ -127,13 +131,13 @@ right?".
 
 ## Workflows
 
-You work in two places: **Blender**, and the **chat with Claude**. You don't drive a CLI —
-Claude runs the tooling for you (there's a table of what it runs at the end of this
-section).
+You work in two places: **Blender**, and the **chat with your agent**. You don't drive a
+CLI — the agent runs the tooling for you (there's a table of what it runs at the end of
+this section).
 
 ### The loop, whichever workflow you're in
 
-1. Open `master.blend` in Blender and **leave it open**. Claude talks to that live session.
+1. Open `master.blend` in Blender and **leave it open**. The agent talks to that live session.
 2. Ask for one shot at a time:
 
    ```
@@ -142,15 +146,15 @@ section).
    of the voiceover.
    ```
 
-3. Claude builds `compositions/frames/<shot>.blend`, renders review frames into
+3. The agent builds `compositions/frames/<shot>.blend`, renders review frames into
    `.comonteur/review/`, looks at them, and reports what it did — including anything it
    routed around because you'd claimed it.
 4. Switch to Blender. It's there, live, fully editable. Nudge the keyframe, change the
-   font, drag the strip. That data flips to **shared** and Claude works around your edit.
+   font, drag the strip. That data flips to **shared** and the agent works around your edit.
 5. Ask for the next shot, or for a change to this one. Your edits survive.
-6. When the shots exist: *"assemble the timeline"* — Claude resolves `timeline.yaml` and
+6. When the shots exist: *"assemble the timeline"* — the agent resolves `timeline.yaml` and
    reconciles it into `master.blend`'s sequencer. Then *"render shots 1–3"*.
-7. **You save the `.blend`.** Claude never does — saving under you could destroy unsaved
+7. **You save the `.blend`.** The agent never does — saving under you could destroy unsaved
    work it can't see. It'll remind you.
 
 What differs between workflows is only how the project *starts*.
@@ -171,10 +175,10 @@ Nothing upstream — a brief, your own components, maybe some footage and a voic
    folder that already has your footage or another mise project and nothing there is touched;
    re-running it tops up what's missing.
 
-   Git and Git LFS are **off** by default (`--git`, `--lfs`) — Claude asks before enabling
+   Git and Git LFS are **off** by default (`--git`, `--lfs`) — the agent asks before enabling
    them rather than deciding for you.
 
-2. Tell Claude what the video is — *"a 90-second launch video for X, here's the script"* —
+2. Tell the agent what the video is — *"a 90-second launch video for X, here's the script"* —
    and it fills in `narrative.yaml`, validates it, and ingests your assets and voiceover.
 3. Open `master.blend` (`mise run comonteur:edit`), and follow the loop above.
 
@@ -185,13 +189,13 @@ Details for the agent: [`skills/comonteur/references/workflows.md`](./skills/com
 
 You shipped it in HTML and want an editable Blender project out of it.
 
-Say *"import this HyperFrames project"*. Claude copies the tree (most of it maps 1:1),
+Say *"import this HyperFrames project"*. The agent copies the tree (most of it maps 1:1),
 translates the metadata (`STORYBOARD.md` → `narrative.yaml`, `hyperframes.json` +
 `index.html` → `timeline.yaml`), converts the `.woff2` fonts Blender can't load, then
 rebuilds each shot as a Blender scene and previews it.
 
 **One thing it will stop and ask you.** HyperFrames has no timeline file — durations live
-inside the HTML/JS. Claude recovers the cut list from three sources and shows it to you as
+inside the HTML/JS. The agent recovers the cut list from three sources and shows it to you as
 a table before building anything. Confirm it; everything downstream depends on it.
 
 HTML → timeline is **not** lossless. The import ends with a list of what didn't survive:
@@ -210,7 +214,7 @@ HyperFrames is two things: a production **harness** (script → shot list → as
 2. **No HTML compositions are written.** Shots are authored in Blender from the first
    frame, so there's no conversion step and nothing gets lost — unlike workflow B, which
    exists only because the HTML already happened.
-3. Then the loop above. If there's a voiceover, Claude anchors shots to transcript words
+3. Then the loop above. If there's a voiceover, the agent anchors shots to transcript words
    rather than absolute frames, so re-recording the VO doesn't invalidate the edit.
 
 Details: [`docs/data-contracts.md`](./docs/data-contracts.md) §5.3–§5.4, and
@@ -218,7 +222,7 @@ Details: [`docs/data-contracts.md`](./docs/data-contracts.md) §5.3–§5.4, and
 
 ### Under the hood
 
-Everything repeatable is a mise task, so Claude runs the same command you would — and you
+Everything repeatable is a mise task, so the agent runs the same command you would — and you
 can re-run any of it yourself. `mise tasks` is the menu.
 
 `init` installs **one** set of tasks into the project, so every command — including the ones
@@ -253,12 +257,12 @@ Every piece of data carries an owner:
 
 | Owner | Meaning |
 |---|---|
-| **agent** | Claude made it and can change it freely |
-| **shared** | You've touched it — Claude works around what you changed |
-| **human** | Yours. Claude only touches it when you explicitly ask |
+| **agent** | the agent made it and can change it freely |
+| **shared** | You've touched it — the agent works around what you changed |
+| **human** | Yours. The agent only touches it when you explicitly ask |
 
-When you edit something Claude made, it flips to **shared** automatically, and the
-specific properties you changed are recorded as yours. Claude sees this and routes
+When you edit something the agent made, it flips to **shared** automatically, and the
+specific properties you changed are recorded as yours. The agent sees this and routes
 around them.
 
 Anything you made from scratch is never modified or deleted without you asking by name.
@@ -266,7 +270,7 @@ Anything you made from scratch is never modified or deleted without you asking b
 You can override ownership either way from the comonteur sidebar panel in Blender:
 **Take ownership** or **Return to agent**.
 
-### Reviewing what Claude did
+### Reviewing what the agent did
 
 Every change is in `.comonteur/journal.jsonl` — append-only JSONL, one line per property
 written, with the before and after. Readable with any text tool; no binary diffing.
@@ -285,7 +289,7 @@ mise.toml                pinned tools; mise-tasks/comonteur/ holds the comonteur
 narrative.yaml           script/shot intent (STORYBOARD.md kept alongside)
 assets/  audio/  captions/   media + word-level timing, manifest.json generated
 lib/                     your Blender components (brand, titles) — human-authored, git-lfs
-compositions/frames/     one .blend per shot, Claude-generated, yours to edit too
+compositions/frames/     one .blend per shot, agent-generated, yours to edit too
 timeline.yaml            the assembly — authoritative for the edit, not for scene contents
 master.blend             links the above into a VSE timeline
 .comonteur/              journal, snapshot, review frames
