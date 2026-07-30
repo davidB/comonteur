@@ -11,14 +11,22 @@ set -euo pipefail
 
 VERSION="${BLENDER_MCP_VERSION:-1.0.0}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VENDOR_DIR="$REPO_ROOT/.vendor/blender-mcp"
+# The registered command points into this directory forever, so it must outlive the script's
+# working copy: `.vendor/` only when run from a checkout, a user data dir otherwise (the
+# skill's `scripts/setup` runs this from a throwaway extracted archive — §8.2).
+if [[ -f "$REPO_ROOT/cli/Cargo.toml" ]]; then
+  BASE_DIR="$REPO_ROOT/.vendor"
+else
+  BASE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/comonteur"
+fi
+VENDOR_DIR="$BASE_DIR/blender-mcp"
 URL="https://projects.blender.org/lab/blender_mcp/releases/download/v${VERSION}/blender-${VERSION}.mcpb"
 
 echo "Fetching Blender MCP server v${VERSION}..."
-mkdir -p "$VENDOR_DIR"
-curl -sL -A "Mozilla/5.0" -o "$REPO_ROOT/.vendor/blender-mcp.mcpb" "$URL"
+mkdir -p "$BASE_DIR"
+curl -sL -A "Mozilla/5.0" -o "$BASE_DIR/blender-mcp.mcpb" "$URL"
 rm -rf "$VENDOR_DIR"
-unzip -o -q "$REPO_ROOT/.vendor/blender-mcp.mcpb" -d "$VENDOR_DIR"
+unzip -o -q "$BASE_DIR/blender-mcp.mcpb" -d "$VENDOR_DIR"
 
 echo "Syncing dependencies..."
 uv sync --project "$VENDOR_DIR"

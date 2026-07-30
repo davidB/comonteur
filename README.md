@@ -47,14 +47,19 @@ file. That's the problem this project solves.
 
 ## Requirements
 
+Install these yourself — everything else comes from `setup` (see
+[Installation](#installation)):
+
 | | |
 |---|---|
-| **Blender** | 5.2 LTS (pinned — do not use 5.3+) |
-| **Python** | 3.11+, via `uv` |
-| **Tooling** | [`mise`](https://mise.jdx.dev/), [`uv`](https://docs.astral.sh/uv/) |
-| **LLM client** | Claude Code (or any MCP-capable client) |
-| **Media** | `ffmpeg` / `ffprobe` on `PATH` |
-| **Git** | Git LFS (mandatory — `.blend` files and media) |
+| **Blender** | 5.2 LTS, [download](https://www.blender.org/download/lts/) — pinned, do not use 5.3+ |
+| **[`mise`](https://mise.jdx.dev/getting-started.html)** | pins the rest of the tooling and runs every command |
+| **An agent** | tested with [Claude Code](https://claude.com/claude-code); any MCP-capable client can work |
+| **`npx`** | Node 20+, to install the skill (`npx skills add …`) |
+
+Pulled in for you: the `comonteur` CLI, the Blender add-on, Blender's MCP server, `ffmpeg` /
+`ffprobe`. Optional: Git + Git LFS if you want the project version-controlled (off by
+default), `sox` if you record a voiceover locally.
 
 ---
 
@@ -73,47 +78,50 @@ client data you can't afford to lose.
 
 ## Installation
 
-### 1. Blender 5.2 LTS
+You don't clone this repo. Get the four [requirements](#requirements) above, then install the
+skill — the skill installs everything else, pinned, so commands behave the same on another
+machine.
 
-Download from [blender.org](https://www.blender.org/download/lts/). Pinned deliberately —
-LTS is supported until July 2028, and generated code is only reproducible against a fixed
-API.
-
-### 2. Blender's official MCP add-on
-
-From [blender.org/lab/mcp-server](https://www.blender.org/lab/mcp-server/).
-
-Drag the extension into Blender **twice** — the first drop adds the Blender Lab
-repository, the second installs the add-on. (This also gets you update notifications.)
-Alternatively, download the `.zip` and use *Install from Disk*.
-
-### 3. The MCP server
-
-For Claude Code and other clients supporting `.mcpb` bundles, grab the latest package
-from the [releases page](https://projects.blender.org/lab/blender_mcp/releases).
-Otherwise follow the [setup instructions](https://projects.blender.org/lab/blender_mcp/wiki/Setup).
-
-### 4. comonteur
+### 1. Prerequisites
 
 ```bash
-git clone <this-repo> && cd comonteur
-mise install          # tool versions
-uv sync               # dependencies
-mise run install-addon # installs addon/comonteur into your Blender extensions dir
+curl https://mise.run | sh          # mise, if you don't have it
+blender --version                   # expect 5.2.x — install from blender.org/download/lts
+npx --version                       # Node 20+
+claude --version                    # or another MCP-capable agent
 ```
 
-Enable **comonteur** in Blender: `Edit ▸ Preferences ▸ Add-ons`.
-
-### 5. The Claude Code skill
+### 2. The skill, then setup
 
 ```bash
-cd your-video-project
-npx skills add <this-repo>/skills/comonteur
+mkdir my-video-project && cd my-video-project
+npx skills add https://github.com/davidB/comonteur/skills/comonteur
+bash .claude/skills/comonteur/scripts/setup
 ```
 
-The skill teaches Claude the workflow and the helper library. It matters more than it
-sounds: without it, Claude writes raw `bpy` — verbose, inconsistent, and outside the
+`setup` puts the `comonteur` CLI on your PATH, installs the add-on into Blender's extensions
+dir, registers Blender's official MCP server, and finishes with a `doctor` report of what's
+still missing. It takes a `--ref <tag>` and uses a published release binary when one exists,
+otherwise it builds from that tag's source — either way pinned, and no clone.
+
+The skill itself is what teaches Claude the workflow and the helper library. It matters more
+than it sounds: without it Claude writes raw `bpy` — verbose, inconsistent, and outside the
 ownership system.
+
+### 3. Two steps inside Blender's own UI
+
+**Install Blender's official MCP add-on** —
+[blender.org/lab/mcp-server](https://www.blender.org/lab/mcp-server/). Drag the extension
+into Blender **twice**: the first drop adds the Blender Lab repository, the second installs
+the add-on (this also gets you update notifications). Or download the `.zip` and use
+*Install from Disk*.
+
+**Enable comonteur** — `Edit ▸ Preferences ▸ Add-ons`. `setup` put it in Blender's extensions
+directory; only you can switch it on.
+
+Re-run the doctor at any point — `mise run comonteur:doctor` inside a project, or
+`bash .claude/skills/comonteur/scripts/doctor` — it's the single answer to "is my setup
+right?".
 
 ---
 
@@ -151,14 +159,24 @@ What differs between workflows is only how the project *starts*.
 
 Nothing upstream — a brief, your own components, maybe some footage and a voiceover.
 
-1. In an empty directory, install the skill: `npx skills add <this-repo>/skills/comonteur`.
-   Without it Claude writes raw `bpy` and works outside the ownership system.
-2. *"Scaffold a comonteur project here for a 90-second launch video."* Claude creates the
-   [project layout](#project-layout), sets up Git LFS, and writes a first `narrative.yaml`
-   from what you describe.
-3. Drop assets in `assets/` and voiceover in `audio/`, then *"ingest the assets and
-   captions"*.
-4. Open `master.blend`, and follow the loop above.
+1. Initialize the folder (the skill is already there from installation above):
+
+   ```bash
+   bash .claude/skills/comonteur/scripts/init .
+   ```
+
+   That creates the [project layout](#project-layout) and the project's own `comonteur:*`
+   mise tasks — from then on everything, `setup` and `doctor` included, is
+   `mise run comonteur:<task>` from inside the project. It's **add-only**: point it at a
+   folder that already has your footage or another mise project and nothing there is touched;
+   re-running it tops up what's missing.
+
+   Git and Git LFS are **off** by default (`--git`, `--lfs`) — Claude asks before enabling
+   them rather than deciding for you.
+
+2. Tell Claude what the video is — *"a 90-second launch video for X, here's the script"* —
+   and it fills in `narrative.yaml`, validates it, and ingests your assets and voiceover.
+3. Open `master.blend` (`mise run comonteur:edit`), and follow the loop above.
 
 Details for the agent: [`skills/comonteur/references/workflows.md`](./skills/comonteur/references/workflows.md),
 [`SKILL.md`](./skills/comonteur/SKILL.md).
@@ -200,19 +218,34 @@ Details: [`docs/data-contracts.md`](./docs/data-contracts.md) §5.3–§5.4, and
 
 ### Under the hood
 
-You don't normally type these — Claude runs them. Listed so you know what's happening.
+Everything repeatable is a mise task, so Claude runs the same command you would — and you
+can re-run any of it yourself. `mise tasks` is the menu.
 
-| Command | What it does |
+`init` installs **one** set of tasks into the project, so every command — including the ones
+that set the machine up — is re-runnable from the project afterwards:
+
+| Task | What it does |
 |---|---|
-| `comonteur ingest narrative narrative.yaml` | Validates the shot list |
-| `comonteur ingest manifest assets/ -o assets/manifest.json` | Content-addressed asset manifest (via `ffprobe`) |
-| `comonteur ingest captions <in> --kind whisper\|tts -o captions/vo.json` | Normalizes word-level timing |
-| `comonteur reconcile plan --timeline timeline.yaml …` | Resolves `timeline.yaml` (anchors → frames) into a plan the add-on applies |
-| `mise run install-addon` | Symlinks the add-on into Blender's extensions dir |
-| `mise run install-mcp` | Fetches and registers Blender's official MCP server |
+| `comonteur:setup [--ref <tag>]` | Install/repair: CLI, add-on, MCP server, then doctor |
+| `comonteur:init [dir] [--git] [--lfs]` | Initialize or top up a project — add-only, never overwrites |
+| `comonteur:doctor` | Toolchain **and** project checks, one ✓/✗ list |
+| `comonteur:ingest-narrative` | Validates `narrative.yaml` |
+| `comonteur:ingest-manifest` | `assets/` → `assets/manifest.json` (sha256 + `ffprobe`) |
+| `comonteur:ingest-captions <in.json> [--kind whisper\|tts]` | Normalizes word-level timing |
+| `comonteur:reconcile` | `timeline.yaml` → resolved plan the add-on applies |
+| `comonteur:edit` / `comonteur:render` | Open `master.blend` / render the timeline |
 
-Project scaffolding (`comonteur new`), a journal CLI and `doctor` are planned (M5.5) —
-today Claude does that work directly.
+Thin wrappers over `comonteur …` and `blender`, shipped as files in `mise-tasks/comonteur/` —
+a project that already has its own `mise.toml` and tasks keeps them, and the `comonteur:`
+prefix stays out of the way of a `build` or `test` of your own. `--help` works on each one,
+and the expensive ones (`ingest-manifest`, `reconcile`) skip themselves when their inputs
+haven't changed.
+
+Before a project exists, the same files are runnable straight from the installed skill —
+`bash .claude/skills/comonteur/scripts/{setup,init,doctor}` — which is the only
+chicken-and-egg step. Contributors who clone the repo get `mise run comonteur:{setup,init,doctor}`
+via symlinks to those same files: one copy, no drift. Doing this in Rust — `comonteur init` /
+`doctor` as subcommands — is M5.5; the scripts come first and keep the same names.
 
 ## How collaboration works
 
@@ -248,6 +281,7 @@ journal's before/after values are what you have.
 A video project — distinct from this repo:
 
 ```
+mise.toml                pinned tools; mise-tasks/comonteur/ holds the comonteur:* tasks
 narrative.yaml           script/shot intent (STORYBOARD.md kept alongside)
 assets/  audio/  captions/   media + word-level timing, manifest.json generated
 lib/                     your Blender components (brand, titles) — human-authored, git-lfs

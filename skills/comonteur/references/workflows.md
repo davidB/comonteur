@@ -4,6 +4,31 @@
 project starts, what gets ingested, and what shipping means. Read it when the human asks for
 a video rather than for a shot.
 
+## Run tasks, not shell
+
+If the project has `mise-tasks/comonteur/` (or `mise tasks` lists `comonteur:*`), **use
+`mise run comonteur:<task>`** — never the raw command it wraps. Reasons, in order: the human
+can re-run exactly what you ran, the tools are pinned so it behaves the same tomorrow, and
+`mise tasks` is a menu they can read without a chat transcript.
+
+If a repeatable command has no task, **add one** under `mise-tasks/comonteur/` (bash, a
+`#MISE description=` line, `#USAGE arg`/`flag` headers for any arguments —
+[docs](https://mise.jdx.dev/tasks/task-arguments.html#file-task-headers) — and
+`cd "$MISE_PROJECT_ROOT"`) rather than running it ad-hoc. Anything
+the comonteur stack adds to a user's project is namespaced `comonteur:` — the project may be
+someone else's mise project, so never claim a bare name like `render` or `build`.
+
+**Before a project has tasks**, the same files are runnable straight from this skill:
+`bash <skill>/scripts/{init,setup,doctor}` (`../scripts/` from here — it is the task directory
+itself). After `init` there is only one way to say it: `mise run comonteur:<task>`. The human
+does not need a checkout of the comonteur repo, so never tell them to clone one.
+
+Don't install system tooling silently. If doctor reports a ✗, relay those lines and let the
+human run `mise run comonteur:setup` — or ask before running it for them.
+
+Check `--help` on a task rather than guessing its arguments; each one declares them in its own
+`#USAGE` header.
+
 ## Which workflow is this?
 
 Decide before touching anything, by looking at the directory:
@@ -15,34 +40,40 @@ Decide before touching anything, by looking at the directory:
 | Harness output (script, shot list, `assets/`, TTS audio, captions) but **no** HTML compositions | **C — harness upstream, Blender rendering** |
 | `master.blend` + `timeline.yaml` + `.comonteur/` | An existing comonteur project — go straight to the per-shot loop |
 
-If it's ambiguous, ask. Scaffolding over an existing project is destructive in a way the
-journal cannot undo.
+If it's ambiguous, ask.
 
 ## A — from scratch
 
-1. **Create the tree** (`docs/data-contracts.md` §5.1b). There is no `comonteur new` yet
-   (M5.5); make the directories and files yourself:
-
-   ```
-   assets/  audio/  captions/  compositions/frames/  lib/  renders/  thumbnail/
-   narrative.yaml  timeline.yaml  meta.json
-   ```
-
-2. **Git + LFS**, before the first `.blend` exists — retrofitting LFS on committed binaries
-   is a rewrite:
+1. **Initialize the folder** — this skill's own script, no checkout involved:
 
    ```bash
-   git init
-   git lfs track "*.blend" "assets/**" "audio/**" "renders/**"
+   bash <skill>/scripts/init <dir>        # dir defaults to .
    ```
 
-   `.gitignore`: `renders/`, `.comonteur/review/`, `renders/BL_proxy/`.
+   It creates the §5.1b tree, all nine `comonteur:*` tasks (`mise-tasks/comonteur/`, from
+   `<skill>/templates/`), and stub `narrative.yaml` / `timeline.yaml` / `meta.json` /
+   `AGENTS.md`. It is **add-only**: an existing folder with footage, a `.blend`, or its own
+   `mise.toml` is a normal input — nothing already there is overwritten, and re-running it
+   tops up what's missing and prints what it kept. Everything after this step, `setup` and
+   `doctor` included, is `mise run comonteur:*` from inside the project. Tell the human to
+   `mise trust` once — the task files are new to mise.
+
+2. **Ask about git and Git LFS — do not decide for them.** `init` takes `--git` and `--lfs`
+   (LFS needs git), both off by default. Ask once, plainly:
+
+   > *Version-control this project with git? And `.blend`/media files are large — track them
+   > with Git LFS?*
+
+   Mention the one fact that makes the timing matter: LFS retrofitted onto binaries already
+   committed to history means a history rewrite, so it is much cheaper to decide now. If they
+   decline, initialize without and don't raise it again. Never run `git init` inside a folder
+   that is already in a git work tree — `init --git` refuses, deliberately.
 
 3. **Write `narrative.yaml`** from what the human described — `shots: [{id, intent,
    target_duration, vo, broll}]` — then validate it, don't eyeball it:
 
    ```bash
-   comonteur ingest narrative narrative.yaml
+   mise run comonteur:ingest-narrative
    ```
 
    Keep any prose brief (`STORYBOARD.md`, `design.md`) verbatim alongside it. The YAML is
@@ -51,22 +82,25 @@ journal cannot undo.
 4. **Ingest what exists.** Assets and captions only — skip either if there is none:
 
    ```bash
-   comonteur ingest manifest assets/ -o assets/manifest.json
-   comonteur ingest captions <input.json> --kind whisper -o captions/vo.json
+   mise run comonteur:ingest-manifest
+   mise run comonteur:ingest-captions <input.json> --kind whisper
    ```
 
-   `--kind tts` when the audio was synthesized (timing marks beat ASR on proper nouns);
-   `--kind whisper` for human-recorded VO. No voiceover is a first-class case, not a
+   `--kind tts` when the audio was synthesized (timing marks beat ASR on proper nouns),
+   `whisper` (the default) for human-recorded VO. Every task carries `--help`, generated from
+   its own header — check that rather than guessing at arguments. No voiceover is a
+   first-class case, not a
    degraded one (§5.5) — on-screen text and music drive the pacing instead.
 
 5. **Create `master.blend` and `lib/brand.blend`** — brand colours, fonts and node groups
    first, marked as assets, so shots link them instead of redefining them eight times.
 
-6. **Generate the project's `AGENTS.md` / `CLAUDE.md`** (HyperFrames convention, §5.1b): what
-   this video is, its fps/resolution, where the brand lives, and that comonteur rules apply.
+6. **Fill in the project's `AGENTS.md`** (`init` writes the skeleton, with `CLAUDE.md`
+   pointing at it): what this video is, its fps/resolution, where the brand lives.
 
-7. **Hand back.** Tell the human to open `master.blend` and leave it open — you talk to that
-   live session. Then the per-shot loop in `../SKILL.md`, one shot at a time.
+7. **Hand back.** Tell the human to open `master.blend` — `mise run comonteur:edit` — and
+   leave it open; you talk to that live session. Then the per-shot loop in `../SKILL.md`, one
+   shot at a time.
 
 8. **Assemble** with `timeline.md` once the shots exist.
 
@@ -80,7 +114,8 @@ are authored in Blender from the first frame. There is no HTML to parse afterwar
 of workflow B's lossiness applies — do not import your own output.
 
 1. Run the harness for production prep only. Its output already matches the production
-   contract (§5.3): shot list, `assets/`, `audio/`, word-level captions.
+   contract (§5.3): shot list, `assets/`, `audio/`, word-level captions. `init` on
+   that folder is safe — it adds what's missing and keeps what the harness produced.
 2. Map its files onto §5.1b names using the metadata table in `hyperframes-import.md` §2
    (`STORYBOARD.md` → `narrative.yaml`, `audio_meta.json` → `audio/meta.json`, tokens →
    `lib/brand.blend`). **Metadata only** — that document's §3 timing recovery and §5 shot
@@ -93,8 +128,9 @@ of workflow B's lossiness applies — do not import your own output.
 
 The deliverable is **video + title + description + thumbnail**, not video alone.
 
-- Render from `master.blend` into `renders/`. Never overwrite a render the human is holding
-  onto without asking.
+- `mise run comonteur:render` — renders `master.blend`'s timeline into `renders/` using the
+  file's own output settings. Never overwrite a render the human is holding onto without
+  asking.
 - `thumbnail/thumbnail.png` renders from a dedicated `compositions/frames/thumbnail.blend`
   reusing the components already in `lib/` — a real frame from the real project, not a
   screenshot.

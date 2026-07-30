@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+#MISE description="Render master.blend's timeline to renders/ (background Blender)"
+#MISE dir="{{config_root}}"
+# ponytail: uses master.blend's own output settings and full frame range; pass
+# `-- -s 100 -e 200` for a subrange rather than teaching this script about ranges.
+# No sources/outputs: a render's inputs are inside a .blend, which mise cannot hash usefully.
+set -euo pipefail
+mkdir -p renders
+exec blender -b master.blend -a "$@"

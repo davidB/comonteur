@@ -30,9 +30,12 @@ Code comments referencing `SPEC.md §N` resolve to whichever doc above now holds
 - `cli/` — everything outside the Blender process. Rust (`comonteur` crate). Ingest-only as
   of M2 (`narrative.yaml`, `assets/manifest.json`, captions); `setup`/`new`/`doctor` are M5.5.
 - `skills/` — Claude Code skills, one directory per skill (`skills/comonteur/SKILL.md` +
-  `references/`), installable with `npx skills add <repo>/skills/<name>`. Markdown only —
-  no build, no lint, not a mise config root. This is what teaches an agent to call the
-  library instead of writing raw `bpy`; keep it in sync when `addon/comonteur/` changes.
+  `references/` + `scripts/` + `templates/`), installable with
+  `npx skills add <repo>/skills/<name>`. No build, no lint, not a mise config root. This is
+  both what teaches an agent to call the library instead of writing raw `bpy` **and** the
+  distribution unit users install — it carries the bootstrap scripts and the project
+  scaffold, since no user clones this repo (§8.2). Keep it in sync when `addon/comonteur/`
+  changes.
 - `tests/` — pure-logic Python unit tests (pytest) for modules with no `bpy` dependency
   (journal, paths, easing map, spec parsing). Own `pyproject.toml`/`mise.toml`/venv.
 - Root `mise.toml` is orchestration only — `monorepo_root = true`, no Python project of its
@@ -55,6 +58,29 @@ mise run ci         # lint + test
 ```
 
 Or scope to one workspace: `mise run addon:lint`, `mise run tests:test`, `mise run cli:test`, etc.
+
+User-facing bootstrap (see `docs/mcp-and-tooling.md` §8.2):
+
+```bash
+mise run comonteur:setup            # one-time install: CLI, addon, MCP server, then doctor
+mise run comonteur:init [dir] [--git] [--lfs]   # initialize a video project — add-only
+mise run comonteur:doctor           # blender 5.2 / ffmpeg / CLI / addon / MCP checks
+```
+
+**Every task has exactly one copy, in `skills/comonteur/templates/mise-tasks/comonteur/`** —
+which is also what `init` installs into a project, so a project gets all nine tasks including
+`setup`/`init`/`doctor` and can repair itself. `skills/comonteur/scripts` symlinks that
+directory (short bootstrap path); `mise-tasks/comonteur/{setup,init,doctor}` symlink the three
+files a checkout needs. Edit the template copy, never a symlink. Users are never expected to
+clone this repo — they install the skill (`npx skills add`), so keep the scripts runnable *both*
+as mise tasks (`usage_*` from `#USAGE`, `MISE_PROJECT_ROOT` set) and directly by path with
+`$@`. Prefer mise headers (`dir`, `sources`/`outputs`, `env`, `tools`, `#USAGE`) over
+hand-written equivalents — see §8.2 for which and why.
+
+Anything written into a *user's* project is namespaced `comonteur:` (their project may have its
+own `build`/`test`); project tasks ship as files under `mise-tasks/comonteur/` so an existing
+`mise.toml` is never rewritten. `skills/` is Markdown + bash + YAML — no lint/test root, not in
+`[monorepo] config_roots`.
 
 Single test:
 - Rust: `cd cli && cargo test <test_name>`

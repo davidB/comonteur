@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Open master.blend in Blender — leave it open, the agent talks to this session"
+#MISE dir="{{config_root}}"
+set -euo pipefail
+exec blender master.blend "$@"

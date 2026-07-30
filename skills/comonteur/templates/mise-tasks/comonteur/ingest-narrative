@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Validate narrative.yaml (shot intents)"
+#MISE dir="{{config_root}}"
+set -euo pipefail
+exec comonteur ingest narrative narrative.yaml

@@ -95,7 +95,14 @@ In scope:
   M0.11**); fall back to copying into the platform extensions directory.
 - Register the MCP server: `claude mcp add`, or write a project-local `.mcp.json`.
 - Install the Claude Code skill into `.claude/skills/`.
-- Scaffold a new project (`comonteur new`).
+- Scaffold a new project (`comonteur init` — additive, never overwrites; §8.2).
+
+**Partly shipped early, in the skill**: `setup`, `init` and `doctor` exist now as bash scripts
+in `skills/comonteur/scripts/` (scaffold in `skills/comonteur/templates/`, symlinked as
+`mise run comonteur:*` for contributors), because the workflows documentation needed something
+real to point at and users must be able to start without cloning this repo (§8.2). M5.5
+replaces them with Rust subcommands **under the same names**, and takes over the
+release-asset-first delivery the scripts already assume.
 
 Out of scope — **detect and report, never install**: Blender itself, `ffmpeg`, git-lfs.
 Platform package managers own these; silently installing them is user-hostile.

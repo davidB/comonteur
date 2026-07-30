@@ -1,0 +1,9 @@
+# Outputs and derived state — regenerable, never committed.
+renders/
+thumbnail/*.png
+.comonteur/review/
+.comonteur/timeline.resolved.json
+
+# Blender
+*.blend1
+*.blend2

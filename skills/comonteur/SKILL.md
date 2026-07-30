@@ -66,6 +66,9 @@ Each of these is a silent-corruption bug, not a style preference.
   way, but it is untracked: it never reaches the journal, `revert` cannot undo it, and the
   human's ownership view will not show it. If you must, keep it to reads, or do the write
   through `cmt.journal.set(obj, "path", value)` so it is recorded.
+- **Prefer `mise run comonteur:<task>` over raw shell** in a project that has them
+  (`mise tasks`). The task is what the human can re-run and what pins the tools; an ad-hoc
+  command in a chat log is neither. Add a task rather than improvising a repeatable one.
 - **`batch()` does not nest** (`journal.py:61`). One batch per logical unit of work; not
   one per property write, not one for the whole session.
 

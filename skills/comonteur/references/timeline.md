@@ -44,15 +44,21 @@ The addon never parses YAML and never reads a transcript. Always both steps, in 
 **1. Outside Blender** — validate, and resolve every anchor to an absolute frame:
 
 ```bash
-comonteur reconcile plan \
-  --timeline timeline.yaml \
-  --transcript audio/transcript.json \
-  -o .comonteur/timeline.resolved.json
+mise run comonteur:reconcile
 ```
 
-`--transcript` is required if any shot or audio entry uses `anchor`. Pass `-o` explicitly
-as above — without it the CLI writes `timeline.resolved.json` next to `timeline.yaml`,
-i.e. into the project root, which is not where the rest of the derived state lives.
+That task wraps the CLI with the right paths — `--transcript audio/transcript.json` when that
+file exists, and `-o .comonteur/timeline.resolved.json` always:
+
+```bash
+comonteur reconcile plan --timeline timeline.yaml \
+  --transcript audio/transcript.json -o .comonteur/timeline.resolved.json
+```
+
+`--transcript` is required if any shot or audio entry uses `anchor`. Pass `-o` explicitly if
+you ever call the CLI directly — without it the CLI writes `timeline.resolved.json` next to
+`timeline.yaml`, i.e. into the project root, which is not where the rest of the derived state
+lives.
 
 The resolved JSON is plain: `{fps, resolution, shots: [{id, source, start_frame,
 duration_frames, in_frame, transition: {kind, duration_frames}}], audio: [{id, path,

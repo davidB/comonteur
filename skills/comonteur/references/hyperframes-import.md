@@ -51,11 +51,12 @@ the manifest's `description` field.
 | `capture/extracted/asset-descriptions.md` | `description` per asset in `assets/manifest.json` |
 | `snapshots/` + `descriptions.md` | `.comonteur/review/` |
 
-Use the CLI for the ingest steps rather than hand-writing the outputs:
+Use the tasks for the ingest steps rather than hand-writing the outputs (`comonteur:init`
+installs them — see `workflows.md`):
 
 ```bash
-comonteur ingest narrative narrative.yaml          # validate what you wrote
-comonteur ingest manifest assets/ -o assets/manifest.json
+mise run comonteur:ingest-narrative    # validate what you wrote
+mise run comonteur:ingest-manifest     # assets/ -> assets/manifest.json
 ```
 
 Some projects use `youtube.yaml` instead of root `meta.json`, and `design.md` instead of

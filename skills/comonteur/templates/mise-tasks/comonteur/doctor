@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+#MISE description="Check the toolchain, and this project too when run inside one"
+#MISE env={BLENDER_PIN = "5.2"}
+# One doctor for both roles: the machine's toolchain, plus the project's own files when there
+# is a project. `comonteur doctor` in Rust is M5.5 scope and takes over this name.
+set -uo pipefail  # no -e: every check must run even after one fails
+
+EXT_DIR="${HOME}/.config/blender/${BLENDER_PIN}/extensions/user_default"
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+FIX="mise run comonteur:setup  (or: bash $SCRIPT_DIR/setup)"
+failed=0
+
+ok()   { printf '  \033[32m✓\033[0m %s\n' "$1"; }
+bad()  { printf '  \033[31m✗\033[0m %s\n     → %s\n' "$1" "$2"; failed=1; }
+warn() { printf '  \033[33m!\033[0m %s\n     → %s\n' "$1" "$2"; }
+skip() { printf '  \033[2m·\033[0m %s\n' "$1"; }
+
+echo "comonteur doctor"
+echo "toolchain"
+
+# Blender is pinned to 5.2 LTS (§8). A newer Blender warns rather than fails: it will probably
+# work, it just is not what generated code is reproducible against.
+if command -v blender >/dev/null 2>&1; then
+  version="$(blender --version 2>/dev/null | head -1 | awk '{print $2}')"
+  case "$version" in
+    "${BLENDER_PIN}".*) ok "blender $version" ;;
+    "") bad "blender found but --version unreadable" "check your Blender install" ;;
+    *) warn "blender $version (pinned: ${BLENDER_PIN} LTS)" \
+            "only 5.2 is reproducible — https://www.blender.org/download/lts/" ;;
+  esac
+else
+  bad "blender not on PATH" "install Blender ${BLENDER_PIN} LTS — https://www.blender.org/download/lts/"
+fi
+
+for tool in ffmpeg ffprobe; do
+  command -v "$tool" >/dev/null 2>&1 \
+    && ok "$tool" \
+    || bad "$tool not on PATH" "mise install  (pinned in the project's mise.toml)"
+done
+
+if command -v comonteur >/dev/null 2>&1 && comonteur --help >/dev/null 2>&1; then
+  ok "comonteur CLI ($(command -v comonteur))"
+else
+  bad "comonteur CLI not on PATH" "$FIX"
+fi
+
+if [[ -e "$EXT_DIR/comonteur" ]]; then
+  ok "add-on installed ($EXT_DIR/comonteur)"
+else
+  bad "add-on not in Blender's extensions dir" "$FIX"
+fi
+
+if command -v claude >/dev/null 2>&1; then
+  claude mcp list 2>/dev/null | grep -q blender \
+    && ok "Blender MCP server registered with Claude Code" \
+    || warn "Blender MCP server not registered with Claude Code" "$FIX"
+else
+  warn "claude CLI not found — MCP registration unchecked" "any MCP-capable client works; see README"
+fi
+
+command -v rec >/dev/null 2>&1 && ok "sox/rec (voiceover capture)" \
+  || skip "sox/rec absent — only needed to record a voiceover locally"
+command -v git-lfs >/dev/null 2>&1 && ok "git-lfs" \
+  || skip "git-lfs absent — only needed if you version .blend/media with git"
+
+# Project checks run only inside a project. mise sets MISE_PROJECT_ROOT; a direct run uses $PWD.
+root="${MISE_PROJECT_ROOT:-$PWD}"
+if [[ -f "$root/narrative.yaml" || -f "$root/timeline.yaml" ]]; then
+  echo
+  echo "project ($root)"
+  [[ -f "$root/narrative.yaml" ]] && ok "narrative.yaml" || warn "no narrative.yaml" "shot intents live here"
+  [[ -f "$root/timeline.yaml" ]] && ok "timeline.yaml" || warn "no timeline.yaml" "the assembly lives here"
+  [[ -f "$root/master.blend" ]] && ok "master.blend" \
+    || warn "no master.blend yet" "create and save it in Blender — the agent never saves for you"
+  [[ -d "$root/.comonteur" ]] && ok ".comonteur/ (journal, review frames)" \
+    || skip ".comonteur/ fills in on the agent's first batch"
+fi
+
+echo
+if (( failed )); then
+  echo "Something required is missing (see ✗ above)."
+  exit 1
+fi
+echo "Ready. Enable comonteur in Blender: Edit > Preferences > Add-ons."

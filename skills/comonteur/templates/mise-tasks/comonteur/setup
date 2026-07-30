@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+#MISE description="One-time setup: comonteur CLI, Blender add-on, Blender's MCP server, then doctor"
+#USAGE flag "--ref <ref>" help="git tag/branch/sha to install from" default="main"
+#MISE env={BLENDER_PIN = "5.2"}
+#MISE tools={rust = "latest"}
+# Installs everything that does not live inside Blender's own UI, without assuming a clone of
+# this repository: a user has the installed skill (npx skills add) and nothing else.
+#
+# Two sources, in order (docs/mcp-and-tooling.md §8.2):
+#   1. a GitHub release asset for <ref>, when one exists — no Rust toolchain needed
+#   2. otherwise the source archive for <ref>, built locally
+# Both are pinned to <ref>. In a checkout, the checkout wins and nothing is downloaded.
+# Idempotent — safe to re-run after an update.
+set -euo pipefail
+
+REF="${usage_ref:-main}"
+[[ -n "${1:-}" ]] && REF="$1"   # also usable directly: bash scripts/setup v0.1.0
+REPO="https://github.com/davidB/comonteur"
+EXT_DIR="${HOME}/.config/blender/${BLENDER_PIN:-5.2}/extensions/user_default"
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+
+# In a checkout (skills/comonteur/templates/mise-tasks/comonteur/ -> repo root), use it: no
+# download, and add-on edits stay live through the symlink.
+CHECKOUT=""
+if [[ -f "$SCRIPT_DIR/../../../../../cli/Cargo.toml" ]]; then
+  CHECKOUT="$(cd "$SCRIPT_DIR/../../../../.." && pwd)"
+  echo "==> Using this checkout: $CHECKOUT"
+fi
+
+work=""
+cleanup() { [[ -n "$work" ]] && rm -rf "$work"; }
+trap cleanup EXIT
+
+# Source tree to install from: the checkout, or an extracted archive of <ref>, fetched once.
+source_tree() {
+  if [[ -n "$CHECKOUT" ]]; then echo "$CHECKOUT"; return; fi
+  if [[ -z "$work" ]]; then
+    work="$(mktemp -d)"
+    echo "==> Fetching source for $REF" >&2
+    curl -fsSL "$REPO/archive/$REF.tar.gz" | tar xz -C "$work" --strip-components=1
+  fi
+  echo "$work"
+}
+
+echo "==> Installing the comonteur CLI"
+os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+asset="$REPO/releases/download/$REF/comonteur-$os-$(uname -m)"
+if [[ -z "$CHECKOUT" ]] && curl -fsIL -o /dev/null "$asset" 2>/dev/null; then
+  mkdir -p "$HOME/.local/bin"
+  curl -fsSL -o "$HOME/.local/bin/comonteur" "$asset"
+  chmod +x "$HOME/.local/bin/comonteur"
+  echo "    installed $HOME/.local/bin/comonteur (release $REF)"
+  case ":$PATH:" in
+    *":$HOME/.local/bin:"*) ;;
+    *) echo "    ! add \$HOME/.local/bin to your PATH" ;;
+  esac
+else
+  # No release asset (the normal case pre-1.0): build it. Needs cargo — `mise use -g rust`.
+  command -v cargo >/dev/null 2>&1 || { echo "cargo not found — run: mise use -g rust" >&2; exit 1; }
+  cargo install --path "$(source_tree)/cli" --locked
+fi
+
+echo "==> Installing the comonteur Blender add-on"
+mkdir -p "$EXT_DIR"
+addon_src="$(source_tree)/addon/comonteur"
+if [[ -n "$CHECKOUT" ]]; then
+  ln -sfn "$addon_src" "$EXT_DIR/comonteur"
+  echo "    linked $EXT_DIR/comonteur -> $addon_src"
+else
+  rm -rf "$EXT_DIR/comonteur"
+  cp -r "$addon_src" "$EXT_DIR/comonteur"
+  echo "    installed $EXT_DIR/comonteur ($REF)"
+fi
+
+echo "==> Installing Blender's official MCP server"
+bash "$(source_tree)/mise-tasks/install-mcp"
+
+echo
+bash "$SCRIPT_DIR/doctor" || true   # report; the list below is usually the fix
+
+cat <<EOF
+
+Still yours to do, in Blender itself:
+  1. Install Blender 5.2 LTS if doctor flagged it — https://www.blender.org/download/lts/
+  2. Install Blender's official MCP add-on — https://www.blender.org/lab/mcp-server/
+     (drag the extension in twice: first drop adds the repo, second installs)
+  3. Enable comonteur: Edit > Preferences > Add-ons
+
+Then, in your video project folder:
+  mise run comonteur:init .        (or: bash $SCRIPT_DIR/init .)
+EOF

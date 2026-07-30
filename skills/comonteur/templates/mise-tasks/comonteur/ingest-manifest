@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+#MISE description="Build assets/manifest.json from assets/ (sha256 + ffprobe metadata)"
+#MISE dir="{{config_root}}"
+#MISE sources=["assets/**/*", "!assets/manifest.json"]
+#MISE outputs=["assets/manifest.json"]
+#MISE tools={ffmpeg = "latest"}
+# sources/outputs: sha256 + ffprobe over every asset is slow, so mise skips this when assets/
+# is unchanged. The manifest itself is excluded from sources — it lives in the directory it
+# describes, and without the negation it would invalidate itself on every run. Force a rebuild
+# with `mise run --force comonteur:ingest-manifest`.
+set -euo pipefail
+exec comonteur ingest manifest assets/ -o assets/manifest.json

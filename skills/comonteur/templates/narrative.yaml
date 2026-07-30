@@ -1,0 +1,10 @@
+# What each shot is for — intent, not implementation. The agent reads this; it never
+# treats it as desired-state for scene contents (only timeline.yaml is authoritative, and
+# only for assembly). Validate with: mise run comonteur:ingest-narrative
+#
+# Per shot: id (stable, matches compositions/frames/<id>.blend), intent, and optionally
+# target_duration (seconds), vo (line of narration), broll (asset reference).
+shots:
+  - id: shot-01
+    intent: Replace me — what this shot has to communicate, in one or two sentences.
+    target_duration: 3.0
