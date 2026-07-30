@@ -4,3 +4,7 @@ __pycache__/
 *.pyc
 target/
 build/
+
+# gitnexus-generated (regenerate with: node .gitnexus/run.cjs analyze)
+.claude/skills/gitnexus/
+.gitnexus/
