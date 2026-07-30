@@ -1,7 +1,7 @@
 monorepo_root = true
 
 [monorepo]
-config_roots = ["cli", "addon", "tests"]
+config_roots = ["addon", "tests"]
 
 [tasks.lint]
 description = "Run all Lint"
@@ -16,5 +16,5 @@ description = "run all test"
 depends = ["//...:test"]
 
 [tasks.ci]
-description = "Lint + unit tests, addon/+tests/ (Python) and cli/ (Rust)"
+description = "Lint + unit tests across addon/ and tests/ (all Python)"
 depends = ["lint", "test"]

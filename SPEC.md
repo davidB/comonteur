@@ -5,7 +5,7 @@
 > repositories of that name (checked 2026-07-29).
 >
 > Derive everything from a **single constant** — package name, custom-property prefix
-> (`cmt_`), addon id, journal filename, CLI name. A rename must remain a one-line change,
+> (`cmt_`), addon id, journal filename, task namespace. A rename must remain a one-line change,
 > not a find-replace across the tree.
 
 Status: **draft for implementation**. Target reader: Claude Code, working locally.

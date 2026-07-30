@@ -22,42 +22,55 @@ full spec. It routes to:
 
 Code comments referencing `SPEC.md §N` resolve to whichever doc above now holds that section.
 
-## Repo structure — a mise monorepo with a hard language split
+## Repo structure — a mise monorepo, Python on both sides of the Blender boundary
 
 - `addon/` — the in-Blender library + Blender add-on (`addon/comonteur/`). Pure Python,
   `bpy`-locked. Own `pyproject.toml`/`mise.toml`/venv (ruff only, no pytest — nothing here
   is testable outside Blender).
-- `cli/` — everything outside the Blender process. Rust (`comonteur` crate). Ingest-only as
-  of M2 (`narrative.yaml`, `assets/manifest.json`, captions); `setup`/`new`/`doctor` are M5.5.
 - `skills/` — Claude Code skills, one directory per skill (`skills/comonteur/SKILL.md` +
   `references/` + `scripts/` + `templates/`), installable with
   `npx skills add <repo>/skills/<name>`. No build, no lint, not a mise config root. This is
   both what teaches an agent to call the library instead of writing raw `bpy` **and** the
   distribution unit users install — it carries the bootstrap scripts and the project
   scaffold, since no user clones this repo (§8.2). Keep it in sync when `addon/comonteur/`
-  changes.
+  changes. Also holds **everything that runs outside the Blender process**: the ingest and
+  reconcile logic lives in `templates/mise-tasks/comonteur/*.py`, one `uv run --script`
+  Python file per task (there is no `comonteur` binary and nothing to install — see below).
 - `tests/` — pure-logic Python unit tests (pytest) for modules with no `bpy` dependency
-  (journal, paths, easing map, spec parsing). Own `pyproject.toml`/`mise.toml`/venv.
+  (journal, paths, easing map, spec parsing) **and** for the task scripts, which it reaches
+  through `tests/unit/_tasks.py`. Own `pyproject.toml`/`mise.toml`/venv; also owns the
+  `ruff check` + `mypy` pass over the task scripts, since `skills/` is not a config root.
 - Root `mise.toml` is orchestration only — `monorepo_root = true`, no Python project of its
-  own. `lint`/`autofix`/`test`/`ci` fan out via `//...:<task>` across `cli/`, `addon/`,
-  `tests/` automatically.
+  own. `lint`/`autofix`/`test`/`ci` fan out via `//...:<task>` across `addon/` and `tests/`
+  automatically.
 
-**Language policy**: Python only where `bpy` forces it (`addon/`); Rust everywhere else
-(`cli/`). Don't add Python tooling outside `addon/`/`tests/`, and don't add Rust inside the
-Blender process.
+**Language policy**: Python everywhere. It used to be "Rust outside Blender, Python inside",
+but `cli/` was 1151 lines of YAML/JSON-in, JSON-out with no performance requirement, and
+shipping it meant maintaining a per-OS release matrix for a validator. It is now four mise
+task scripts. Do not reintroduce a compiled tool for spec parsing.
+
+**The wall the compiler used to enforce, now a rule**: `addon/comonteur/` never imports a
+task script and never parses YAML. Blender's bundled interpreter cannot see a uv environment
+and ships no PyYAML, so such an import can only fail confusingly. The task scripts emit plain
+JSON; the add-on reads that with the stdlib `json` module. Nothing crosses that line.
 
 ## Commands
 
 Run from repo root (mise monorepo — these fan out to every config root):
 
 ```bash
-mise run lint       # ruff (addon/, tests/) + cargo fmt/clippy (cli/)
-mise run autofix    # ruff --fix + format, cargo fmt + clippy --fix
-mise run test       # pytest (tests/) + cargo test (cli/) — addon/ has no tests of its own
+mise run lint       # ruff (addon/, tests/) + ruff check & mypy over the task scripts
+mise run autofix    # ruff --fix + format
+mise run test       # pytest (tests/) — addon/ has no tests of its own
 mise run ci         # lint + test
 ```
 
-Or scope to one workspace: `mise run addon:lint`, `mise run tests:test`, `mise run cli:test`, etc.
+Or scope to one workspace: `mise run addon:lint`, `mise run tests:test`, etc.
+
+`ruff format` deliberately does **not** run over the task scripts: the formatter rewrites
+`#MISE`/`#USAGE` into `# MISE`/`# USAGE` and mise only recognizes the unspaced form, so
+formatting them would silently strip every task's description, `dir`, `sources`/`outputs` and
+arguments. `ruff check` and `mypy` are safe there (`E265` is not in the selected rule set).
 
 Extension packaging (needs Blender 5.2 on `PATH`, so deliberately outside `lint`/`ci`):
 
@@ -69,10 +82,14 @@ mise run addon:build      # publishable zip into addon/build/, asserts LICENSE s
 User-facing bootstrap (see `docs/mcp-and-tooling.md` §8.2):
 
 ```bash
-mise run comonteur:setup            # one-time install: CLI, addon, MCP server, then doctor
+mise run comonteur:setup            # one-time install: addon, MCP server, then doctor
 mise run comonteur:init [dir] [--git] [--lfs]   # initialize a video project — add-only
-mise run comonteur:doctor           # blender 5.2 / ffmpeg / CLI / addon / MCP checks
+mise run comonteur:doctor           # blender 5.2 / ffmpeg / uv / task scripts / addon / MCP
 ```
+
+`setup` no longer installs anything for the outside-Blender side — the four task scripts ship
+with the skill and run in place via `uv run --script`, so there is no release asset, no
+toolchain to bootstrap, and updating the skill updates them.
 
 **Every task has exactly one copy, in `skills/comonteur/templates/mise-tasks/comonteur/`** —
 which is also what `init` installs into a project, so a project gets all nine tasks including
@@ -89,9 +106,12 @@ own `build`/`test`); project tasks ship as files under `mise-tasks/comonteur/` s
 `mise.toml` is never rewritten. `skills/` is Markdown + bash + YAML — no lint/test root, not in
 `[monorepo] config_roots`.
 
-Single test:
-- Rust: `cd cli && cargo test <test_name>`
-- Python: `cd tests && uv run pytest unit/test_paths.py::test_name`
+The task scripts are `*.py` with underscored names (`ingest_narrative.py`) because mise strips
+the `.py` from a file task's name and Python cannot import a hyphenated module — the tests
+import them directly. Keep `#!/usr/bin/env -S uv run --script` plus a PEP 723 header on each;
+two need `pyyaml`, two are stdlib-only.
+
+Single test: `cd tests && uv run pytest unit/test_paths.py::test_name`
 
 Dev-loop install (symlinks `addon/comonteur` into Blender's extensions dir so edits are
 live without reinstalling):
@@ -168,7 +188,7 @@ Distinct from this repo's own layout. A generated project has `lib/` (human-auth
 components, git-lfs), `compositions/frames/*.blend` (one agent-generated scene per shot,
 **linked** — not appended — into `master.blend` so it stays read-only there),
 `timeline.yaml` (assembly source of truth), and `.comonteur/journal.jsonl` +
-`snapshot.json`. Don't confuse this with `addon/`, `cli/`, `skills/` which belong to the
+`snapshot.json`. Don't confuse this with `addon/`, `skills/`, `tests/` which belong to the
 tool itself.
 
 ## Python conventions

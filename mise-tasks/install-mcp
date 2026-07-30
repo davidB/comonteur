@@ -14,7 +14,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # The registered command points into this directory forever, so it must outlive the script's
 # working copy: `.vendor/` only when run from a checkout, a user data dir otherwise (the
 # skill's `scripts/setup` runs this from a throwaway extracted archive — §8.2).
-if [[ -f "$REPO_ROOT/cli/Cargo.toml" ]]; then
+if [[ -f "$REPO_ROOT/addon/comonteur/blender_manifest.toml" ]]; then
   BASE_DIR="$REPO_ROOT/.vendor"
 else
   BASE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/comonteur"

@@ -5,10 +5,24 @@ requires-python = ">=3.11"
 dependencies = []
 
 [dependency-groups]
-dev = ["pytest>=8", "ruff>=0.8"]
+# pyyaml duplicates the PEP 723 header in the task scripts that need it: `uv run --script`
+# reads those, pytest needs its own copy of the dep to import the same modules.
+dev = ["pytest>=8", "ruff>=0.8", "mypy>=1.13", "pyyaml>=6"]
 
 [tool.pytest.ini_options]
 testpaths = ["unit"]
+
+[tool.mypy]
+# Scoped to the comonteur:* task scripts (see TASKS_DIR in mise.toml): that logic used to be
+# Rust, so a typechecker replaces what the compiler was catching. The unit tests themselves
+# are not checked — they reach the addon through sys.path, which mypy cannot follow at rest,
+# and running them proves more than checking them would.
+python_version = "3.11"
+
+[[tool.mypy.overrides]]
+# pyyaml ships no inline types; the scripts that use it are otherwise fully annotated.
+module = ["yaml"]
+ignore_missing_imports = true
 
 [tool.ruff]
 target-version = "py311"

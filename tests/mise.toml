@@ -1,13 +1,28 @@
 [tools]
 uv = "latest"
 
+# TASKS_DIR: the comonteur:* task scripts (skills/comonteur/templates/mise-tasks/comonteur/)
+# are plain Python but live outside this config root — the single copy comonteur:init installs
+# into a user project. Lint and typecheck reach across to them; tests/unit/_tasks.py imports
+# them. There is deliberately no lint root under skills/ (SPEC.md §8.2).
+[env]
+TASKS_DIR = "{{config_root}}/../skills/comonteur/templates/mise-tasks/comonteur"
+
+# `ruff format` is NOT run over TASKS_DIR: the formatter rewrites `#MISE`/`#USAGE` into
+# `# MISE`/`# USAGE`, and mise only recognizes the unspaced form — formatting the scripts
+# would silently strip every task's description, dir, sources/outputs and args. `ruff check`
+# and mypy are safe (E265, which wants that space, is not in the selected rule set).
 [tasks.lint]
-description = "Lint tests/ with ruff (non-mutating)"
-run = ["uv run ruff check .", "uv run ruff format --check ."]
+description = "Lint tests/ with ruff, plus the comonteur:* task scripts (ruff check + mypy)"
+run = [
+  "uv run ruff check . $TASKS_DIR",
+  "uv run ruff format --check .",
+  "uv run mypy $TASKS_DIR",
+]
 
 [tasks.autofix]
-description = "Apply ruff's autofixes and formatting to tests/"
-run = ["uv run ruff check --fix .", "uv run ruff format ."]
+description = "Apply ruff's autofixes to tests/ and the task scripts, format tests/ only"
+run = ["uv run ruff check --fix . $TASKS_DIR", "uv run ruff format ."]
 
 [tasks.test]
 description = "Run pure-logic unit tests (pytest)"

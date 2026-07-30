@@ -1,5 +1,5 @@
-"""VSE assembly — SPEC.md §5.2/§10 M4. Turns a resolved timeline plan (the JSON
-`comonteur reconcile plan` writes from timeline.yaml, docs/M4-FINDINGS.md) into VSE
+"""VSE assembly — SPEC.md §5.2/§10 M4. Turns a resolved timeline plan (the JSON the
+`comonteur:reconcile` task writes from timeline.yaml, docs/M4-FINDINGS.md) into VSE
 strips. `diff()` is pure logic (no bpy import, unit-testable like paths.py) so the
 create/update/delete decision can be tested without Blender; `apply()` is the thin bpy
 layer that actually mutates the sequence editor, entirely through journal.set() like any

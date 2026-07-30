@@ -54,10 +54,10 @@ project layout valid; journal readable. Cheap to write, pays for itself immediat
 ### M2 — Production contract
 `narrative.yaml` + manifest ingest, ffprobe, TTS timing-mark captions, Whisper fallback.
 
-Shipped as `cli/` — a Rust crate, ingest-only (`comonteur ingest {narrative,manifest,
-captions}`), not the full M5.5 CLI shape. First outside-Blender code in the repo; see
-§7.5/§8 for the language-policy decision this pulled forward. Whisper transcription
-itself stays an external pipeline (§5.7) — `captions` ingest normalizes its
+Originally shipped as `cli/`, a Rust crate (`comonteur ingest {narrative,manifest,captions}`).
+Now `comonteur:ingest_{narrative,manifest,captions}` — one `uv run --script` Python file each,
+shipped inside the skill; see §7.5/§8 for why the Rust split was reversed. Whisper
+transcription itself stays an external pipeline (§5.7) — captions ingest normalizes its
 `transcript.json` output rather than invoking `whisper`.
 
 ### M3 — Scene authoring
@@ -84,7 +84,7 @@ Measure: adapter fidelity (how much needed manual fixup, especially timing), eff
 the HyperFrames original, and — the one that actually matters — **how it feels to
 hand-tune a shot** once it is in Blender.
 
-### M5.5 — `comonteur setup` (before M6, not after)
+### M5.5 — one-command setup (before M6, not after)
 
 Launching publicly means external users hit the three-step manual install (§7.4). Reduce
 it to one command.
@@ -94,19 +94,18 @@ In scope:
   **Done in bash already** (`skills/comonteur/templates/mise-tasks/comonteur/setup`): the MCP
   add-on via `extension repo-add` + `extension install --sync --enable`, comonteur via
   `extension build` + `extension install-file -r user_default -e`, both enabled with
-  `bpy.ops.preferences.addon_enable` (there is no `--command` for enabling). The Rust
-  `comonteur setup` inherits the same sequence; keep the copy-into-extensions-dir fallback
-  for a machine with no `blender` on PATH.
+  `bpy.ops.preferences.addon_enable` (there is no `--command` for enabling). Keep the
+  copy-into-extensions-dir fallback for a machine with no `blender` on PATH.
 - Register the MCP server: `claude mcp add`, or write a project-local `.mcp.json`.
 - Install the Claude Code skill into `.claude/skills/`.
-- Scaffold a new project (`comonteur init` — additive, never overwrites; §8.2).
+- Scaffold a new project (`mise run comonteur:init` — additive, never overwrites; §8.2).
 
-**Partly shipped early, in the skill**: `setup`, `init` and `doctor` exist now as bash scripts
-in `skills/comonteur/scripts/` (scaffold in `skills/comonteur/templates/`, symlinked as
+**Shipped, in the skill**: `setup`, `init` and `doctor` are bash scripts in
+`skills/comonteur/scripts/` (scaffold in `skills/comonteur/templates/`, symlinked as
 `mise run comonteur:*` for contributors), because the workflows documentation needed something
-real to point at and users must be able to start without cloning this repo (§8.2). M5.5
-replaces them with Rust subcommands **under the same names**, and takes over the
-release-asset-first delivery the scripts already assume.
+real to point at and users must be able to start without cloning this repo (§8.2). These are
+the final form — there is no Rust CLI coming to replace them (§7.5), so M5.5 is now about
+packaging polish and the release story for the add-on, not a rewrite under the same names.
 
 Out of scope — **detect and report, never install**: Blender itself, `ffmpeg`, git-lfs.
 Platform package managers own these; silently installing them is user-hostile.

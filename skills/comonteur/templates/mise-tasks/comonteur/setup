@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
-#MISE description="One-time setup: comonteur CLI, Blender add-on, Blender's MCP server, then doctor"
+#MISE description="One-time setup: Blender add-on, Blender's MCP server, then doctor"
 #USAGE flag "--ref <ref>" help="git tag/branch/sha to install from" default="main"
 #MISE env={BLENDER_PIN = "5.2"}
-#MISE tools={rust = "latest"}
 # Installs everything that does not live inside Blender's own UI, without assuming a clone of
 # this repository: a user has the installed skill (npx skills add) and nothing else.
 #
-# Two sources, in order (docs/mcp-and-tooling.md §8.2):
-#   1. a GitHub release asset for <ref>, when one exists — no Rust toolchain needed
-#   2. otherwise the source archive for <ref>, built locally
-# Both are pinned to <ref>. In a checkout, the checkout wins and nothing is downloaded.
-# Idempotent — safe to re-run after an update.
+# There is nothing to compile or install outside Blender any more: the comonteur:* ingest and
+# reconcile tasks are `uv run --script` Python that ships with the skill and runs in place
+# (docs/mcp-and-tooling.md §8.2), so this only has to deal with the Blender side. The source
+# archive for <ref> is fetched only when the add-on needs it. In a checkout, the checkout wins
+# and nothing is downloaded. Idempotent — safe to re-run after an update.
 set -euo pipefail
 
 REF="${usage_ref:-main}"
@@ -22,7 +21,7 @@ SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 # In a checkout (skills/comonteur/templates/mise-tasks/comonteur/ -> repo root), use it: no
 # download, and add-on edits stay live through the symlink.
 CHECKOUT=""
-if [[ -f "$SCRIPT_DIR/../../../../../cli/Cargo.toml" ]]; then
+if [[ -f "$SCRIPT_DIR/../../../../../addon/comonteur/blender_manifest.toml" ]]; then
   CHECKOUT="$(cd "$SCRIPT_DIR/../../../../.." && pwd)"
   echo "==> Using this checkout: $CHECKOUT"
 fi
@@ -41,24 +40,6 @@ source_tree() {
   fi
   echo "$work"
 }
-
-echo "==> Installing the comonteur CLI"
-os="$(uname -s | tr '[:upper:]' '[:lower:]')"
-asset="$REPO/releases/download/$REF/comonteur-$os-$(uname -m)"
-if [[ -z "$CHECKOUT" ]] && curl -fsIL -o /dev/null "$asset" 2>/dev/null; then
-  mkdir -p "$HOME/.local/bin"
-  curl -fsSL -o "$HOME/.local/bin/comonteur" "$asset"
-  chmod +x "$HOME/.local/bin/comonteur"
-  echo "    installed $HOME/.local/bin/comonteur (release $REF)"
-  case ":$PATH:" in
-    *":$HOME/.local/bin:"*) ;;
-    *) echo "    ! add \$HOME/.local/bin to your PATH" ;;
-  esac
-else
-  # No release asset (the normal case pre-1.0): build it. Needs cargo — `mise use -g rust`.
-  command -v cargo >/dev/null 2>&1 || { echo "cargo not found — run: mise use -g rust" >&2; exit 1; }
-  cargo install --path "$(source_tree)/cli" --locked
-fi
 
 # Enabling is `bpy.ops` only — there is no `--command extension enable`. Background Blender,
 # so run setup with the GUI closed or a later GUI exit overwrites these preferences.

@@ -6,7 +6,6 @@
 # Add-only and idempotent: the folder may already hold footage, a .blend, or another mise
 # project. Existing files are kept, never overwritten and never deleted — the same rule the
 # provenance model applies inside Blender (docs/architecture.md §4.1).
-# `comonteur init` in Rust is M5.5 scope and will take over this task name.
 set -euo pipefail
 
 # These task files ARE the template: this script lives in the very directory it installs
@@ -61,8 +60,11 @@ for d in assets audio captions compositions/frames lib renders thumbnail .comont
   mkdir -p "$target/$d"
 done
 
-# Tasks ship as files so a mise.toml the user already owns is never rewritten.
+# Tasks ship as files so a mise.toml the user already owns is never rewritten. Files only:
+# a __pycache__/ next to the Python tasks (pytest imports them) is not a task and `cp` would
+# fail on it, silently truncating the rest of this loop.
 for task in "$TEMPLATE"/mise-tasks/comonteur/*; do
+  [[ -f "$task" ]] || continue
   copy "mise-tasks/comonteur/$(basename "$task")"
   chmod +x "$target/mise-tasks/comonteur/$(basename "$task")"
 done

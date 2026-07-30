@@ -2,7 +2,7 @@
 #MISE description="Check the toolchain, and this project too when run inside one"
 #MISE env={BLENDER_PIN = "5.2"}
 # One doctor for both roles: the machine's toolchain, plus the project's own files when there
-# is a project. `comonteur doctor` in Rust is M5.5 scope and takes over this name.
+# is a project.
 set -uo pipefail  # no -e: every check must run even after one fails
 
 # :-5.2 because #MISE env only applies when run as a mise task — this is also run by path.
@@ -39,11 +39,19 @@ for tool in ffmpeg ffprobe; do
     || bad "$tool not on PATH" "mise install  (pinned in the project's mise.toml)"
 done
 
-if command -v comonteur >/dev/null 2>&1 && comonteur --help >/dev/null 2>&1; then
-  ok "comonteur CLI ($(command -v comonteur))"
-else
-  bad "comonteur CLI not on PATH" "$FIX"
-fi
+command -v uv >/dev/null 2>&1 \
+  && ok "uv ($(command -v uv))" \
+  || bad "uv not on PATH" "mise use -g uv  (the ingest/reconcile tasks are uv run --script)"
+
+# The ingest/reconcile tasks are Python scripts shipped next to this one — nothing is
+# installed, so "is it there and executable" is the whole check.
+missing=""
+for task in ingest_narrative ingest_manifest ingest_captions reconcile; do
+  [[ -x "$SCRIPT_DIR/$task.py" ]] || missing="$missing $task"
+done
+[[ -z "$missing" ]] \
+  && ok "comonteur task scripts" \
+  || bad "task scripts missing or not executable:$missing" "$FIX"
 
 # Ask Blender itself rather than stat the extensions dir: a present directory says nothing
 # about the add-on being registered or enabled. One launch reports both add-ons.

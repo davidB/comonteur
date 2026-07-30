@@ -32,12 +32,12 @@ audio:
   `cross` is the only type as of M4.
 - Paths are relative to the project root.
 
-Known gap: `in` is resolved by the CLI into `in_frame` but `reconcile.apply()` does not
+Known gap: `in` is resolved into `in_frame` but `reconcile.apply()` does not
 yet write it to the strip (`reconcile.py:141` reconciles `frame_start` and
 `frame_final_duration` only). If a shot needs a media in-point today, say so rather than
 assuming it took effect.
 
-## The two-step: CLI resolves, addon applies
+## The two-step: the task resolves, the addon applies
 
 The addon never parses YAML and never reads a transcript. Always both steps, in order.
 
@@ -47,18 +47,17 @@ The addon never parses YAML and never reads a transcript. Always both steps, in 
 mise run comonteur:reconcile
 ```
 
-That task wraps the CLI with the right paths — `--transcript audio/transcript.json` when that
-file exists, and `-o .comonteur/timeline.resolved.json` always:
+The task is a Python script (`mise-tasks/comonteur/reconcile.py`) and defaults to the right
+paths: `timeline.yaml`, `audio/transcript.json` when that file exists, and
+`.comonteur/timeline.resolved.json` for output. Running it directly by path works the same way,
+and the flags are there if you need to override:
 
 ```bash
-comonteur reconcile plan --timeline timeline.yaml \
+./mise-tasks/comonteur/reconcile.py --timeline timeline.yaml \
   --transcript audio/transcript.json -o .comonteur/timeline.resolved.json
 ```
 
-`--transcript` is required if any shot or audio entry uses `anchor`. Pass `-o` explicitly if
-you ever call the CLI directly — without it the CLI writes `timeline.resolved.json` next to
-`timeline.yaml`, i.e. into the project root, which is not where the rest of the derived state
-lives.
+A transcript is required if any shot or audio entry uses `anchor`.
 
 The resolved JSON is plain: `{fps, resolution, shots: [{id, source, start_frame,
 duration_frames, in_frame, transition: {kind, duration_frames}}], audio: [{id, path,
@@ -135,10 +134,11 @@ Order of operations:
 1. Capture anchors **before** any destructive audio edit.
 2. Process audio.
 3. Re-transcribe to word-level `audio/transcript.json`
-   (`comonteur ingest captions <input> --kind whisper -o audio/transcript.json`).
-4. `comonteur reconcile plan` → `cmt.reconcile.apply()`.
+   (`mise run comonteur:ingest_captions <input> --kind whisper` writes `captions/vo.json`;
+   the reconcile step reads `audio/transcript.json`, so put it there).
+4. `mise run comonteur:reconcile` → `cmt.reconcile.apply()`.
 
-If an anchor word is missing, or its occurrence count changed, the CLI **fails loudly**.
+If an anchor word is missing, or its occurrence count changed, the task **fails loudly**.
 That means the script has drifted from the recording. Stop and tell the human — do not
 switch the shot to an absolute `start` to make the error go away.
 

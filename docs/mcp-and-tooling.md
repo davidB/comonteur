@@ -57,7 +57,7 @@ Non-trivial things the official server provides, which a rewrite must replace:
 Gaps that are **not** MCP problems and must not be used to justify a rewrite:
 
 - Lifecycle (launch Blender, open project, health check, reconnect) → belongs in the
-  `comonteur` CLI.
+  `comonteur:*` mise tasks (`edit`, `render`, `doctor`).
 - Three-step install friction → a packaging problem; solve with an installer.
 - Guardrails → need full context; belong in the library.
 
@@ -78,14 +78,39 @@ Blender Lab is at v1.0.0 and explicitly experimental. This isolation makes swapp
 transport roughly a day's work rather than a refactor, and is worth having regardless of
 the eventual decision.
 
-**Language policy, in effect since M2 (no longer a future contingency):** Rust for
-everything outside the Blender process; Python for everything inside it (`bpy` is
-Python-only, so the addon never moves off Python). M2's production-contract ingest
-(`narrative.yaml`, `assets/manifest.json`, captions — §5.3) has no Python-only
-dependency and no need to run inside Blender, so it shipped as `cli/`, a Rust crate —
-the start of the eventual M5.5 CLI rather than throwaway code it later replaces. Scope
-as of M2 is **ingest-only**: `comonteur ingest {narrative,manifest,captions}`. `setup`,
-`new`, and a CLI-side `doctor` are still M5.5 territory.
+**Language policy — Python on both sides (revised; superseded the Rust split).** M2 shipped
+the production-contract ingest (`narrative.yaml`, `assets/manifest.json`, captions — §5.3)
+plus M4's `timeline.yaml` resolution as `cli/`, a Rust crate, on the reasoning that
+outside-Blender code should need no Python at install time. That reasoning did not survive
+contact with distribution: the crate was 1151 lines of YAML/JSON-in, JSON-out with no
+performance requirement, and shipping it meant a per-OS/arch release-asset matrix plus a
+`cargo install` fallback that demanded a Rust toolchain the user had no other reason to have.
+
+It is now **four `uv run --script` Python files**, one per subcommand, in
+`skills/comonteur/templates/mise-tasks/comonteur/`:
+`ingest_narrative.py`, `ingest_manifest.py`, `ingest_captions.py`, `reconcile.py`. There is no
+`comonteur` binary, no release asset, and no install step — the scripts ship inside the skill
+and run in place, so `npx skills add` updates the logic and the docs together. `uv` was already
+required by `addon/` and `tests/`; Rust was the only toolchain in the repo with no second use.
+
+What made this a collapse rather than a port: the CLI's argument surface had no users. Every
+wrapper passed the same hardcoded paths (`narrative.yaml`, `--timeline timeline.yaml -o
+.comonteur/timeline.resolved.json`), so `main.rs` was 140 lines of `clap` dispatch translating
+project convention into flags mise was already supplying via `#USAGE`, `dir`, and
+`sources`/`outputs`. Dissolving the CLI into tasks deleted that layer outright. The four
+modules were independent — the single cross-module edge was a data shape (`captions::Word`),
+which is `json.load(f)["words"]` on the Python side.
+
+**The wall Rust was enforcing for free, now a written rule:** `addon/comonteur/` never imports
+a task script and never parses YAML. Blender's bundled interpreter cannot see a uv environment
+and ships no PyYAML, so the import can only fail confusingly. The scripts emit plain JSON; the
+add-on reads it with the stdlib `json` module.
+
+What was given up, honestly: the compiler over ~450 lines of anchor→frame arithmetic in
+`reconcile.py`. Compensated with `mypy` over the scripts and the Rust `#[cfg(test)]` suite
+ported to `tests/unit/` — the timeline cases carry the most coverage there for this reason.
+`setup`, `new`, and a CLI-side `doctor` are no longer M5.5 CLI subcommands; `setup` and
+`doctor` already exist as tasks.
 
 ---
 
@@ -94,20 +119,22 @@ as of M2 is **ingest-only**: `comonteur ingest {narrative,manifest,captions}`. `
 - **Inside Blender (`addon/`) is pure Python** — `bpy` leaves no other option. `uv` for
   dependency and venv management, `ruff` for lint + format. Simpler to develop; the MCP
   ecosystem already requires Python and `uv`/`uvx` on the user's machine.
-- **Outside Blender (`cli/`) is Rust**, per §7.5 — no `uv`/`uvx`/Python required to
-  install or run it, which matters for the eventual M5.5 distribution story (single
-  binary).
-- The repo is a **mise monorepo**, and `pyproject.toml`/`uv.lock` moved with it: root
-  `mise.toml` is orchestration only (`monorepo_root = true`, `[monorepo] config_roots =
-  ["cli", "addon", "tests"]`, no tasks of its own beyond aggregation) and has **no
-  Python project file anymore**. `addon/` and `tests/` each own a `pyproject.toml` +
-  `mise.toml` + venv, exactly like `cli/` owns its `Cargo.toml` + `mise.toml`:
-  `addon/` only needs `ruff` (it has no pytest suite of its own — see below); `tests/`
-  needs `pytest` + `ruff`. Root `lint`/`autofix`/`test` are pure aggregators using the
-  recursive glob `//...:<task>`, which picks up every config root automatically — adding
-  a fourth workspace later needs no root `mise.toml` edit. Run `mise run cli:test` /
-  `addon:lint` / `tests:test` from anywhere in the repo; root `ci` depends on `lint` +
-  `test`, which fan out through the glob.
+- **Outside Blender is Python too**, per §7.5 — `uv run --script` task files with PEP 723
+  inline dependency headers, so each is self-contained and `uv` provisions its own
+  interpreter and deps on first run. Two need `pyyaml`; two are stdlib-only.
+- The repo is a **mise monorepo**: root `mise.toml` is orchestration only
+  (`monorepo_root = true`, `[monorepo] config_roots = ["addon", "tests"]`, no tasks of its
+  own beyond aggregation) and has **no Python project file**. `addon/` and `tests/` each own
+  a `pyproject.toml` + `mise.toml` + venv: `addon/` only needs `ruff` (it has no pytest suite
+  of its own — see below); `tests/` needs `pytest` + `ruff` + `mypy`, and owns the lint and
+  typecheck pass over the task scripts via `$TASKS_DIR`, since `skills/` is deliberately not
+  a config root. Root `lint`/`autofix`/`test` are pure aggregators using the recursive glob
+  `//...:<task>`, which picks up every config root automatically. Run `mise run addon:lint` /
+  `tests:test` from anywhere in the repo; root `ci` depends on `lint` + `test`.
+- **`ruff format` must never run over the task scripts.** The formatter rewrites `#MISE` and
+  `#USAGE` into `# MISE`/`# USAGE`, and mise only recognizes the unspaced form — formatting
+  them silently strips every task's description, `dir`, `sources`/`outputs` and arguments.
+  `ruff check` and `mypy` are safe (`E265`, which wants that space, is not selected).
 - Blender **5.2 LTS, pinned** (released 2026-07-14, supported to July 2028). Every line
   the agent emits is only reproducible against a pinned `bpy`. Do not track 5.3+.
 - **mise is also the user-facing entry point**, not just the repo's dev tooling: setup,
@@ -115,9 +142,11 @@ as of M2 is **ingest-only**: `comonteur ingest {narrative,manifest,captions}`. `
   and the human run identically — see §8.2.
 - Type hints throughout; `bpy` stubs (`fake-bpy-module`) for editor support.
 - Tests: pure-logic Python modules (journal, easing map, spec parsing) unit-tested
-  outside Blender via `tests/unit/`; narrative/manifest/captions ingest is Rust, tested
-  via `cargo test` (`cli/src/*.rs`, inline `#[cfg(test)]`). Blender-dependent modules
-  tested via `blender -b -P tests/run.py`.
+  outside Blender via `tests/unit/`. The ingest and reconcile task scripts are tested there
+  too — `tests/unit/_tasks.py` imports each one under a prefixed module name (`reconcile.py`
+  exists on both sides of the Blender boundary, so a plain `import reconcile` would return
+  whichever landed in `sys.modules` first). Blender-dependent modules tested via
+  `blender -b -P tests/run.py`.
 
 ### 8.1 Third-party Blender add-ons — explicit allowlist
 
@@ -149,21 +178,22 @@ One source of truth, no drift.
 
 Each script therefore has to work in two contexts: as a mise task (`usage_*` from `#USAGE`
 headers, `MISE_PROJECT_ROOT` set) and invoked directly by path before any tasks exist (plain
-`$@`, `$PWD`). They also detect a checkout (`../../../../../cli/Cargo.toml` from the task dir)
-and prefer it — no download, and the add-on is symlinked so edits stay live.
+`$@`/`sys.argv`, `$PWD`). The Python tasks read `usage_*` from the environment and fall back to
+`sys.argv` when it is absent, which is the direct-by-path case. They also detect a checkout
+(`../../../../../addon/comonteur/blender_manifest.toml` from the task dir) and prefer it — no
+download, and the add-on is symlinked so edits stay live.
 
-Delivery of the two binaries-ish artifacts is **release asset when present, pinned source
-otherwise**: `scripts/setup --ref <tag>` tries the GitHub release binary (no Rust needed), and
-falls back to `curl` of that tag's source tarball + `cargo install --path <tmp>/cli`, which
-also yields `addon/comonteur`, packaged with `extension build` and installed with
-`extension install-file -r user_default -e` (a checkout symlinks instead, to keep edits live).
-The fallback is what works
-today, pre-1.0; the release path is what should work later, without changing the command
-anyone types. Nothing is fetched unpinned, and the scaffold itself never touches the network —
-templates ship inside the skill.
+**Only one artifact still needs delivering: the add-on.** The ingest and reconcile tasks are
+Python that ships inside the skill and runs in place, so there is nothing to download, compile,
+or put on `PATH` for them — `npx skills add` is the whole update mechanism, and the scripts can
+never skew from the docs and templates they ship beside. `setup --ref <tag>` `curl`s that tag's
+source tarball only to obtain `addon/comonteur`, packaged with `extension build` and installed
+with `extension install-file -r user_default -e` (a checkout symlinks instead, to keep edits
+live). Nothing is fetched unpinned, and the scaffold never touches the network — templates ship
+inside the skill.
 
 **Decision: mise is the only tool a user installs by hand**, plus Blender itself (a ~300MB
-GUI installer, out of reach of a package manager here). Everything else — the CLI, both
+GUI installer, out of reach of a package manager here). Everything else — `uv`, both
 Blender add-ons via `blender --command extension`, the MCP server, `ffmpeg` — is installed by
 `scripts/setup` and verified by `scripts/doctor` / `mise run comonteur:doctor`.
 
@@ -173,7 +203,8 @@ over the single user-wide install the MCP add-on already requires. `comonteur:do
 the version on PATH against the 5.2 pin instead, warning rather than failing on 5.3+.
 
 **Every repeatable command is a task, and the agent calls the task, not the shell underneath.**
-The tasks are ~10-line bash wrappers over `comonteur …` / `blender …`. The point is not
+The orchestration tasks are ~10-line bash wrappers over `blender …`; the four ingest/reconcile
+tasks are the implementation itself, not a wrapper over anything. The point is not
 abstraction, it is symmetry: the human can re-run exactly what the agent ran, `mise tasks`
 lists the whole surface without reading a chat transcript, and the pinned tools make the
 result the same tomorrow and on another machine. An ad-hoc `blender -b … -a` buried in a
@@ -186,16 +217,24 @@ effective.
 
 | Header | Where, and why |
 |---|---|
-| `#USAGE arg`/`flag` | `init`, `setup`, `ingest-captions` — defaults, value validation (`choices`) and a generated `--help` per task, so the agent discovers a task's interface instead of guessing, and a bad argument fails at the boundary rather than inside a `blender -b` run |
+| `#USAGE arg`/`flag` | `init`, `setup`, `ingest_captions` — defaults, value validation (`choices`) and a generated `--help` per task, so the agent discovers a task's interface instead of guessing, and a bad argument fails at the boundary rather than inside a `blender -b` run |
 | `#MISE dir="{{config_root}}"` | every project task — replaces a `cd "$MISE_PROJECT_ROOT"` line and makes a task correct when run from a subdirectory |
-| `#MISE sources`/`outputs` | `ingest-manifest` (sha256 + `ffprobe` per asset) and `reconcile` — mise skips them when inputs are unchanged. `ingest-manifest` needs `"!assets/manifest.json"` in sources: the output lives in the directory it describes and would otherwise invalidate itself every run |
+| `#MISE sources`/`outputs` | `ingest_manifest` (sha256 + `ffprobe` per asset) and `reconcile` — mise skips them when inputs are unchanged. `ingest_manifest` needs `"!assets/manifest.json"` in sources: the output lives in the directory it describes and would otherwise invalidate itself every run |
 | `#MISE env` | `BLENDER_PIN = "5.2"` in `setup`/`doctor` — the pin appears once per script instead of in each path and comparison |
-| `#MISE tools` | `ffmpeg` for `ingest-manifest`, `rust` for `setup`'s source-build fallback — the tool arrives with the task rather than being a prerequisite the user discovers by failing |
+| `#MISE tools` | `ffmpeg` for `ingest_manifest`, `uv` for the four Python tasks — the tool arrives with the task rather than being a prerequisite the user discovers by failing |
+| PEP 723 `# /// script` | the four Python tasks — deps travel with the file, so `uv run --script` provisions the interpreter and `pyyaml` on first run with no venv to manage and no lockfile to install |
 
-Deliberately not used: `alias` (a bare alias would break the `comonteur:` namespace rule
-below) and `depends` (nothing here is a build graph — `reconcile` resolves YAML, applying it is
-a separate step inside Blender). Interpreter stays bash: Python outside `addon/`/`tests/` would
-break §8's language split, and these scripts are Rust's job at M5.5 anyway.
+Deliberately not used: `alias` and `depends`. `alias` does not work in file tasks at all
+(verified on mise 2026.7.10: the alias is parsed but never registered, and `mise run` on it
+fails) — which is why the Python task files use underscores rather than keeping the old
+`ingest-narrative` spelling, since Python cannot import a hyphenated module name and the tests
+import these files directly. `depends` is unused because nothing here is a build graph:
+`reconcile` resolves YAML, and applying it is a separate step inside Blender.
+
+**Task file naming.** mise strips a `.py` extension from a file task's name (verified:
+`reconcile.py` → `comonteur:reconcile`), so the scripts keep clean task names while remaining
+importable `.py` modules. Do not rename them to extensionless files to "match" the bash tasks —
+that would break the tests' imports for no gain.
 
 **The `comonteur:` namespace is binding.** A video project may be someone else's mise project
 with its own `build`/`test`/`deploy`. Anything the comonteur stack writes into a user's
@@ -219,6 +258,6 @@ before passing either. `.blend` and media want LFS, but wanting is not deciding:
 happens at init because retrofitting LFS onto binaries already in history costs a rewrite.
 `init --git` refuses inside an existing work tree rather than silently skipping.
 
-**Reversibility (§7.5).** M5.5's `comonteur init` / `comonteur doctor` subcommands supersede
-these scripts by taking over the same task names; nothing else in the stack changes, and a
-user's muscle memory doesn't either.
+**Reversibility (§7.5).** These scripts are the final form, not a placeholder for CLI
+subcommands — see the language-policy note in §7.5. The task names are the stable interface;
+an implementation may change language underneath without a user noticing.

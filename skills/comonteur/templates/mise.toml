@@ -1,10 +1,9 @@
 [tools]
 ffmpeg = "latest"
-
-# The comonteur CLI — uncomment once comonteur has published its first release. Until
-# then the `comonteur` binary on PATH is used (see `mise run comonteur:setup` in the
-# comonteur repo, which does `cargo install --path cli`).
-# "github:davidB/comonteur" = "0.1.0"
+# The comonteur:ingest_* and comonteur:reconcile tasks are `uv run --script` Python and
+# declare their own dependencies inline, so uv is all they need — nothing is installed and
+# nothing is compiled.
+uv = "latest"
 
 # Blender is deliberately not pinned here — install 5.2 LTS yourself
 # (https://www.blender.org/download/lts/); `mise run comonteur:doctor` checks the version.

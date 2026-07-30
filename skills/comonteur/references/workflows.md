@@ -73,7 +73,7 @@ If it's ambiguous, ask.
    target_duration, vo, broll}]` — then validate it, don't eyeball it:
 
    ```bash
-   mise run comonteur:ingest-narrative
+   mise run comonteur:ingest_narrative
    ```
 
    Keep any prose brief (`STORYBOARD.md`, `design.md`) verbatim alongside it. The YAML is
@@ -82,8 +82,8 @@ If it's ambiguous, ask.
 4. **Ingest what exists.** Assets and captions only — skip either if there is none:
 
    ```bash
-   mise run comonteur:ingest-manifest
-   mise run comonteur:ingest-captions <input.json> --kind whisper
+   mise run comonteur:ingest_manifest
+   mise run comonteur:ingest_captions <input.json> --kind whisper
    ```
 
    `--kind tts` when the audio was synthesized (timing marks beat ASR on proper nouns),

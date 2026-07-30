@@ -57,8 +57,7 @@ Install these yourself — everything else comes from `setup` (see
 | **An agent** | any MCP-capable coding agent that can read a skill/instructions directory; developed and tested with [Claude Code](https://claude.com/claude-code) |
 | **`npx`** | Node 20+, to install the skill (`npx skills add …`) |
 
-Pulled in for you: the `comonteur` CLI, the Blender add-on, Blender's MCP server, `ffmpeg` /
-`ffprobe`. Optional: Git + Git LFS if you want the project version-controlled (off by
+Pulled in for you: `uv`, the Blender add-on, Blender's MCP server, `ffmpeg` / `ffprobe`. Optional: Git + Git LFS if you want the project version-controlled (off by
 default), `sox` if you record a voiceover locally.
 
 ---
@@ -99,10 +98,11 @@ npx skills add https://github.com/davidB/comonteur/skills/comonteur
 bash .claude/skills/comonteur/scripts/setup
 ```
 
-`setup` puts the `comonteur` CLI on your PATH, installs the add-on into Blender's extensions
-dir, registers Blender's official MCP server, and finishes with a `doctor` report of what's
-still missing. It takes a `--ref <tag>` and uses a published release binary when one exists,
-otherwise it builds from that tag's source — either way pinned, and no clone.
+`setup` installs the add-on into Blender's extensions dir, registers Blender's official MCP
+server, and finishes with a `doctor` report of what's still missing. It takes a `--ref <tag>`
+and fetches that tag's source for the add-on — pinned, and no clone. Nothing gets compiled or
+put on your `PATH`: the ingest and reconcile commands are Python scripts that ship with the
+skill and run in place via `uv`.
 
 The skill itself is what teaches the agent the workflow and the helper library. It matters
 more than it sounds: without it the agent writes raw `bpy` — verbose, inconsistent, and
@@ -131,9 +131,9 @@ right?".
 
 ## Workflows
 
-You work in two places: **Blender**, and the **chat with your agent**. You don't drive a
-CLI — the agent runs the tooling for you (there's a table of what it runs at the end of
-this section).
+You work in two places: **Blender**, and the **chat with your agent**. You don't run the
+commands yourself — the agent runs the tooling for you (there's a table of what it runs at the
+end of this section).
 
 ### The loop, whichever workflow you're in
 
@@ -230,26 +230,27 @@ that set the machine up — is re-runnable from the project afterwards:
 
 | Task | What it does |
 |---|---|
-| `comonteur:setup [--ref <tag>]` | Install/repair: CLI, add-on, MCP server, then doctor |
+| `comonteur:setup [--ref <tag>]` | Install/repair: add-on, MCP server, then doctor |
 | `comonteur:init [dir] [--git] [--lfs]` | Initialize or top up a project — add-only, never overwrites |
 | `comonteur:doctor` | Toolchain **and** project checks, one ✓/✗ list |
-| `comonteur:ingest-narrative` | Validates `narrative.yaml` |
-| `comonteur:ingest-manifest` | `assets/` → `assets/manifest.json` (sha256 + `ffprobe`) |
-| `comonteur:ingest-captions <in.json> [--kind whisper\|tts]` | Normalizes word-level timing |
+| `comonteur:ingest_narrative` | Validates `narrative.yaml` |
+| `comonteur:ingest_manifest` | `assets/` → `assets/manifest.json` (sha256 + `ffprobe`) |
+| `comonteur:ingest_captions <in.json> [--kind whisper\|tts]` | Normalizes word-level timing |
 | `comonteur:reconcile` | `timeline.yaml` → resolved plan the add-on applies |
 | `comonteur:edit` / `comonteur:render` | Open `master.blend` / render the timeline |
 
-Thin wrappers over `comonteur …` and `blender`, shipped as files in `mise-tasks/comonteur/` —
+Shipped as files in `mise-tasks/comonteur/` — the `edit`/`render`/`setup` ones are thin bash
+wrappers over `blender`, and the ingest/reconcile ones are self-contained Python (`uv run
+--script`, no install step) rather than wrappers over anything —
 a project that already has its own `mise.toml` and tasks keeps them, and the `comonteur:`
 prefix stays out of the way of a `build` or `test` of your own. `--help` works on each one,
-and the expensive ones (`ingest-manifest`, `reconcile`) skip themselves when their inputs
+and the expensive ones (`ingest_manifest`, `reconcile`) skip themselves when their inputs
 haven't changed.
 
 Before a project exists, the same files are runnable straight from the installed skill —
 `bash .claude/skills/comonteur/scripts/{setup,init,doctor}` — which is the only
 chicken-and-egg step. Contributors who clone the repo get `mise run comonteur:{setup,init,doctor}`
-via symlinks to those same files: one copy, no drift. Doing this in Rust — `comonteur init` /
-`doctor` as subcommands — is M5.5; the scripts come first and keep the same names.
+via symlinks to those same files: one copy, no drift.
 
 ## How collaboration works
 
@@ -346,9 +347,10 @@ Not yet — the architecture is still moving. Issues and design discussion welco
 
 ## License
 
-[GPL-3.0-or-later](LICENSE), for the whole repo — `addon/`, `cli/` and `skills/` alike.
+[GPL-3.0-or-later](LICENSE), for the whole repo — `addon/`, `skills/` and `tests/` alike.
 
 Not a preference: the Blender extensions platform
 [requires GPL-3.0-or-later for add-ons](https://docs.blender.org/manual/en/5.2/advanced/extensions/licenses.html),
-and `addon/comonteur/` links `bpy`. The Rust CLI and the skill are technically separate programs
-that could have stayed permissive, but one license across the repo beats explaining a split.
+and `addon/comonteur/` links `bpy`. The skill and its task scripts are technically separate
+programs that could have stayed permissive, but one license across the repo beats explaining a
+split.

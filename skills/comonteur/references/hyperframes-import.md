@@ -55,8 +55,8 @@ Use the tasks for the ingest steps rather than hand-writing the outputs (`comont
 installs them — see `workflows.md`):
 
 ```bash
-mise run comonteur:ingest-narrative    # validate what you wrote
-mise run comonteur:ingest-manifest     # assets/ -> assets/manifest.json
+mise run comonteur:ingest_narrative    # validate what you wrote
+mise run comonteur:ingest_manifest     # assets/ -> assets/manifest.json
 ```
 
 Some projects use `youtube.yaml` instead of root `meta.json`, and `design.md` instead of
