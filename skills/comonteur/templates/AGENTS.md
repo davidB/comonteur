@@ -31,7 +31,7 @@ shell so the human can re-run exactly what you ran:
 
 ```
 mise run comonteur:doctor              # toolchain + project checks
-mise run comonteur:setup               # install/repair the toolchain
+mise run comonteur:install             # install/repair the toolchain, then doctor
 mise run comonteur:init                # top up this project's scaffold (add-only)
 mise run comonteur:ingest_narrative    # validate narrative.toml
 mise run comonteur:ingest_manifest     # assets/ -> assets/manifest.json
@@ -39,6 +39,8 @@ mise run comonteur:ingest_captions <in.json> [--kind whisper|tts]
 mise run comonteur:reconcile           # timeline.toml -> .comonteur/timeline.resolved.json
 mise run comonteur:edit                # open master.blend
 mise run comonteur:render              # render the timeline to renders/
+mise run comonteur:install_addon       # the two halves of setup, runnable on their own
+mise run comonteur:install_mcp         # Blender's MCP add-on + the MCP server
 ```
 
 ## Non-negotiable

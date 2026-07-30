@@ -45,5 +45,5 @@ inside a batch, not raw `bpy` calls, or this bug comes back per-module.
   derives from the journal directly, per §4.3.
 - `anim.py`, `text.py`, Actions/NLA — M3.
 - Packaged install (`blender --command extension install-file`) — now done by
-  `comonteur:setup` for end users; `mise-tasks/install-addon` still symlinks into the user
+  `comonteur:install_addon` for end users; `comonteur:install_addon` still symlinks into the user
   extensions repo for dev iteration, so edits stay live.

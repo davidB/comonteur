@@ -85,48 +85,81 @@ mise run addon:build      # publishable zip into addon/build/, asserts LICENSE s
 User-facing bootstrap (see `docs/mcp-and-tooling.md` §8.2):
 
 ```bash
-mise run comonteur:setup            # one-time install: addon, MCP server, then doctor
 mise run comonteur:init [dir] [--git] [--lfs]   # initialize a video project — add-only
+mise run comonteur:install          # both Blender add-ons + MCP server, then doctor
 mise run comonteur:doctor           # blender 5.2 / ffmpeg / uv / task scripts / addon / MCP
 ```
 
-`setup` no longer installs anything for the outside-Blender side — the four task scripts ship
-with the skill and run in place via `uv run --script`, so there is no release asset, no
-toolchain to bootstrap, and updating the skill updates them.
+`init` is the **only** command ever run by path (`uv run <skill>/scripts/init.py`), and it is
+the first thing a user runs after `npx skills add`. It scaffolds, then stops and prints
+`mise trust` + `mise run comonteur:install`: a fresh project is untrusted, mise refuses to run
+its task files until told to, and `init` does not clear that gate for the user — it is also
+the *top-up* command, re-run on live projects. Everything after it is `mise run comonteur:*`.
+
+Nothing outside Blender is installed by any of this — every task script ships with the skill
+and runs in place via `uv run --script`, so there is no release asset and no toolchain to
+bootstrap. The add-on is the one artifact still delivered, and `install_addon` owns that
+whole question (checkout → symlink; `--source`/`--copy` → package; otherwise fetch `--ref`).
 
 **Every task has exactly one copy, in `skills/comonteur/templates/mise-tasks/comonteur/`** —
-which is also what `init` installs into a project, so a project gets all nine tasks including
-`setup`/`init`/`doctor` and can repair itself. `skills/comonteur/scripts` symlinks that
-directory (short bootstrap path); `mise-tasks/comonteur/{setup,init,doctor}` symlink the three
-files a checkout needs. Edit the template copy, never a symlink. Users are never expected to
-clone this repo — they install the skill (`npx skills add`), so keep the scripts runnable *both*
-as mise tasks (`usage_*` from `#USAGE`, `MISE_PROJECT_ROOT` set) and directly by path with
-`$@`. Prefer mise headers (`dir`, `sources`/`outputs`, `env`, `tools`, `#USAGE`) over
-hand-written equivalents — see §8.2 for which and why.
+which is also what `init` installs into a project, so a project gets all twelve tasks including
+`install`/`init`/`doctor`/`install_*` and can repair itself. Two directory symlinks point at that
+one copy: `skills/comonteur/scripts` (short bootstrap path) and `mise-tasks/comonteur` (so a
+checkout gets the whole `comonteur:*` menu). Edit the template copy, never a symlink; adding a
+task needs no new symlink. Users are never expected to clone this repo — they install the skill
+(`npx skills add`), so keep the scripts runnable *both* as mise tasks (`MISE_PROJECT_ROOT` set)
+and directly by path. mise forwards argv to a file task *and* sets `usage_*` from `#USAGE`, so
+`argparse` over `sys.argv[1:]` covers both — `#USAGE` stays for `mise tasks`' help. Prefer mise
+headers (`dir`, `sources`/`outputs`, `env`, `tools`, `#USAGE`) over hand-written equivalents —
+see §8.2 for which and why.
+
+`_common.py` is the one file in that directory that is *not* a task: no shebang and mode 644,
+which is exactly what keeps mise from listing it. Siblings reach it with `import _common`
+(the script's own directory is first on `sys.path` under `uv run --script` and by-path runs).
+It holds `TaskError`/`die`, the ✓/✗/!/· printers, `run()`, `require()`, `blender_py()`,
+`enable_addon()` and path resolution — put a helper there only once a second script needs it.
 
 Anything written into a *user's* project is namespaced `comonteur:` (their project may have its
 own `build`/`test`); project tasks ship as files under `mise-tasks/comonteur/` so an existing
-`mise.toml` is never rewritten. `skills/` is Markdown + bash + TOML — no lint/test root, not in
-`[monorepo] config_roots`.
+`mise.toml` is never rewritten. `skills/` is Markdown + Python + TOML — no lint/test root, not
+in `[monorepo] config_roots`.
 
 The task scripts are `*.py` with underscored names (`ingest_narrative.py`) because mise strips
 the `.py` from a file task's name and Python cannot import a hyphenated module — the tests
 import them directly. Keep `#!/usr/bin/env -S uv run --script` plus a PEP 723 header on each;
-all four are stdlib-only (`dependencies = []`) — keep it that way, `tomllib` and `json` cover
-the whole surface.
+all of them are stdlib-only (`dependencies = []`) — keep it that way. There is no bash left
+here: shelling out is `subprocess` with a list, tool lookup is `shutil.which` (PATHEXT on
+Windows), archives are `tarfile`/`zipfile`, downloads are `urllib.request`, and no path under
+`~/.config/blender/...` is ever hardcoded — `install_addon.py` asks Blender where its
+extensions live, which is what makes macOS and Windows work.
 
 Single test: `cd tests && uv run pytest unit/test_paths.py::test_name`
 
 Dev-loop install (symlinks `addon/comonteur` into Blender's extensions dir so edits are
 live without reinstalling):
 ```bash
-mise run install-addon
+mise run comonteur:install_addon
 ```
 It also enables the add-on, so run it with Blender closed — enabling happens in a background
 Blender and a GUI session exiting afterwards overwrites those preferences.
 
-`mise run install-mcp` fetches the official Blender MCP `.mcpb` server and registers it
-with Claude Code (`claude mcp add blender ...`) — separate from the Blender-side add-on.
+**Footgun:** Blender has one `user_default/comonteur`, so running `comonteur:install` (or
+`install_addon`) from a *video project* rather than this checkout replaces that symlink with a
+packaged build fetched from `--ref` (default `main`) — your working tree stops being what
+Blender loads, silently. Re-run `mise run comonteur:install_addon` **from this repo** to get
+the symlink back; `ls -l ~/.config/blender/5.2/extensions/user_default/` tells you which you
+have.
+
+`mise run comonteur:install_mcp` does both MCP halves, which are useless apart: the
+Blender-side add-on from the Blender Lab repo (`--command extension repo-add` + `install
+--sync --enable`, no hand-rolled download) and the `.mcpb` server registered with Claude Code
+(`claude mcp add blender ...`).
+`mise run comonteur:install` chains both and is **headers only** — `#MISE depends`,
+`depends_post=["comonteur:doctor"]`, and `wait_for` on `install_mcp` so two background
+Blenders never race on `wm.save_userpref()`. All three headers work on file tasks (verified).
+The catch, also verified: runtime args never reach a dependency (only statically written ones
+do), which is why `--ref` lives on `install_addon` and `install` takes no arguments. `depends`
+also does nothing in a by-path run — fine, because `init`, not `install`, is the bootstrap.
 
 ## Architecture
 

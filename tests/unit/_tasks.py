@@ -40,6 +40,11 @@ def load(name: str) -> ModuleType:
         raise ImportError(f"cannot load task script {path}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[mod_name] = module
+    # The scripts `import _common` as a sibling — which works under `uv run --script` and a
+    # run-by-path because both put the script's directory first on sys.path. Loading by file
+    # location does not, so put it there ourselves.
+    if str(TASKS_DIR) not in sys.path:
+        sys.path.insert(0, str(TASKS_DIR))
     # No __pycache__ inside the skill: comonteur:init copies that directory into a user's
     # project file by file, and a stray subdirectory there makes its `cp` fail.
     previous, sys.dont_write_bytecode = sys.dont_write_bytecode, True

@@ -47,7 +47,7 @@ file. That's the problem this project solves.
 
 ## Requirements
 
-Install these yourself — everything else comes from `setup` (see
+Install these yourself — everything else comes from `comonteur:install` (see
 [Installation](#installation)):
 
 | | |
@@ -90,19 +90,27 @@ npx --version                       # Node 20+
 claude --version                    # or whichever MCP-capable agent you use
 ```
 
-### 2. The skill, then setup
+### 2. The skill, then the project
 
 ```bash
 mkdir my-video-project && cd my-video-project
 npx skills add https://github.com/davidB/comonteur/skills/comonteur
-bash .claude/skills/comonteur/scripts/setup
+uv run .claude/skills/comonteur/scripts/init.py .   # the only command you run by path
+mise trust                                          # these task files are new to mise
+mise run comonteur:install                          # both add-ons, the MCP server, then doctor
 ```
 
-`setup` installs the add-on into Blender's extensions dir, registers Blender's official MCP
-server, and finishes with a `doctor` report of what's still missing. It takes a `--ref <tag>`
-and fetches that tag's source for the add-on — pinned, and no clone. Nothing gets compiled or
-put on your `PATH`: the ingest and reconcile commands are Python scripts that ship with the
-skill and run in place via `uv`.
+`init` scaffolds the project and its `comonteur:*` mise tasks; from then on everything —
+installing and repairing the toolchain included — is `mise run comonteur:<task>` from inside
+the project. `install` chains `install_addon` and `install_mcp` and finishes with a `doctor`
+report of what's still missing. Nothing gets compiled or put on your `PATH`: every task is a
+Python script that ships with the skill and runs in place via `uv`.
+
+Want the add-on from a pinned tag rather than `main`?
+`mise run comonteur:install_addon --ref v0.1.0` — no clone needed.
+
+`mise trust` is a deliberate stop: mise refuses to run task files until you say they are yours
+to run, and `init` will not clear that gate for you.
 
 The skill itself is what teaches the agent the workflow and the helper library. It matters
 more than it sounds: without it the agent writes raw `bpy` — verbose, inconsistent, and
@@ -114,18 +122,17 @@ your agent looks for instructions); nothing in the skill is Claude-specific.
 
 ### 3. Nothing, if Blender was installed first
 
-`setup` installs and enables both add-ons — comonteur and Blender's official
+`install` installs and enables both add-ons — comonteur and Blender's official
 [MCP add-on](https://www.blender.org/lab/mcp-server/) — through
 `blender --command extension`. Run it **with Blender closed**: add-ons are enabled from a
 background Blender, and a GUI session exiting afterwards writes its own preferences over that.
 
-Installed Blender only after running `setup`? Re-run `setup`. Prefer the GUI? Drag the MCP
+Installed Blender only after running `install`? Re-run it. Prefer the GUI? Drag the MCP
 extension into Blender **twice** (first drop adds the Blender Lab repository, second installs
 the add-on) and tick comonteur in `Edit ▸ Preferences ▸ Add-ons`.
 
-Re-run the doctor at any point — `mise run comonteur:doctor` inside a project, or
-`bash .claude/skills/comonteur/scripts/doctor` — it's the single answer to "is my setup
-right?".
+Re-run the doctor at any point — `mise run comonteur:doctor` — it's the single answer to
+"is my setup right?".
 
 ---
 
@@ -166,11 +173,11 @@ Nothing upstream — a brief, your own components, maybe some footage and a voic
 1. Initialize the folder (the skill is already there from installation above):
 
    ```bash
-   bash .claude/skills/comonteur/scripts/init .
+   uv run .claude/skills/comonteur/scripts/init.py .
    ```
 
    That creates the [project layout](#project-layout) and the project's own `comonteur:*`
-   mise tasks — from then on everything, `setup` and `doctor` included, is
+   mise tasks — from then on everything, `install` and `doctor` included, is
    `mise run comonteur:<task>` from inside the project. It's **add-only**: point it at a
    folder that already has your footage or another mise project and nothing there is touched;
    re-running it tops up what's missing.
@@ -230,7 +237,7 @@ that set the machine up — is re-runnable from the project afterwards:
 
 | Task | What it does |
 |---|---|
-| `comonteur:setup [--ref <tag>]` | Install/repair: add-on, MCP server, then doctor |
+| `comonteur:install` | Install/repair everything, then doctor — chains the two below |
 | `comonteur:init [dir] [--git] [--lfs]` | Initialize or top up a project — add-only, never overwrites |
 | `comonteur:doctor` | Toolchain **and** project checks, one ✓/✗ list |
 | `comonteur:ingest_narrative` | Validates `narrative.toml` |
@@ -238,17 +245,18 @@ that set the machine up — is re-runnable from the project afterwards:
 | `comonteur:ingest_captions <in.json> [--kind whisper\|tts]` | Normalizes word-level timing |
 | `comonteur:reconcile` | `timeline.toml` → resolved plan the add-on applies |
 | `comonteur:edit` / `comonteur:render` | Open `master.blend` / render the timeline |
+| `comonteur:install_addon [--ref <tag>]` | The comonteur add-on into Blender (symlinked from a checkout, fetched otherwise) |
+| `comonteur:install_mcp` | Blender's MCP add-on **and** the MCP server it talks to |
 
-Shipped as files in `mise-tasks/comonteur/` — the `edit`/`render`/`setup` ones are thin bash
-wrappers over `blender`, and the ingest/reconcile ones are self-contained Python (`uv run
---script`, no install step) rather than wrappers over anything —
+Shipped as files in `mise-tasks/comonteur/` — every one of them is a self-contained,
+stdlib-only Python script (`uv run --script`, no install step, Linux/macOS/Windows alike) —
 a project that already has its own `mise.toml` and tasks keeps them, and the `comonteur:`
 prefix stays out of the way of a `build` or `test` of your own. `--help` works on each one,
 and the expensive ones (`ingest_manifest`, `reconcile`) skip themselves when their inputs
 haven't changed.
 
 Before a project exists, the same files are runnable straight from the installed skill —
-`bash .claude/skills/comonteur/scripts/{setup,init,doctor}` — which is the only
+`uv run .claude/skills/comonteur/scripts/{setup,init,doctor}.py` — which is the only
 chicken-and-egg step. Contributors who clone the repo get `mise run comonteur:{setup,init,doctor}`
 via symlinks to those same files: one copy, no drift.
 

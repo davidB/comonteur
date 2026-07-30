@@ -11,20 +11,22 @@ If the project has `mise-tasks/comonteur/` (or `mise tasks` lists `comonteur:*`)
 can re-run exactly what you ran, the tools are pinned so it behaves the same tomorrow, and
 `mise tasks` is a menu they can read without a chat transcript.
 
-If a repeatable command has no task, **add one** under `mise-tasks/comonteur/` (bash, a
-`#MISE description=` line, `#USAGE arg`/`flag` headers for any arguments —
+If a repeatable command has no task, **add one** under `mise-tasks/comonteur/` (a
+`#!/usr/bin/env -S uv run --script` shebang, a `#MISE description=` line, `#USAGE arg`/`flag`
+headers for any arguments —
 [docs](https://mise.jdx.dev/tasks/task-arguments.html#file-task-headers) — and
-`cd "$MISE_PROJECT_ROOT"`) rather than running it ad-hoc. Anything
+`#MISE dir="{{config_root}}"` instead of a `cd`) rather than running it ad-hoc. Every existing
+task is stdlib-only Python; keep it that way, and reuse `_common.py` next to them. Anything
 the comonteur stack adds to a user's project is namespaced `comonteur:` — the project may be
 someone else's mise project, so never claim a bare name like `render` or `build`.
 
 **Before a project has tasks**, the same files are runnable straight from this skill:
-`bash <skill>/scripts/{init,setup,doctor}` (`../scripts/` from here — it is the task directory
+`uv run <skill>/scripts/{init,setup,doctor}.py` (`../scripts/` from here — it is the task directory
 itself). After `init` there is only one way to say it: `mise run comonteur:<task>`. The human
 does not need a checkout of the comonteur repo, so never tell them to clone one.
 
 Don't install system tooling silently. If doctor reports a ✗, relay those lines and let the
-human run `mise run comonteur:setup` — or ask before running it for them.
+human run `mise run comonteur:install` — or ask before running it for them.
 
 Check `--help` on a task rather than guessing its arguments; each one declares them in its own
 `#USAGE` header.
@@ -47,14 +49,14 @@ If it's ambiguous, ask.
 1. **Initialize the folder** — this skill's own script, no checkout involved:
 
    ```bash
-   bash <skill>/scripts/init <dir>        # dir defaults to .
+   uv run <skill>/scripts/init.py <dir>   # dir defaults to .
    ```
 
-   It creates the §5.1b tree, all nine `comonteur:*` tasks (`mise-tasks/comonteur/`, from
+   It creates the §5.1b tree, all eleven `comonteur:*` tasks (`mise-tasks/comonteur/`, from
    `<skill>/templates/`), and stub `narrative.toml` / `timeline.toml` / `meta.json` /
    `AGENTS.md`. It is **add-only**: an existing folder with footage, a `.blend`, or its own
    `mise.toml` is a normal input — nothing already there is overwritten, and re-running it
-   tops up what's missing and prints what it kept. Everything after this step, `setup` and
+   tops up what's missing and prints what it kept. Everything after this step, `install` and
    `doctor` included, is `mise run comonteur:*` from inside the project. Tell the human to
    `mise trust` once — the task files are new to mise.
 

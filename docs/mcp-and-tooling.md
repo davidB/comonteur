@@ -11,7 +11,7 @@ continuity with existing code comments (`SPEC.md §7...`, `§8...`).
 `anan0110692/blender-mcp-vse` or any other unless a concrete need appears that cannot be
 met from the helper library — record the reason if so.
 
-- Add-on: Blender Lab extension, requires Blender 5.1+. `comonteur:setup` installs it
+- Add-on: Blender Lab extension, requires Blender 5.1+. `comonteur:install_mcp` installs it
   headlessly — `extension repo-add lab_blender_org --url https://lab.blender.org/` then
   `extension install mcp --sync --enable`, which is the same repository id and package the
   GUI produces. The GUI fallback is dragging the extension in **twice** (first drop adds the
@@ -88,7 +88,11 @@ performance requirement, and shipping it meant a per-OS/arch release-asset matri
 
 It is now **four `uv run --script` Python files**, one per subcommand, in
 `skills/comonteur/templates/mise-tasks/comonteur/`:
-`ingest_narrative.py`, `ingest_manifest.py`, `ingest_captions.py`, `reconcile.py`. There is no
+`ingest_narrative.py`, `ingest_manifest.py`, `ingest_captions.py`, `reconcile.py`. The
+orchestration tasks (`install`, `init`, `doctor`, `edit`, `render`, `install_addon`,
+`install_mcp`) followed later, from bash for the same reason a compiled CLI had to go: bash
+hardcoded `~/.config/blender/...`, `readlink -f`, `curl | tar` and `sed -i`, none of which
+exist on Windows, and it had no error reporting worth the name. There is no
 `comonteur` binary, no release asset, and no install step — the scripts ship inside the skill
 and run in place, so `npx skills add` updates the logic and the docs together. `uv` was already
 required by `addon/` and `tests/`; Rust was the only toolchain in the repo with no second use.
@@ -112,7 +116,7 @@ plain JSON; the add-on reads it with the stdlib `json` module.
 What was given up, honestly: the compiler over ~450 lines of anchor→frame arithmetic in
 `reconcile.py`. Compensated with `mypy` over the scripts and the Rust `#[cfg(test)]` suite
 ported to `tests/unit/` — the timeline cases carry the most coverage there for this reason.
-`setup`, `new`, and a CLI-side `doctor` are no longer M5.5 CLI subcommands; `setup` and
+`setup`, `new`, and a CLI-side `doctor` are no longer M5.5 CLI subcommands; `install` and
 `doctor` already exist as tasks.
 
 ---
@@ -170,36 +174,72 @@ Start with zero and add only on demonstrated need.
 (`npx skills add <repo>/skills/comonteur`), so the skill is the distribution unit: it carries
 the scaffold, `skills/comonteur/templates/`, whose `mise-tasks/comonteur/` **is** the task set.
 
-There is exactly **one copy of every task**, and `init` installs all of them — `setup` and
+**`init` is the only command ever run by path**, and it is the first thing a user runs after
+`npx skills add`. Everything else — installing the toolchain included — is
+`mise run comonteur:<task>` from inside the project it just created. That ordering is why
+there is no bootstrap installer: a fresh project is *untrusted* (verified: `mise tasks` and
+`mise run` both refuse until `mise trust`), so `init` scaffolds, prints `mise trust` and
+`mise run comonteur:install`, and stops. It does not run the installation itself and does not
+trust the files on the user's behalf — clearing that gate silently would be `init`'s to
+answer for, and `init` is also the *top-up* command, re-run on live projects.
+
+There is exactly **one copy of every task**, and `init` installs all of them — `install` and
 `doctor` included, not just the day-to-day ones. Consequences, all wanted: a project can
-repair its own toolchain (`mise run comonteur:setup`) without the human remembering where the
+repair its own toolchain (`mise run comonteur:install`) without the human remembering where the
 skill lives; `doctor` covers toolchain and project in one command instead of two half-doctors
 with the same name; and `init` re-run on a live project tops up whatever a newer skill version
 added. `skills/comonteur/scripts` is a symlink to that directory, giving the pre-project
-bootstrap a short path (`bash <skill>/scripts/init`), and the repo's `mise-tasks/comonteur/*`
-are symlinks to the same three files so contributors get `mise run comonteur:setup` for free.
-One source of truth, no drift.
+bootstrap a short path (`uv run <skill>/scripts/init.py`), and the repo's `mise-tasks/comonteur`
+is a symlink to the same directory so contributors get the whole `comonteur:*` menu for free.
+Two directory symlinks, one source of truth, and adding a task needs neither touched.
 
-Each script therefore has to work in two contexts: as a mise task (`usage_*` from `#USAGE`
-headers, `MISE_PROJECT_ROOT` set) and invoked directly by path before any tasks exist (plain
-`$@`/`sys.argv`, `$PWD`). The Python tasks read `usage_*` from the environment and fall back to
-`sys.argv` when it is absent, which is the direct-by-path case. They also detect a checkout
-(`../../../../../addon/comonteur/blender_manifest.toml` from the task dir) and prefer it — no
+Each script therefore has to work in two contexts: as a mise task (`MISE_PROJECT_ROOT` set)
+and invoked directly by path before any tasks exist (`$PWD`). mise forwards argv to a file
+task *and* sets `usage_*` from `#USAGE`, so `argparse` over `sys.argv[1:]` serves both and
+`#USAGE` is kept purely for what `mise tasks` shows. They also detect a checkout
+(`addon/comonteur/blender_manifest.toml`, five levels up from the task dir) and prefer it — no
 download, and the add-on is symlinked so edits stay live.
+
+`_common.py` sits in the same directory and is deliberately **not** a task: no shebang, mode
+644, which is what keeps mise from listing it (mise only picks up executable files). Siblings
+import it as a plain module — `uv run --script` and a by-path run both put the script's own
+directory first on `sys.path`. It carries `TaskError`/`die`, the ✓/✗/!/· printers, a
+`subprocess` wrapper that reports the failing command and its stderr, `shutil.which` lookups,
+`blender_py()` and `enable_addon()` (shared the moment `install_addon` and `install_mcp` both
+needed it). `install` holds no logic at all — it is `#MISE depends`/`depends_post`/`wait_for`
+headers over `install_addon`, `install_mcp` and `doctor`, which is what removed the duplicated
+install logic bash had in two places. `install_addon` owns the whole delivery question
+(checkout → symlink; `--source`/`--copy` → package; otherwise fetch `--ref` → package), so no
+task above it needs to know how the add-on reaches a machine.
 
 **Only one artifact still needs delivering: the add-on.** The ingest and reconcile tasks are
 Python that ships inside the skill and runs in place, so there is nothing to download, compile,
 or put on `PATH` for them — `npx skills add` is the whole update mechanism, and the scripts can
 never skew from the docs and templates they ship beside. `setup --ref <tag>` `curl`s that tag's
-source tarball only to obtain `addon/comonteur`, packaged with `extension build` and installed
-with `extension install-file -r user_default -e` (a checkout symlinks instead, to keep edits
-live). Nothing is fetched unpinned, and the scaffold never touches the network — templates ship
+source tarball (`urllib` + `tarfile`, `filter="data"`) only to obtain `addon/comonteur`,
+packaged with `extension build` and installed with `extension install-file -r user_default -e`
+(a checkout symlinks instead, to keep edits live; `install_addon.py` falls back to a copy where
+symlinks are refused, as on Windows without Developer Mode). Where those files go is asked of
+Blender — `--command extension repo-list` prints an absolute `directory:` per repository —
+never assembled from a hardcoded `~/.config` path.
+
+**Add-on management is `blender --command extension …` wherever that command reaches**: `build`,
+`install-file -r user_default -e`, `repo-add`, `repo-list`, `install --sync --enable`. The one
+gap, re-verified against 5.2's `--command extension --help`, is that its subcommand list
+(server-generate/build/validate/list/sync/update/install/install-file/remove/repo-{list,add,remove})
+has **no enable/disable**: `install-file -e` enables only what it just installed, and `--addons`
+enables for a single launch without persisting. So the symlinked dev install — a directory that
+appears in the repository without ever being "installed" — is the only place left using
+`bpy.ops.preferences.addon_enable` + `wm.save_userpref()`, and the packaged path no longer
+launches Blender a second time to enable what `-e` already did. `extension list` marks packages
+`[installed]` but does not report enabled state, which is why `doctor` probes both through
+`addon_utils.modules()` and `preferences.addons` in one `bpy` launch rather than parsing it. Nothing is fetched unpinned, and the scaffold never touches the network — templates ship
 inside the skill.
 
 **Decision: mise is the only tool a user installs by hand**, plus Blender itself (a ~300MB
 GUI installer, out of reach of a package manager here). Everything else — `uv`, both
 Blender add-ons via `blender --command extension`, the MCP server, `ffmpeg` — is installed by
-`scripts/setup` and verified by `scripts/doctor` / `mise run comonteur:doctor`.
+`mise run comonteur:install` and verified by `mise run comonteur:doctor`.
 
 Blender is deliberately **not** pinned per-project even though mise's registry carries it
 (`aqua:blender/blender`, 5.2.0 available): a ~300MB download per video project buys nothing
@@ -207,7 +247,8 @@ over the single user-wide install the MCP add-on already requires. `comonteur:do
 the version on PATH against the 5.2 pin instead, warning rather than failing on 5.3+.
 
 **Every repeatable command is a task, and the agent calls the task, not the shell underneath.**
-The orchestration tasks are ~10-line bash wrappers over `blender …`; the four ingest/reconcile
+The orchestration tasks are thin Python wrappers over `blender …` (`os.execvp` on POSIX so
+Blender takes the terminal outright, `subprocess` + exit code on Windows); the ingest/reconcile
 tasks are the implementation itself, not a wrapper over anything. The point is not
 abstraction, it is symmetry: the human can re-run exactly what the agent ran, `mise tasks`
 lists the whole surface without reading a chat transcript, and the pinned tools make the
@@ -221,10 +262,11 @@ effective.
 
 | Header | Where, and why |
 |---|---|
-| `#USAGE arg`/`flag` | `init`, `setup`, `ingest_captions` — defaults, value validation (`choices`) and a generated `--help` per task, so the agent discovers a task's interface instead of guessing, and a bad argument fails at the boundary rather than inside a `blender -b` run |
+| `#USAGE arg`/`flag` | `init`, `install_addon`, `ingest_captions` — defaults, value validation (`choices`) and a generated `--help` per task, so the agent discovers a task's interface instead of guessing, and a bad argument fails at the boundary rather than inside a `blender -b` run |
 | `#MISE dir="{{config_root}}"` | every project task — replaces a `cd "$MISE_PROJECT_ROOT"` line and makes a task correct when run from a subdirectory |
 | `#MISE sources`/`outputs` | `ingest_manifest` (sha256 + `ffprobe` per asset) and `reconcile` — mise skips them when inputs are unchanged. `ingest_manifest` needs `"!assets/manifest.json"` in sources: the output lives in the directory it describes and would otherwise invalidate itself every run |
-| `#MISE env` | `BLENDER_PIN = "5.2"` in `setup`/`doctor` — the pin appears once per script instead of in each path and comparison |
+| `#MISE env` | `BLENDER_MCP_VERSION` in `install_mcp` — a pinned version appears once per script instead of in each path and comparison |
+| `#MISE depends`/`depends_post`/`wait_for` | `install` is nothing but these three: it depends on `install_addon` + `install_mcp`, `depends_post`s `doctor`, and `install_mcp` `wait_for`s `install_addon` so two background Blenders never race on `wm.save_userpref()`. Verified on file tasks. The catch, also verified: runtime args never reach a dependency — only statically written ones — which is why `--ref` lives on `install_addon` |
 | `#MISE tools` | `ffmpeg` for `ingest_manifest`, `uv` for the four Python tasks — the tool arrives with the task rather than being a prerequisite the user discovers by failing |
 | PEP 723 `# /// script` | the four Python tasks — the header travels with the file, so `uv run --script` provisions the interpreter on first run with no venv to manage and no lockfile to install. All four declare `dependencies = []`; keep it that way |
 
@@ -237,8 +279,10 @@ import these files directly. `depends` is unused because nothing here is a build
 
 **Task file naming.** mise strips a `.py` extension from a file task's name (verified:
 `reconcile.py` → `comonteur:reconcile`), so the scripts keep clean task names while remaining
-importable `.py` modules. Do not rename them to extensionless files to "match" the bash tasks —
-that would break the tests' imports for no gain.
+importable `.py` modules — which is also why every task carries the extension and an
+underscored name. Do not rename them to extensionless files for looks: it would break the
+tests' imports for no gain. `_common.py` is the exception that proves the rule — mode 644 and
+no shebang, so mise skips it and it stays importable.
 
 **The `comonteur:` namespace is binding.** A video project may be someone else's mise project
 with its own `build`/`test`/`deploy`. Anything the comonteur stack writes into a user's

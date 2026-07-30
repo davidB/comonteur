@@ -91,7 +91,7 @@ it to one command.
 
 In scope:
 - Install both Blender extensions — the Blender Lab MCP addon and the `comonteur` addon.
-  **Done in bash already** (`skills/comonteur/templates/mise-tasks/comonteur/setup`): the MCP
+  **Done** (`skills/comonteur/templates/mise-tasks/comonteur/install_mcp.py`): the MCP
   add-on via `extension repo-add` + `extension install --sync --enable`, comonteur via
   `extension build` + `extension install-file -r user_default -e`, both enabled with
   `bpy.ops.preferences.addon_enable` (there is no `--command` for enabling). Keep the
@@ -100,8 +100,9 @@ In scope:
 - Install the Claude Code skill into `.claude/skills/`.
 - Scaffold a new project (`mise run comonteur:init` — additive, never overwrites; §8.2).
 
-**Shipped, in the skill**: `setup`, `init` and `doctor` are bash scripts in
-`skills/comonteur/scripts/` (scaffold in `skills/comonteur/templates/`, symlinked as
+**Shipped, in the skill**: `init.py` is the one by-path bootstrap command; `install.py`,
+`install_addon.py`, `install_mcp.py` and `doctor.py` are `uv run --script` Python
+in `skills/comonteur/scripts/` (scaffold in `skills/comonteur/templates/`, symlinked as
 `mise run comonteur:*` for contributors), because the workflows documentation needed something
 real to point at and users must be able to start without cloning this repo (§8.2). These are
 the final form — there is no Rust CLI coming to replace them (§7.5), so M5.5 is now about
