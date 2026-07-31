@@ -243,6 +243,7 @@ that set the machine up — is re-runnable from the project afterwards:
 | `comonteur:ingest_narrative` | Validates `narrative.toml` |
 | `comonteur:ingest_manifest` | `assets/` → `assets/manifest.json` (sha256 + `ffprobe`) |
 | `comonteur:ingest_captions <in.json> [--kind whisper\|tts]` | Normalizes word-level timing |
+| `comonteur:convert_fonts` | `.woff`/`.woff2` → `.ttf`/`.otf` — Blender reads sfnt only |
 | `comonteur:reconcile` | `timeline.toml` → resolved plan the add-on applies |
 | `comonteur:edit` / `comonteur:render` | Open `master.blend` / render the timeline |
 | `comonteur:install_addon [--ref <tag>]` | The comonteur add-on into Blender (symlinked from a checkout, fetched otherwise) |
@@ -255,10 +256,10 @@ prefix stays out of the way of a `build` or `test` of your own. `--help` works o
 and the expensive ones (`ingest_manifest`, `reconcile`) skip themselves when their inputs
 haven't changed.
 
-Before a project exists, the same files are runnable straight from the installed skill —
-`uv run .claude/skills/comonteur/scripts/{setup,init,doctor}.py` — which is the only
-chicken-and-egg step. Contributors who clone the repo get `mise run comonteur:{setup,init,doctor}`
-via symlinks to those same files: one copy, no drift.
+Before a project exists, `init` is runnable straight from the installed skill —
+`uv run .claude/skills/comonteur/scripts/init.py` — which is the only chicken-and-egg step;
+everything after it is `mise run comonteur:<task>`. Contributors who clone the repo get the
+whole `comonteur:*` menu via symlinks to those same files: one copy, no drift.
 
 ## How collaboration works
 

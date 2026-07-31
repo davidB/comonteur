@@ -13,7 +13,8 @@ task:
 - `docs/mcp-and-tooling.md` — MCP transport, language/tooling policy (§7, §8)
 - `docs/milestones.md` — M0–M6 plan (§10)
 - `docs/constraints-and-risks.md` — cross-cutting rules and known risks (§11, §12)
-- `docs/M0-FINDINGS.md` / `docs/M1-FINDINGS.md` — verified API behaviour so far
+- `docs/M0-FINDINGS.md` / `M1-FINDINGS.md` / `M3-FINDINGS.md` / `M4-FINDINGS.md` — verified
+  API behaviour so far
 
 Code comments referencing `SPEC.md §N` still resolve — section numbers are unchanged,
 only the file they live in moved.

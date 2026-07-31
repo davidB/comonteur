@@ -36,10 +36,11 @@ task is stdlib-only Python; keep it that way, and reuse `_common.py` next to the
 the comonteur stack adds to a user's project is namespaced `comonteur:` — the project may be
 someone else's mise project, so never claim a bare name like `render` or `build`.
 
-**Before a project has tasks**, the same files are runnable straight from this skill:
-`uv run <skill>/scripts/{init,setup,doctor}.py` (`../scripts/` from here — it is the task directory
-itself). After `init` there is only one way to say it: `mise run comonteur:<task>`. The human
-does not need a checkout of the comonteur repo, so never tell them to clone one.
+**Before a project has tasks**, `init` is the one command run by path — `uv run
+<skill>/scripts/init.py` (`../scripts/` from here — it is the task directory itself). It
+scaffolds the rest, and after `mise trust` there is only one way to say anything:
+`mise run comonteur:<task>`. The human does not need a checkout of the comonteur repo, so
+never tell them to clone one.
 
 Don't install system tooling silently. If doctor reports a ✗, relay those lines and let the
 human run `mise run comonteur:install` — or ask before running it for them.

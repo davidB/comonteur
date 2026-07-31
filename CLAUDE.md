@@ -18,7 +18,8 @@ full spec. It routes to:
 - `docs/mcp-and-tooling.md` — MCP transport, language/tooling policy (§7, §8)
 - `docs/milestones.md` — M0–M6 plan (§10)
 - `docs/constraints-and-risks.md` — cross-cutting rules and known risks (§11, §12)
-- `docs/M0-FINDINGS.md` / `M1-FINDINGS.md` / `M3-FINDINGS.md` — verified Blender API behaviour
+- `docs/M0-FINDINGS.md` / `M1-FINDINGS.md` / `M3-FINDINGS.md` / `M4-FINDINGS.md` — verified
+  Blender API behaviour
 
 Code comments referencing `SPEC.md §N` resolve to whichever doc above now holds that section.
 

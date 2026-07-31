@@ -217,7 +217,7 @@ task above it needs to know how the add-on reaches a machine.
 **Only one artifact still needs delivering: the add-on.** The ingest and reconcile tasks are
 Python that ships inside the skill and runs in place, so there is nothing to download, compile,
 or put on `PATH` for them — `npx skills add` is the whole update mechanism, and the scripts can
-never skew from the docs and templates they ship beside. `setup --ref <tag>` `curl`s that tag's
+never skew from the docs and templates they ship beside. `install_addon --ref <tag>` fetches that tag's
 source tarball (`urllib` + `tarfile`, `filter="data"`) only to obtain `addon/comonteur`,
 packaged with `extension build` and installed with `extension install-file -r user_default -e`
 (a checkout symlinks instead, to keep edits live; `install_addon.py` falls back to a copy where

@@ -46,7 +46,7 @@ The minimum that proves the whole design:
 If step 6 works, everything above is buildable. If the provenance flip proves unreliable,
 stop and revise §4.3 before building further.
 
-Also in M1: **`comonteur doctor`**. Not user-facing polish — it is the debugging tool for the
+Also in M1: **`comonteur:doctor`**. Not user-facing polish — it is the debugging tool for the
 risky milestones. Checks: Blender is exactly 5.2; official MCP addon and `comonteur` addon
 both enabled; MCP socket reachable; `ffmpeg`/`ffprobe` on PATH; git-lfs initialized;
 project layout valid; journal readable. Cheap to write, pays for itself immediately.
