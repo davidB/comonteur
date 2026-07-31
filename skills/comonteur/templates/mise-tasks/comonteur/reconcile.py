@@ -4,6 +4,9 @@
 #MISE sources=["timeline.toml", "audio/transcript.json"]
 #MISE outputs=[".comonteur/timeline.resolved.json"]
 #MISE tools={uv = "latest"}
+#USAGE flag "--timeline <timeline>" help="Timeline to resolve (default: timeline.toml)"
+#USAGE flag "--transcript <transcript>" help="Word timings for anchors (default: audio/transcript.json when present)"
+#USAGE flag "-o --out <out>" help="Resolved plan to write (default: .comonteur/timeline.resolved.json)"
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []
@@ -74,6 +77,27 @@ def _one_of_start_anchor(entry: dict[str, Any]) -> bool:
     return (entry.get("start") is None) != (entry.get("anchor") is None)
 
 
+# What `addon/comonteur/reconcile.py` can actually link, and the keys it reads for each. Kept
+# here because validation belongs outside Blender: the add-on's input is the resolved plan, so
+# a typo'd kind must fail at `mise run comonteur:reconcile`, not halfway through apply().
+SOURCE_KINDS = {"scene": ("blend", "scene"), "movie": ("path",)}
+
+
+def _source_errors(i: int, shot_id: str, source: Any) -> list[str]:
+    where = f"shots[{i}] ({shot_id})"
+    if not isinstance(source, dict):
+        return [f"{where}: `source` is required"]
+    kind = source.get("kind")
+    if kind not in SOURCE_KINDS:
+        known = ", ".join(sorted(SOURCE_KINDS))
+        return [f"{where}: unknown source.kind {kind!r} — expected one of {known}"]
+    return [
+        f"{where}: source.kind={kind!r} requires `{key}`"
+        for key in SOURCE_KINDS[kind]
+        if not str(source.get(key, "")).strip()
+    ]
+
+
 def validate(doc: dict[str, Any]) -> list[str]:
     """Pure logic: fail loudly rather than guess (SPEC.md §5.2)."""
     errors: list[str] = []
@@ -96,6 +120,7 @@ def validate(doc: dict[str, Any]) -> list[str]:
         duration = shot.get("duration")
         if duration is None or duration <= 0:
             errors.append(f"shots[{i}] ({shot_id}): duration must be > 0, got {duration}")
+        errors.extend(_source_errors(i, shot_id, shot.get("source")))
         anchor = shot.get("anchor")
         if anchor is not None:
             occurrence = anchor.get("occurrence", 0)

@@ -18,8 +18,10 @@ bind_param(obj, name)
 one is already tagged with that name. Call it freely; never delete a scene to "start
 clean".
 
-It starts from `bpy.ops.scene.new(type="EMPTY")`, so nothing is inherited from whatever
-scene the human was looking at, and it **switches the window's active scene**. `kind="2d"`
+On creation it starts from `bpy.ops.scene.new(type="EMPTY")`, so nothing is inherited from
+whatever scene the human was looking at, and it switches the window's active scene. On the
+idempotent path it returns early, so the window is left wherever the human had it — don't
+assume `bpy.context.scene` is your shot; pass the returned scene explicitly. `kind="2d"`
 sets `view_transform="Standard"` (colours come out as authored); anything else gets `AgX`.
 `transparent=True` is the default because shots are composited in the VSE.
 
@@ -70,8 +72,9 @@ instance_as_nla(obj, track_name, frame_offset) -> NlaStrip
 
 `tween()` writes **two real keyframes** — `frm` at `start`, `to` at `start + dur` — both
 editable by the human in the Graph Editor. Frames, not seconds. `index` is the array
-index: `location` X/Y/Z = 0/1/2, `rotation_euler` likewise, `scale` likewise, and scalar
-paths like `data.size` still take `index=0`.
+index: `location` X/Y/Z = 0/1/2, `rotation_euler` likewise, `scale` likewise. For a **scalar**
+property — one with no components, like `empty_display_size` — pass `index=None`; the journal
+then records the bare path, which is the same string a human edit would touch.
 
 No baked transforms, no drivers-as-animation, no custom evaluator. If a motion cannot be
 expressed as keyframes, it does not belong in comonteur.
@@ -158,13 +161,15 @@ provenance only if the datablock isn't tagged already — a human's component ke
 ```python
 outline(scene, max_lines=60) -> str
 describe(id_block, path="", max_lines=40) -> str
-animated_paths(scene) -> list[dict]
+animated_paths(scene, max_lines=60) -> list[dict]
 ```
 
 `outline()` gives collections and objects with their origin tag — start here.
 `describe(obj, "data")` walks a dotted path and lists that object's attribute names, capped.
 `animated_paths()` returns `{object, data_path, index, keys, frame_range}` per F-curve —
-this is how you find out what is already animated before adding to it.
+this is how you find out what is already animated before adding to it. When the cap bites it
+appends a final `{"truncated": N}` entry, so check for that before concluding you have seen
+the whole scene; raise `max_lines` or narrow the scene if you need the rest.
 
 All three are capped and truncated deliberately. `drift()` and `find()` appear in
 `docs/library.md` but do **not** exist yet; do not call them.
@@ -178,9 +183,12 @@ frames(scene, frame_numbers, engine="WORKBENCH") -> list[str]
 Renders OpenGL stills to `.comonteur/review/frame-<NNN>-at-<S.SS>.png` (frame number and
 seconds, matching HyperFrames' snapshot convention) and returns the paths. Read the images.
 
-It temporarily swaps the window's active scene and the render engine, restoring both in a
-`finally`. `WORKBENCH` is fast and correct for layout, spacing and timing; pass
-`engine="BLENDER_EEVEE_NEXT"` only when materials or lighting are actually the question.
+It temporarily swaps the window's active scene, the render engine, the output filepath and the
+current frame, restoring all four in a `finally` — so a preview never redirects the human's
+next render. `WORKBENCH` is fast and correct for layout, spacing and timing; pass
+`engine="BLENDER_EEVEE"` only when materials or lighting are actually the question. (5.2 names
+it `BLENDER_EEVEE`, not `BLENDER_EEVEE_NEXT`; the valid set is `BLENDER_EEVEE`,
+`BLENDER_WORKBENCH`, `CYCLES`.)
 
 Preview at least three frames of a shot — start, middle, end. One frame cannot show motion.
 
@@ -189,8 +197,11 @@ Preview at least three frames of a shot — start, middle, end. One frame cannot
 ```python
 batch(label) -> contextmanager
 set(id_block, path, value)
+batch_active() -> bool                              # read-only
+target_of(id_block) -> str                          # read-only — "Type:cmt_id", the journal key
 paths_written_by_agent(id_block) -> set[str]        # read-only
 last_agent_value(id_block, path)                    # read-only
+created_by_agent(id_block) -> bool                  # read-only
 ```
 
 `set()` is the escape hatch for any property the typed helpers don't cover: it resolves the
@@ -199,10 +210,20 @@ dotted path, writes it, and records old and new values in `.comonteur/journal.js
 ```python
 cmt.journal.set(obj, "data.extrude", 0.02)
 cmt.journal.set(scn, "render.fps", 25)
+cmt.journal.set(obj, "modifiers[0].levels", 2)   # paths index too: a.b[1].c
 ```
 
 Prefer it over a bare assignment for **every** write you want the human to be able to see,
 diff and revert. A bare `obj.data.extrude = 0.02` works and is invisible.
+
+`batch_active()` is how you check before calling something that raises outside a batch, rather
+than opening a second one — `batch()` does not nest.
+
+Constructors journal a `create` entry (that is what `created_by_agent()` reads), so a batch
+that only creates is still recorded, still bumps `cmt_rev`, and still leaves the human one
+undo step. Note the journal lands in `.comonteur/` **next to the `.blend`** — in a session
+whose file has never been saved it falls back to Blender's working directory instead, so save
+first if you care where it goes.
 
 ## `cmt.provenance` — ownership
 
@@ -217,10 +238,32 @@ claimed_paths(id_block) -> set[str]                 # read-only
 only when you created a datablock through raw `bpy` and are bringing it into the system.
 
 `claimed_paths()` is derived, not observed: for each path you wrote, it compares the live
-value against what you last wrote there. A mismatch means the human changed it since.
-Consult it before rewriting a property on a `shared` datablock, and report what you skipped.
+value against what you last wrote there. A mismatch means the human changed it since — so the
+set it returns is what the **human owns**, and what you must leave alone. Consult it before
+rewriting a property on a `shared` datablock, and report what you skipped.
+
+Two limits worth knowing before you rely on it:
+
+- **Animated paths are excluded.** An F-curve's live value depends on the playhead, so it
+  carries no signal about who edited it. A human dragging your keyframes is therefore *not*
+  detected — if a `shared` datablock's motion looks hand-tuned, ask before re-tweening it.
+- **It only knows what went through the journal.** `text.style(color=...)` writes the material
+  directly, so colour has no claim record at all, and the material it creates is untagged —
+  `origin(mat)` returns `None`, which the rules say to treat as the human's.
+
+Datablocks carry `cmt_id` / `cmt_origin` / `cmt_rev`, plus `cmt_param` on a text object bound
+with `scene.bind_param()`. The sidebar's *Take ownership* / *Return to agent* buttons act on
+the **active object** only — Scenes, Actions and VSE strips have no override UI, so ownership
+on those can only change through the automatic flip.
 
 ## `cmt.reconcile` — assembly
 
-See `references/timeline.md`. `diff()` is pure logic; `apply()` opens its own batch, so
-call it **outside** one.
+See `references/timeline.md`.
+
+```python
+diff(desired, existing, claimed, fields) -> ReconcilePlan   # .to_create/.to_update/.to_delete
+apply(resolved_plan, project_root)
+```
+
+`diff()` is pure logic — call it first for a dry run and report what would change before you
+touch anything. `apply()` opens its own batch, so call it **outside** one.

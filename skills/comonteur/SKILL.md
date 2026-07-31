@@ -59,9 +59,10 @@ Each of these is a silent-corruption bug, not a style preference.
   Do not modify or delete it unless the current instruction names it. Check with
   `cmt.provenance.origin(id_block)` before touching anything you did not create in this
   session.
-- **`shared` means the human has touched it.** You may mutate paths you have not lost —
-  `cmt.provenance.claimed_paths(id_block)` returns the ones you have — and you may
-  **never** delete it.
+- **`shared` means the human has touched it.** `cmt.provenance.claimed_paths(id_block)`
+  returns the paths **the human has claimed** — the ones whose value no longer matches what
+  you last wrote. Those are lost to you: mutate anything *except* them, and **never** delete
+  a `shared` datablock.
 - **Prefer `cmt.*` over raw `bpy`.** Raw `bpy` is not forbidden and is sometimes the only
   way, but it is untracked: it never reaches the journal, `revert` cannot undo it, and the
   human's ownership view will not show it. If you must, keep it to reads, or do the write
@@ -110,7 +111,8 @@ contracts, not background reading. Do not read them all speculatively.
 ## Ownership, in eight lines
 
 Every datablock you create carries `cmt_id` (stable logical id), `cmt_origin`, and
-`cmt_rev` (bumped once per batch).
+`cmt_rev` (bumped once per batch). A text object bound with `scene.bind_param()` also carries
+`cmt_param`.
 
 | `cmt_origin` | You may |
 |---|---|
@@ -121,7 +123,8 @@ Every datablock you create carries `cmt_id` (stable logical id), `cmt_origin`, a
 
 The flip from `agent` to `shared` is automatic: a `depsgraph_update_post` handler catches
 human edits to your data (`provenance.py:36`). The human can also override either way from
-the comonteur sidebar panel in Blender (*Take ownership* / *Return to agent*).
+the comonteur sidebar panel in Blender (*Take ownership* / *Return to agent*) — that panel
+acts on the active **object**, so scenes and actions only ever flip automatically.
 
 When a human has claimed a property you wanted to change, **route around it and say so** in
 your report. Do not overwrite it back, and do not ask them to undo their edit.

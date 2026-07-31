@@ -7,11 +7,14 @@
 fps = 30
 resolution = [1920, 1080]
 
-# [[shots]]
-# id = "shot-01"
-# source = {kind = "scene", blend = "compositions/frames/shot-01.blend", scene = "shot-01"}
-# start = 0
-# duration = 90
+[[shots]]
+id = "shot-01"
+source = {kind = "scene", blend = "compositions/frames/shot-01.blend", scene = "shot-01"}
+start = 0
+duration = 90
+
+# Further shots — uncomment and adapt. An anchored shot needs audio/transcript.json, which
+# `mise run comonteur:ingest_captions` produces; without one, reconcile refuses to resolve it.
 #
 # [[shots]]
 # id = "shot-02"

@@ -1,0 +1,53 @@
+{
+  "skill_name": "comonteur",
+  "notes": "Graded on the code and commands the agent produces, not on Blender's runtime output. A wrong cmt.* call is the failure mode this skill exists to prevent, and grading the artifact keeps runs deterministic and independent of a live Blender session.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "title-card-staggered-reveal",
+      "prompt": "In this comonteur project, build shot-02: a title card that reads \"Ship faster\" with the three words revealing one after another from below, over about 1.5 seconds at 30fps. Check what's already animated in the scene before you add anything, and show me the Python you'd send to Blender.",
+      "expected_output": "Python using cmt.* inside exactly one journal.batch with a descriptive label; introspect called before writing; anim.stagger or repeated tween with a GSAP ease name; preview.frames read before declaring it done.",
+      "assertions": [
+        "Opens exactly one cmt.journal.batch(...) context manager",
+        "The batch label describes the work (not 'batch 1' or similar placeholder)",
+        "Calls an introspect function before the first write",
+        "Uses cmt.text and cmt.anim helpers rather than raw bpy for the writes",
+        "Uses a GSAP ease name from the documented table (e.g. power2.out)",
+        "Contains no bpy.ops.wm.save_mainfile call",
+        "Does not delete or recreate an existing scene to 'start clean'",
+        "Calls cmt.preview.frames and states the frames must be looked at before the shot is done"
+      ],
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "shared-datablock-claimed-path",
+      "prompt": "The human has been editing shot-01's title object in Blender - it's showing as 'shared' now. I want its colour changed to the brand accent and moved up a bit. Explain what you'd check first and what you'd do if they've already moved it themselves.",
+      "expected_output": "Treats claimed_paths() as the set the human owns and must be left alone, routes around a claimed path and reports it, never deletes a shared datablock, never asks the human to undo their edit.",
+      "assertions": [
+        "Calls cmt.provenance.claimed_paths (or names it) as the check before writing",
+        "Treats the paths returned by claimed_paths() as HUMAN-owned / lost to the agent",
+        "States it will not overwrite a path the human has claimed",
+        "States it will report the skipped path rather than asking the human to undo",
+        "Does not propose deleting the shared datablock",
+        "Does not propose asking the human to revert their own edit"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "timeline-assembly-resolved-json",
+      "prompt": "Add a second shot to this project's timeline anchored to the word \"faster\" in the voiceover, with a 0.4s cross dissolve into it, then assemble the edit and tell me what the resolved plan looks like.",
+      "expected_output": "Edits timeline.toml with anchor + transition, runs reconcile via the mise task, describes resolved JSON using transition.type and *_frames keys, then cmt.reconcile.apply() inside Blender outside a batch.",
+      "assertions": [
+        "Runs reconcile via `mise run comonteur:reconcile` rather than by file path",
+        "The resolved-JSON description uses transition.type (not transition.kind)",
+        "Uses source.kind for the shot source (kind and type not swapped)",
+        "Mentions a transcript is required because the shot uses an anchor",
+        "Calls cmt.reconcile.apply() outside a journal.batch",
+        "Expresses anchor offset / transition duration in seconds and frame fields in frames"
+      ],
+      "files": []
+    }
+  ]
+}

@@ -4,8 +4,11 @@
 #MISE sources=["assets/**/*", "!assets/manifest.json"]
 #MISE outputs=["assets/manifest.json"]
 #MISE tools={ffmpeg = "latest", uv = "latest"}
+#USAGE arg "[assets_dir]" help="Directory to scan (default: assets)"
+#USAGE arg "[out]" help="Manifest path to write (default: <assets_dir>/manifest.json)"
 # /// script
 # requires-python = ">=3.11"
+# dependencies = []
 # ///
 # sources/outputs: sha256 + ffprobe over every asset is slow, so mise skips this when assets/
 # is unchanged. The manifest itself is excluded from sources — it lives in the directory it

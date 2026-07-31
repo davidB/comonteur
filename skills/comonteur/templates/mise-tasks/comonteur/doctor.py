@@ -1,6 +1,7 @@
 #!/usr/bin/env -S uv run --script
 #MISE description="Check the toolchain, and this project too when run inside one"
 #MISE tools={uv = "latest"}
+#USAGE arg "[project]" help="Project directory to check (default: the enclosing project, if any)"
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []

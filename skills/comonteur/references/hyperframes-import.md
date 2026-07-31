@@ -95,13 +95,15 @@ thing you are carrying over.
 
 ## 4. Fonts
 
-Assets ship `.woff2`. **Blender cannot load `.woff2`.** Convert to TTF or OTF with
-`fonttools` during ingest and record both paths in the manifest, so the provenance of the
-converted file is traceable.
+Assets ship `.woff2`. **Blender cannot load `.woff` or `.woff2`.** Convert during ingest and
+record both paths in the manifest, so the provenance of the converted file is traceable:
 
 ```bash
-uvx --from fonttools fonttools ttLib.woff2 decompress fonts/Inter.woff2
+mise run comonteur:convert_fonts        # defaults to assets/fonts
 ```
+
+Use the task rather than `fonttools` directly: its CLI has a `decompress` verb for woff2 only,
+and plain `.woff` has none at all, so the raw command quietly converts half your fonts.
 
 A shot built with a silently-substituted default font looks wrong in a way that is easy to
 miss in a low-res preview. Check the fonts resolved before you build the first title.

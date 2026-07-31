@@ -52,21 +52,21 @@ order.
 mise run comonteur:reconcile
 ```
 
-The task is a Python script (`mise-tasks/comonteur/reconcile.py`) and defaults to the right
-paths: `timeline.toml`, `audio/transcript.json` when that file exists, and
-`.comonteur/timeline.resolved.json` for output. Running it directly by path works the same way,
-and the flags are there if you need to override:
+It defaults to the right paths — `timeline.toml`, `audio/transcript.json` when that file
+exists, and `.comonteur/timeline.resolved.json` for output — so the bare task is usually all
+you need. `--help` lists the overrides:
 
 ```bash
-./mise-tasks/comonteur/reconcile.py --timeline timeline.toml \
+mise run comonteur:reconcile --timeline timeline.toml \
   --transcript audio/transcript.json -o .comonteur/timeline.resolved.json
 ```
 
 A transcript is required if any shot or audio entry uses `anchor`.
 
 The resolved JSON is plain: `{fps, resolution, shots: [{id, source, start_frame,
-duration_frames, in_frame, transition: {kind, duration_frames}}], audio: [{id, path,
-start_frame}]}`. No TOML, no anchors, no seconds.
+duration_frames, in_frame, transition: {type, duration_frames}}], audio: [{id, path,
+start_frame}]}`. No TOML, no anchors, no seconds. Note `transition.type` — `kind` is the key
+inside `source`, and mixing them up gets you a silent fallback to a cross dissolve.
 
 **2. Inside Blender**, through `execute_python`:
 

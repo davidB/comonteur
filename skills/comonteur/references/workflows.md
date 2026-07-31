@@ -21,7 +21,7 @@ The menu, as `init` installs it:
 | `comonteur:init` | top up this project's scaffold (add-only) |
 | `comonteur:ingest_narrative` | validate `narrative.toml` |
 | `comonteur:ingest_manifest` | `assets/` → `assets/manifest.json` |
-| `comonteur:ingest_captions <in.json> [--kind whisper\|tts]` | captions → `.comonteur/` |
+| `comonteur:ingest_captions <in.json> [--kind whisper\|tts]` | word timings → `captions/vo.json` |
 | `comonteur:convert_fonts` | `.woff`/`.woff2` → `.ttf`/`.otf` |
 | `comonteur:reconcile` | `timeline.toml` → `.comonteur/timeline.resolved.json` |
 | `comonteur:edit` | open `master.blend` |
@@ -32,7 +32,9 @@ If a repeatable command has no task, **add one** under `mise-tasks/comonteur/` (
 headers for any arguments —
 [docs](https://mise.jdx.dev/tasks/task-arguments.html#file-task-headers) — and
 `#MISE dir="{{config_root}}"` instead of a `cd`) rather than running it ad-hoc. Every existing
-task is stdlib-only Python; keep it that way, and reuse `_common.py` next to them. Anything
+task is stdlib-only Python except `convert_fonts`, which needs a Brotli decoder for WOFF2 that
+the stdlib has not got; keep it that way so a user never has to install anything, and reuse
+`_common.py` next to them. Anything
 the comonteur stack adds to a user's project is namespaced `comonteur:` — the project may be
 someone else's mise project, so never claim a bare name like `render` or `build`.
 

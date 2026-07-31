@@ -8,6 +8,7 @@
 #MISE tools={uv = "latest"}
 # /// script
 # requires-python = ">=3.11"
+# dependencies = []
 # ///
 # Prefer `tts` whenever the audio was synthesized — timing marks are exact by construction
 # and avoid ASR error on proper nouns and technical terms.

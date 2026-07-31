@@ -2,6 +2,7 @@
 #MISE description="Validate narrative.toml (shot intents)"
 #MISE dir="{{config_root}}"
 #MISE tools={uv = "latest"}
+#USAGE arg "[narrative]" help="Narrative file to validate (default: narrative.toml)"
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []

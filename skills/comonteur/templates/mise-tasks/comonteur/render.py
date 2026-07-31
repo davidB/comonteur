@@ -2,6 +2,7 @@
 #MISE description="Render master.blend's timeline to renders/ (background Blender)"
 #MISE dir="{{config_root}}"
 #MISE tools={uv = "latest"}
+#USAGE arg "[blender_args]…" help="Extra arguments forwarded verbatim to Blender"
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []
