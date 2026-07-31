@@ -65,11 +65,18 @@ If it's ambiguous, ask.
 
 ## A — from scratch
 
-1. **Initialize the folder** — this skill's own script, no checkout involved:
+1. **Initialize the folder** — this skill's own script, no checkout involved. `uv` must run
+   this one command before any mise task exists to provision it, so check first: if `uv` is
+   not on `PATH`, use `mise` instead of asking the human to install `uv` directly — most
+   users have `mise`, not a bare `uv`.
 
    ```bash
-   uv run <skill>/scripts/init.py <dir>   # dir defaults to .
+   uv run <skill>/scripts/init.py <dir>            # uv on PATH
+   mise x uv@latest -- uv run <skill>/scripts/init.py <dir>   # uv missing, mise on PATH
    ```
+
+   If neither is on `PATH`, ask the human to install `mise` (https://mise.jdx.dev) — this
+   project standardizes on it for everything after `init` anyway.
 
    It creates the §5.1b tree, every `comonteur:*` task (`mise-tasks/comonteur/`, from
    `<skill>/templates/`), and stub `narrative.toml` / `timeline.toml` / `meta.json`. It
