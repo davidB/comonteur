@@ -7,8 +7,12 @@ calling diff(), never touches bpy.
 import os
 import sys
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "addon", "comonteur"))
 import reconcile  # noqa: E402
+
+pytestmark = pytest.mark.pure
 
 FIELDS = ("frame_start", "frame_final_duration")
 

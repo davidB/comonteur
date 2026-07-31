@@ -4,7 +4,10 @@ Ported from cli/src/captions.rs's #[cfg(test)] module when the Rust CLI was diss
 mise tasks.
 """
 
+import pytest
 from _tasks import load
+
+pytestmark = pytest.mark.task
 
 captions = load("ingest_captions")
 

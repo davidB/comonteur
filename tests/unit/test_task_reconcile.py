@@ -14,6 +14,8 @@ from typing import Any
 import pytest
 from _tasks import load
 
+pytestmark = pytest.mark.task
+
 timeline = load("reconcile")
 
 

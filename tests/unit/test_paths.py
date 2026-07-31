@@ -9,6 +9,8 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "addon", "comonteur"))
 import paths  # noqa: E402
 
+pytestmark = pytest.mark.pure
+
 
 class Vec:
     def __init__(self, *v: float) -> None:

@@ -37,10 +37,29 @@ Code comments referencing `SPEC.md §N` resolve to whichever doc above now holds
   changes. Also holds **everything that runs outside the Blender process**: the ingest and
   reconcile logic lives in `templates/mise-tasks/comonteur/*.py`, one `uv run --script`
   Python file per task (there is no `comonteur` binary and nothing to install — see below).
-- `tests/` — pure-logic Python unit tests (pytest) for modules with no `bpy` dependency
-  (journal, paths, easing map, spec parsing) **and** for the task scripts, which it reaches
-  through `tests/unit/_tasks.py`. Own `pyproject.toml`/`mise.toml`/venv; also owns the
+- `tests/` — pytest, grouped by marker (`--strict-markers`, so a typo fails rather than
+  silently selecting nothing):
+  - `pure` — logic with no I/O and no `bpy` (paths, easing map, `reconcile.diff`).
+  - `task` — the `comonteur:*` task scripts, reached through `tests/unit/_tasks.py`, plus the
+    shipped templates and the mechanically checkable claims in `skills/**/*.md`.
+  - `blender` — `tests/blender/*.py`, plain `assert` scripts executed **inside** a headless
+    Blender by `tests/unit/test_addon_blender.py`. `blender -b --factory-startup
+    --python-exit-code 1 --python <file>` exits 1 when the script raises, so the return code
+    is the whole protocol — no pytest inside Blender, no output parsing. `--factory-startup`
+    is load-bearing: without it a dev-installed `bl_ext.user_default.comonteur` registers a
+    *second* provenance handler with its own `journal._state`, which sees `batch_active() ==
+    False` and flips the datablocks under test to `shared` mid-batch. The driver also runs
+    Blender in a `tmp_path` cwd, since `journal.py`/`preview.py` fall back to `os.getcwd()`
+    when the `.blend` is unsaved.
+  - `integration` — multi-step across a boundary (scaffold a project, then act on it).
+
+  `mise run tests:test` runs everything; `blender`-marked tests auto-skip when Blender is not
+  on `PATH`, so CI stays green either way. `mise run tests:test_pure` (`-m 'pure or task'`)
+  skips them outright. `tests/` owns its `pyproject.toml`/`mise.toml`/venv, and the
   `ruff check` + `mypy` pass over the task scripts, since `skills/` is not a config root.
+
+  **Any bug found in `addon/` or a task script gets a test that fails before the fix.** The
+  `docs/M*-FINDINGS.md` files are evidence, not a regression suite — they get archived.
 - Root `mise.toml` is orchestration only — `monorepo_root = true`, no Python project of its
   own. `lint`/`autofix`/`test`/`ci` fan out via `//...:<task>` across `addon/` and `tests/`
   automatically.
@@ -103,7 +122,7 @@ bootstrap. The add-on is the one artifact still delivered, and `install_addon` o
 whole question (checkout → symlink; `--source`/`--copy` → package; otherwise fetch `--ref`).
 
 **Every task has exactly one copy, in `skills/comonteur/templates/mise-tasks/comonteur/`** —
-which is also what `init` installs into a project, so a project gets all thirteen tasks including
+which is also what `init` installs into a project, so a project gets all twelve tasks including
 `install`/`init`/`doctor`/`install_*` and can repair itself. Two directory symlinks point at that
 one copy: `skills/comonteur/scripts` (short bootstrap path) and `mise-tasks/comonteur` (so a
 checkout gets the whole `comonteur:*` menu). Edit the template copy, never a symlink; adding a

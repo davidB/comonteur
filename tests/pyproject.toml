@@ -10,7 +10,16 @@ dependencies = []
 dev = ["pytest>=8", "ruff>=0.8", "mypy>=1.13"]
 
 [tool.pytest.ini_options]
+# `unit` only: tests/blender/ holds scripts executed *inside* a headless Blender by
+# test_addon_blender.py, not pytest tests — collecting them here would import bpy and fail.
 testpaths = ["unit"]
+addopts = "--strict-markers"
+markers = [
+  "pure: logic only — no I/O, no bpy",
+  "task: the comonteur:* task scripts, loaded through unit/_tasks.py",
+  "blender: runs a real headless Blender subprocess (auto-skips when blender is not on PATH)",
+  "integration: multi-step across a boundary (scaffold a project, then act on it)",
+]
 
 [tool.mypy]
 # Scoped to the comonteur:* task scripts (see TASKS_DIR in mise.toml): that logic used to be

@@ -8,3 +8,10 @@ build/
 # gitnexus-generated (regenerate with: node .gitnexus/run.cjs analyze)
 .claude/skills/gitnexus/
 .gitnexus/
+
+# Journal/review output from running the add-on with an unsaved .blend (journal.py and
+# preview.py fall back to os.getcwd()). Real projects keep theirs next to master.blend.
+.comonteur/
+
+# Skill eval runs: scaffolded fixture project, run outputs, benchmarks.
+skills/comonteur-workspace/

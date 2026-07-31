@@ -25,5 +25,12 @@ description = "Apply ruff's autofixes to tests/ and the task scripts, format tes
 run = ["uv run ruff check --fix . $TASKS_DIR", "uv run ruff format ."]
 
 [tasks.test]
-description = "Run pure-logic unit tests (pytest)"
+description = "Run the unit tests (pytest); blender-marked tests skip if blender is not on PATH"
 run = "uv run pytest"
+
+# For a machine without Blender, or a fast inner loop. Plain `test` still runs everything —
+# the blender marker auto-skips rather than failing, so `ci` is green either way.
+[tasks.test_pure]
+description = "Run only the tests that need no Blender (markers: pure, task)"
+run = "uv run pytest -m 'pure or task'"
+

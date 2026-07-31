@@ -6,7 +6,10 @@ mise tasks. parse_probe() is tested against literal ffprobe fixtures — no subp
 
 from pathlib import Path
 
+import pytest
 from _tasks import load
+
+pytestmark = pytest.mark.task
 
 manifest = load("ingest_manifest")
 

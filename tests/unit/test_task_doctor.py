@@ -8,6 +8,8 @@ docs/constraints-and-risks.md §11), unreadable fails.
 import pytest
 from _tasks import load
 
+pytestmark = pytest.mark.task
+
 doctor = load("doctor")
 
 
