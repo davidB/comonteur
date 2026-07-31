@@ -45,17 +45,20 @@ def _parse_ease(ease: str | None) -> tuple[str, str]:
 def _keyframe(
     obj: Any,
     path: str,
-    index: int,
+    index: int | None,
     frame: float,
     value: float,
     interpolation: str,
     easing: str,
 ) -> None:
-    obj.keyframe_insert(path, index=index, frame=frame)
+    # A scalar property has no array index at all; passing index=0 for one is not a harmless
+    # default — keyframe_insert rejects it and paths.resolve cannot subscript the value.
+    kw = {} if index is None else {"index": index}
+    obj.keyframe_insert(path, frame=frame, **kw)
     # 5.2's layered-Action rework replaced Action.fcurves (see docs/M3-FINDINGS.md
     # Check 3) with layers/strips/channelbags; fcurve_ensure_for_datablock() is the
     # documented way to get the fcurve back without walking that structure.
-    fc = obj.animation_data.action.fcurve_ensure_for_datablock(obj, path, index=index)
+    fc = obj.animation_data.action.fcurve_ensure_for_datablock(obj, path, index=index or 0)
     kf = next(k for k in fc.keyframe_points if k.co[0] == frame)
     kf.interpolation = interpolation
     kf.easing = easing
@@ -68,7 +71,7 @@ def _keyframe(
 def tween(
     obj: Any,
     path: str,
-    index: int,
+    index: int | None,
     frm: float,
     to: float,
     start: float,
@@ -77,17 +80,24 @@ def tween(
 ) -> None:
     """Set `path[index]` to `frm` at `start` and `to` at `start+dur`, both real
     keyframes. Must run inside journal.batch() (see module docstring).
+
+    `index` is the array component (`location` X/Y/Z = 0/1/2). Pass `index=None` for a scalar
+    property, which has no components — the journal then records the bare path, so revert and
+    claimed_paths() see the same string the human's edit would touch.
     """
     if not journal.batch_active():
         raise RuntimeError("anim.tween() must run inside journal.batch()")
     interpolation, easing = _parse_ease(ease)
-    journal.set(obj, f"{path}[{index}]", frm)
+    journal_path = path if index is None else f"{path}[{index}]"
+    journal.set(obj, journal_path, frm)
     _keyframe(obj, path, index, start, frm, interpolation, easing)
-    journal.set(obj, f"{path}[{index}]", to)
+    journal.set(obj, journal_path, to)
     _keyframe(obj, path, index, start + dur, to, interpolation, easing)
 
 
-def stagger(objs: Iterable[Any], path: str, index: int, offset: float, **tween_kwargs: Any) -> None:
+def stagger(
+    objs: Iterable[Any], path: str, index: int | None, offset: float, **tween_kwargs: Any
+) -> None:
     """tween() each object in objs, incrementing `start` by `offset` per object."""
     base_start = tween_kwargs.pop("start")
     for i, obj in enumerate(objs):

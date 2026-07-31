@@ -48,6 +48,22 @@ def _read_all() -> Iterator[dict[str, Any]]:
                 yield json.loads(line)
 
 
+def _jsonable(value: Any) -> Any:
+    """bpy hands back Vector / Color / bpy_prop_array for anything vector-shaped, and none of
+    them are JSON-serializable. Coerce here rather than at the call site: `set()` is documented
+    as the escape hatch for arbitrary properties, so array-valued writes are expected, and a
+    TypeError would otherwise surface at batch exit with the batch already half-flushed.
+    """
+    if isinstance(value, (str, bytes)) or value is None:
+        return value
+    if isinstance(value, (int, float, bool)):
+        return value
+    try:
+        return [_jsonable(v) for v in value]
+    except TypeError:
+        return repr(value)
+
+
 def target_of(id_block: Any) -> str:
     return f"{type(id_block).__name__}:{id_block.get(const.PROP_ID, id_block.name)}"
 
@@ -95,12 +111,45 @@ def set(id_block: Any, path: str, value: Any) -> None:
             "op": "set",
             "target": target_of(id_block),
             "path": path,
-            "old": old,
-            "new": new,
+            "old": _jsonable(old),
+            "new": _jsonable(new),
         }
     )
     if id_block not in _state["touched"]:
         _state["touched"].append(id_block)
+
+
+def record_create(id_block: Any) -> None:
+    """Record that the agent brought `id_block` into existence, inside the current batch.
+
+    Called from provenance.tag(), so every constructor gets this for free. It goes through
+    `_state["writes"]` rather than straight to the file because that list is what batch() uses
+    to decide there is anything to journal, bump and undo_push at all.
+    """
+    if not _state["active"]:
+        raise RuntimeError("journal.record_create() must run inside journal.batch()")
+    _state["writes"].append(
+        {
+            "ts": _now(),
+            "batch": _state["batch_id"],
+            "actor": "agent",
+            "op": "create",
+            "target": target_of(id_block),
+        }
+    )
+    if id_block not in _state["touched"]:
+        _state["touched"].append(id_block)
+
+
+def created_by_agent(id_block: Any) -> bool:
+    """True when the journal shows the agent created `id_block` — the check revert needs to
+    know whether undoing means deleting the datablock or restoring its previous values.
+    """
+    target = target_of(id_block)
+    return any(
+        e.get("target") == target and e.get("actor") == "agent" and e.get("op") == "create"
+        for e in _read_all()
+    )
 
 
 def record_flip(id_block: Any) -> None:

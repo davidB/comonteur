@@ -16,7 +16,11 @@ def frames(scene: Any, frame_numbers: Iterable[int], engine: str = "WORKBENCH") 
     out_dir = os.path.join(root, const.JOURNAL_DIR, "review")
     os.makedirs(out_dir, exist_ok=True)
 
+    # Restore everything this function touches, including on the error path: comonteur:render
+    # uses the file's own output settings, so a leaked filepath silently redirects the human's
+    # next render into .comonteur/review/.
     prev_scene, prev_engine = bpy.context.window.scene, scene.render.engine
+    prev_filepath, prev_frame = scene.render.filepath, scene.frame_current
     scene.render.engine = "BLENDER_WORKBENCH" if engine == "WORKBENCH" else engine
     bpy.context.window.scene = scene
     try:
@@ -31,4 +35,6 @@ def frames(scene: Any, frame_numbers: Iterable[int], engine: str = "WORKBENCH") 
         return out_paths
     finally:
         scene.render.engine = prev_engine
+        scene.render.filepath = prev_filepath
+        scene.frame_set(prev_frame)
         bpy.context.window.scene = prev_scene

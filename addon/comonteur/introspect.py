@@ -3,6 +3,7 @@ and truncate. drift()/find() are deferred past M1 (not on the walking-skeleton
 checklist); add when reconcile (M4) needs them.
 """
 
+from collections.abc import Iterator
 from typing import Any
 
 from . import const
@@ -14,13 +15,17 @@ def outline(scene: Any, max_lines: int = 60) -> str:
         lines.append(f"  Collection: {coll.name!r} ({len(coll.objects)} objects)")
         if len(lines) >= max_lines:
             break
+    shown = 0
     for obj in scene.collection.objects:
         if len(lines) >= max_lines:
-            lines.append(f"  … +{len(scene.collection.objects) - len(lines)} more")
+            # Count objects against objects: `lines` also holds the scene header and one entry
+            # per collection, so subtracting len(lines) here under-reported what was hidden.
+            lines.append(f"  … +{len(scene.collection.objects) - shown} more")
             break
         lines.append(
             f"  Object: {obj.name!r} [{obj.type}] origin={obj.get(const.PROP_ORIGIN, '-')}"
         )
+        shown += 1
     return "\n".join(lines)
 
 
@@ -33,13 +38,36 @@ def describe(id_block: Any, path: str = "", max_lines: int = 40) -> str:
     return f"{type(cur).__name__} at {path or '<root>'}:\n{body}"
 
 
-def animated_paths(scene: Any) -> list[dict[str, Any]]:
+def _action_fcurves(action: Any) -> Iterator[Any]:
+    """Every F-curve in `action`, across the 5.2 layered-Action structure.
+
+    5.2's layered-animation rework removed `Action.fcurves` in favour of
+    layers/strips/channelbags (docs/M3-FINDINGS.md Check 3). `anim.py` avoids walking that
+    structure by using `fcurve_ensure_for_datablock()`, but that accessor is per
+    (datablock, path, index) and cannot enumerate — reading back *what is animated* has to
+    walk. Keep this the only place that does.
+    """
+    for layer in getattr(action, "layers", ()):
+        for strip in layer.strips:
+            for channelbag in getattr(strip, "channelbags", ()):
+                yield from channelbag.fcurves
+
+
+def animated_paths(scene: Any, max_lines: int = 60) -> list[dict[str, Any]]:
+    """One dict per F-curve, capped like its siblings. When the cap bites, a final
+    `{"truncated": N}` entry says how many were dropped — a silently short list would read
+    as "that is the whole scene", which is the opposite of what this module is for.
+    """
     out: list[dict[str, Any]] = []
+    total = 0
     for obj in scene.objects:
         action = obj.animation_data.action if obj.animation_data else None
         if not action:
             continue
-        for fc in action.fcurves:
+        for fc in _action_fcurves(action):
+            total += 1
+            if len(out) >= max_lines:
+                continue
             out.append(
                 {
                     "object": obj.name,
@@ -49,4 +77,6 @@ def animated_paths(scene: Any) -> list[dict[str, Any]]:
                     "frame_range": (fc.range()[0], fc.range()[1]) if fc.keyframe_points else None,
                 }
             )
+    if total > len(out):
+        out.append({"truncated": total - len(out)})
     return out

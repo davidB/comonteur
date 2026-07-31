@@ -58,7 +58,14 @@ def set_param(
     subtype: str | None = None,
 ) -> None:
     scn[name] = value
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
+    # Colours and vectors carry UI metadata too — gating on scalars alone silently dropped
+    # subtype="COLOR", which is the one that decides whether the human gets a swatch or four
+    # raw floats. Booleans are ints in Python but are not sliders, so they stay out.
+    numeric = isinstance(value, (int, float)) and not isinstance(value, bool)
+    vector = isinstance(value, (tuple, list)) and all(
+        isinstance(v, (int, float)) and not isinstance(v, bool) for v in value
+    )
+    if numeric or vector:
         ui = scn.id_properties_ui(name)
         if min is not None or max is not None:
             ui.update(min=min if min is not None else -1e6, max=max if max is not None else 1e6)
