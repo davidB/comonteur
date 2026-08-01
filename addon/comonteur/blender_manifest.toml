@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "comonteur"
-version = "0.1.0"
+version = "0.20260801.0"
 name = "comonteur"
 tagline = "Agent/human co-editing for Blender video production"
 maintainer = "David Bernard"
