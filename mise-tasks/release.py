@@ -18,12 +18,20 @@ Version scheme: {major}.{yyyymmdd}.{patch}
 A future Blender-compatibility marker can be appended later as build metadata (e.g. "+bl5.2")
 without changing this scheme — that kind of suffix doesn't affect version/tag ordering.
 
-This is one task, not tag-then-package-then-publish: `gh release create` needs a pushed tag to
-attach zips to, and there is nothing to package "for" until this run creates that tag. Steps 1-6
-below are local-only and safe to abort (nothing pushed yet); steps 7-8 push and publish — the
-point of no return. Run identically on a laptop (`mise run release`) or via the `release`
-GitHub Actions workflow — that workflow is workflow_dispatch only, never a tag-push trigger,
-since there is no tag before this script runs; this run is what creates it.
+Two phases, in order, so everything failable runs before anything git-visible:
+1. Build — bump the manifest, generate the changelog, build all 3 zips. All local file edits,
+   no commit yet. Any failure here just discards those edits; nothing to roll back in git.
+2. Publish — commit, tag, push, `gh release create`. Only starts once the build has fully
+   succeeded, so this phase is just git/gh plumbing and rarely fails on its own. A failure
+   before the push still rolls back cleanly (delete tag, reset the commit); a failure after
+   the push can't be safely auto-reverted (shared state) — it prints a ready-to-run retry
+   command instead.
+
+This is one task, not tag-then-package-then-publish, because `gh release create` needs a
+pushed tag to attach zips to — there's nothing to publish "for" until this run creates that
+tag. Run identically on a laptop (`mise run release`) or via the `release` GitHub Actions
+workflow — that workflow is workflow_dispatch only, never a tag-push trigger, since there is
+no tag before this script runs; this run is what creates it.
 """
 
 from __future__ import annotations
@@ -59,22 +67,10 @@ def run(cmd: list[str], *, capture: bool = False) -> subprocess.CompletedProcess
     return proc
 
 
-def rollback(version: str, *, committed: bool, tagged: bool) -> None:
-    """Best-effort local-only undo. Never called once anything has been pushed — pushed state
-    is shared and must not be force-reverted automatically."""
-    print("==> rolling back local changes")
-    if tagged:
-        subprocess.run(["git", "tag", "-d", version], cwd=ROOT)
-    if committed:
-        subject = subprocess.run(
-            ["git", "log", "-1", "--pretty=%s"], cwd=ROOT, text=True, capture_output=True
-        ).stdout.strip()
-        if subject == f"chore(release): {version}":
-            subprocess.run(["git", "reset", "--hard", "HEAD~1"], cwd=ROOT)
-        else:
-            print(f"   ! HEAD commit isn't 'chore(release): {version}', not resetting — check manually")
-        return
-    # nothing committed yet: discard whatever local edits this run made
+def discard_build_edits() -> None:
+    """Undo the build phase's uncommitted file edits (manifest + changelog). No commit/tag
+    exists yet at this point, so there's nothing in git history to roll back."""
+    print("==> discarding uncommitted file edits")
     subprocess.run(["git", "checkout", "--", str(MANIFEST)], cwd=ROOT)
     tracked = (
         subprocess.run(
@@ -86,6 +82,22 @@ def rollback(version: str, *, committed: bool, tagged: bool) -> None:
         subprocess.run(["git", "checkout", "--", str(CHANGELOG)], cwd=ROOT)
     elif CHANGELOG.exists():
         CHANGELOG.unlink()
+
+
+def rollback_publish(version: str, *, committed: bool, tagged: bool) -> None:
+    """Best-effort undo for the publish phase's commit/tag. Never called once anything has
+    been pushed — pushed state is shared and must not be force-reverted automatically."""
+    print("==> rolling back local commit/tag")
+    if tagged:
+        subprocess.run(["git", "tag", "-d", version], cwd=ROOT)
+    if committed:
+        subject = subprocess.run(
+            ["git", "log", "-1", "--pretty=%s"], cwd=ROOT, text=True, capture_output=True
+        ).stdout.strip()
+        if subject == f"chore(release): {version}":
+            subprocess.run(["git", "reset", "--hard", "HEAD~1"], cwd=ROOT)
+        else:
+            print(f"   ! HEAD commit isn't 'chore(release): {version}', not resetting — check manually")
 
 
 def next_version() -> str:
@@ -111,6 +123,47 @@ def build_zip(output: Path, source: Path, arcname_root: str) -> None:
                 zf.write(path, str(Path(arcname_root) / path.relative_to(source)))
 
 
+def build(version: str) -> None:
+    bump_manifest(version)
+    run(["git-cliff", "--tag", version, "-o", str(CHANGELOG)])
+    NOTES_FILE.write_text(run(["git-cliff", "--tag", version, "--latest"], capture=True).stdout)
+
+    run(["mise", "run", "addon:build"])
+    addon_zip = sorted((ROOT / "addon" / "build").glob("comonteur-*.zip"))[-1]
+    (DIST / f"comonteur-addon-{version}.zip").write_bytes(addon_zip.read_bytes())
+    build_zip(DIST / f"comonteur-skill-{version}.zip", ROOT / "skills" / "comonteur", "comonteur")
+    build_zip(
+        DIST / f"comonteur-mise-tasks-{version}.zip",
+        ROOT / "skills" / "comonteur" / "templates",
+        "comonteur",
+    )
+
+
+def publish(version: str) -> None:
+    committed = tagged = False
+    try:
+        run(["git", "add", str(MANIFEST), str(CHANGELOG)])
+        run(["git", "commit", "-m", f"chore(release): {version}"])
+        committed = True
+        run(["git", "tag", "-a", version, "-m", version])
+        tagged = True
+        run(["git", "push"])
+        run(["git", "push", "origin", version])
+    except Exception as e:
+        rollback_publish(version, committed=committed, tagged=tagged)
+        raise ReleaseError(f"release {version} aborted before publishing, rolled back: {e}") from e
+
+    # Point of no return: pushed. A gh failure from here on can't be safely auto-reverted.
+    zips = sorted(str(p) for p in DIST.glob("*.zip"))
+    gh_cmd = ["gh", "release", "create", version, *zips, "--title", version, "--notes-file", str(NOTES_FILE)]
+    try:
+        run(gh_cmd)
+    except ReleaseError as e:
+        raise ReleaseError(
+            f"{version} was pushed but the release wasn't published: {e}\n   retry: {' '.join(gh_cmd)}"
+        ) from e
+
+
 def main() -> None:
     if run(["git", "status", "--porcelain"], capture=True).stdout.strip():
         raise ReleaseError("working tree not clean — commit or stash before releasing")
@@ -122,63 +175,13 @@ def main() -> None:
     for old in DIST.glob("*"):
         old.unlink()
 
-    # Steps 1-6: local only, nothing pushed yet — any failure here rolls back cleanly.
-    committed = tagged = False
     try:
-        bump_manifest(version)
-        run(["git-cliff", "--tag", version, "-o", str(CHANGELOG)])
-        NOTES_FILE.write_text(
-            run(["git-cliff", "--tag", version, "--latest"], capture=True).stdout
-        )
-
-        run(["git", "add", str(MANIFEST), str(CHANGELOG)])
-        run(["git", "commit", "-m", f"chore(release): {version}"])
-        committed = True
-        run(["git", "tag", "-a", version, "-m", version])
-        tagged = True
-
-        run(["mise", "run", "addon:build"])
-        addon_zip = sorted((ROOT / "addon" / "build").glob("comonteur-*.zip"))[-1]
-        (DIST / f"comonteur-addon-{version}.zip").write_bytes(addon_zip.read_bytes())
-        build_zip(
-            DIST / f"comonteur-skill-{version}.zip", ROOT / "skills" / "comonteur", "comonteur"
-        )
-        build_zip(
-            DIST / f"comonteur-mise-tasks-{version}.zip",
-            ROOT / "skills" / "comonteur" / "templates",
-            "comonteur",
-        )
+        build(version)
     except Exception as e:
-        rollback(version, committed=committed, tagged=tagged)
-        raise ReleaseError(f"release {version} aborted, local changes rolled back: {e}") from e
+        discard_build_edits()
+        raise ReleaseError(f"release {version} aborted, no git changes made: {e}") from e
 
-    # Steps 7-8: point of no return. A push is shared state — no auto-rollback past here.
-    run(["git", "push"])
-    run(["git", "push", "origin", version])
-
-    zips = sorted(str(p) for p in DIST.glob("*.zip"))
-    try:
-        run(
-            [
-                "gh",
-                "release",
-                "create",
-                version,
-                *zips,
-                "--title",
-                version,
-                "--notes-file",
-                str(NOTES_FILE),
-            ]
-        )
-    except ReleaseError as e:
-        retry = " ".join(
-            ["gh", "release", "create", version, *zips, "--title", version, "--notes-file", str(NOTES_FILE)]
-        )
-        raise ReleaseError(
-            f"{version} was pushed but the release wasn't published: {e}\n   retry: {retry}"
-        ) from e
-
+    publish(version)
     print(f"==> published {version}")
 
 
