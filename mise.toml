@@ -8,6 +8,7 @@ config_roots = ["addon", "tests"]
 
 [tools]
 uv = "latest" # require to launch some mise-tasks
+blender = "5.2" # to use the same version in every submodule and to be cached by mise on ci
 
 [tasks.lint]
 description = "Run all Lint"

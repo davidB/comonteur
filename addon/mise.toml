@@ -1,6 +1,6 @@
-[tools]
-uv = "latest"
-blender = "5.2"
+# [tools]
+# uv = "latest"
+# blender = "5.2"
 
 [tasks.validate]
 description = "Validate the extension manifest with Blender (structure/copyright format, not the SPDX id)"
