@@ -1,5 +1,6 @@
 [tools]
 uv = "latest"
+blender = "5.2"
 
 # TASKS_DIR: the comonteur:* task scripts (skills/comonteur/templates/mise-tasks/comonteur/)
 # are plain Python but live outside this config root — the single copy comonteur:init installs

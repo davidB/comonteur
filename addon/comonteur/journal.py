@@ -2,6 +2,8 @@
 journal.set() inside a journal.batch(); that is the only sanctioned write path.
 """
 
+from __future__ import annotations
+
 import contextlib
 import datetime
 import json

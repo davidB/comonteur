@@ -40,3 +40,5 @@ assert by_path["location[1]"]["new"] == 0.5, by_path["location[1]"]
 
 # last_agent_value round-trips through JSON, so revert has something usable.
 assert list(cmt.journal.last_agent_value(title, "scale")) == [2.0, 2.0, 2.0]
+
+assert cmt.journal.paths_written_by_agent(title) == {"scale", "location", "location[1]"}

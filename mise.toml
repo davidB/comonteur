@@ -6,6 +6,9 @@ monorepo_root = true
 [monorepo]
 config_roots = ["addon", "tests"]
 
+[tools]
+uv = "latest" # require to launch some mise-tasks
+
 [tasks.lint]
 description = "Run all Lint"
 depends = ["//...:lint"]
