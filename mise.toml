@@ -1,5 +1,8 @@
 monorepo_root = true
 
+# `release` (mise-tasks/release.py) is auto-discovered as a file task, not listed here.
+# Release policy/version scheme: see mise-tasks/release.py.
+
 [monorepo]
 config_roots = ["addon", "tests"]
 

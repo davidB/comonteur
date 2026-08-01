@@ -1,17 +1,17 @@
 [tools]
 uv = "latest"
+blender = "5.2"
+
+[tasks.validate]
+description = "Validate the extension manifest with Blender (structure/copyright format, not the SPDX id)"
+# Note `validate` checks manifest structure and the `copyright` format but NOT the SPDX id —
+# a wrong license string still passes. Review the manifest by eye.
+run = "blender --command extension validate comonteur"
 
 [tasks.lint]
 description = "Lint addon/ with ruff (non-mutating), extension structure,..."
-run = [
-  "uv run ruff check .",
-  "uv run ruff format --check .",
-  # May be moved in a dedicated task and
-  # not wired into `lint`: that would make `mise run ci` require Blender on PATH, and lint's
-  # only tool is uv. Note `validate` checks manifest structure and the `copyright` format but
-  # NOT the SPDX id — a wrong license string still passes. Review the manifest by eye.
-  "blender --command extension validate comonteur",
-]
+depends = ["validate"]
+run = ["uv run ruff check .", "uv run ruff format --check ."]
 
 [tasks.autofix]
 description = "Apply ruff's autofixes and formatting to addon/"
