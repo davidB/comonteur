@@ -54,14 +54,14 @@ Decide before touching anything, by looking at the directory:
 
 | What you see | Workflow |
 |---|---|
-| Nothing, or only raw material (a brief, footage, a `.wav`) | **A — from scratch** |
-| `index.html` + `hyperframes.json` + `compositions/frames/*.html` | **B — import** → `hyperframes-import.md`, stop reading here |
-| Harness output (script, shot list, `assets/`, TTS audio, captions) but no HTML compositions | **C — harness upstream, Blender rendering** |
+| Nothing, or only raw material (a brief, footage, a `.wav`) | **from-scratch** |
+| `index.html` + `hyperframes.json` + `compositions/frames/*.html` | **import** → `hyperframes-import.md`, stop reading here |
+| Harness output (script, shot list, `assets/`, TTS audio, captions) but no HTML compositions | **harness-upstream** — Blender rendering |
 | `master.blend` + `timeline.toml` + `.comonteur/` | An existing comonteur project — go straight to the per-shot loop |
 
 If ambiguous, ask.
 
-## A — from scratch
+## from-scratch
 
 1. **Initialize the folder** — this skill's own script, no checkout involved. `uv` must run
    this one command before any mise task exists to provision it, so check first: if `uv` isn't
@@ -131,14 +131,14 @@ If ambiguous, ask.
 
 8. **Assemble** with `timeline.md` once the shots exist.
 
-## C — HyperFrames harness upstream, Blender rendering
+## harness-upstream — Blender rendering
 
 The harness (script → shot list → asset prep → TTS → word-level captions) is worth keeping.
 The renderer is not — that's the whole point of comonteur.
 
 **Don't create `index.html`, any HTML composition, or run the HyperFrames renderer.** Shots
 are authored in Blender from the first frame. There's no HTML to parse afterwards, so none of
-workflow B's lossiness applies — don't import your own output.
+the import workflow's lossiness applies — don't import your own output.
 
 1. Run the harness for production prep only. Its output already matches the shot-list /
    `assets/` / `audio/` / word-level-caption contract. `init` on that folder is safe — it adds
@@ -147,7 +147,7 @@ workflow B's lossiness applies — don't import your own output.
    (`STORYBOARD.md` → `narrative.toml`, `audio_meta.json` → `audio/meta.json`, tokens →
    `lib/brand.blend`). Metadata only — that document's timing-recovery and shot-rebuilding
    steps are for imports and have no equivalent here.
-3. Then A's steps 2–8, skipping what the harness already produced.
+3. Then from-scratch's steps 2–8, skipping what the harness already produced.
 4. **Prefer `anchor` over absolute `start`** in `timeline.toml` (`timeline.md`). TTS gets
    re-synthesized; anchors survive it, absolute frames don't.
 
@@ -170,8 +170,8 @@ at the wrong length, over the wrong audio.
 ## Delegating mechanical work to a cheaper model
 
 Most of this skill needs judgment — reading a scene before touching it, picking an ease,
-deciding whether a claimed path matters. One workflow doesn't: HyperFrames import (workflow
-B) starts with a large, purely mechanical file-mapping and metadata-copy pass before the
+deciding whether a claimed path matters. One workflow doesn't: HyperFrames import starts
+with a large, purely mechanical file-mapping and metadata-copy pass before the
 judgment-heavy parts (timing recovery, shot rebuild) begin. For that pass only, launch a
 background `Agent` call with a cheaper model (e.g. `haiku`) instead of doing the copying
 yourself — see `hyperframes-import.md`'s "Delegate the mechanical pass" section for exactly
@@ -180,6 +180,6 @@ what to hand off and what to keep.
 ## Always the human's, never yours
 
 - **Saving the `.blend`.** Always. Say so at the end of every batch of work.
-- **Confirming a recovered cut list** (workflow B's gate).
+- **Confirming a recovered cut list** (the import workflow's gate).
 - **Ownership overrides** — the sidebar's *Take ownership* / *Return to agent*.
 - **Deleting or overwriting anything they made.** Untagged is human; ask by name.
