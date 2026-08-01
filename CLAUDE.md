@@ -77,6 +77,47 @@ to. Importing a task script remains impossible either way: Blender's bundled int
 cannot see a uv environment.) The task scripts emit plain JSON; the add-on reads that with the
 stdlib `json` module. Nothing crosses that line.
 
+## Skill content conventions
+
+`skills/comonteur/` is read on every relevant task, so its token cost compounds — and nobody
+clones this repo to check it against source, so drift there is invisible until an agent acts
+on a stale claim. Rules for `SKILL.md` and `references/*.md`:
+
+- **State each rule once.** If a fact belongs in more than one file (e.g. a hard rule that a
+  reference file's mechanism section also touches), pick one canonical location — cross-cutting
+  hard rules go in `SKILL.md`, since it's the file every task path reads — and have the other
+  file(s) point back to it (`see ../SKILL.md Hard rules`) instead of re-deriving it. Two files
+  independently explaining `claimed_paths()` or "`batch()` doesn't nest" is exactly the kind of
+  duplication to avoid; one file stating it and a second one restating the same explanation in
+  different words is still duplication even if the wording differs.
+- **Never cite this repo's own docs from inside `skills/`.** No `docs/*.md`, no `SPEC.md`, no
+  bare `§N` section numbers. A user who installed the skill via `npx skills add` has none of
+  that — a citation like `docs/M3-FINDINGS.md` or `§6.2` costs words and points at something
+  the agent can't open. State the rule itself instead. `addon/*.py:LINE` pointers are fine and
+  worth keeping: that's the actual enforcement source, not a repo doc, and it ships with the
+  add-on regardless of how the skill was installed.
+- **Keep the progressive-disclosure split.** `SKILL.md` is the always-loaded command contract;
+  `references/*.md` load on demand per the routing table. Don't inline a reference file's
+  content into `SKILL.md` to "save a read" — that makes every task pay for it, not just the
+  ones that need it.
+- **Prose is caveman-terse.** Short declarative sentences, straight to the point. Cut hedging
+  ("it is worth noting", "in general") and filler. Keep the one-line "why" behind a rule (that's
+  what stops it reading as an arbitrary MUST) but don't wrap it in more words than it needs.
+- **Frontmatter stays minimal.** `name` + `description` are required and drive triggering —
+  keep `description` keyword-rich and a little "pushy" about when to use the skill. Extra
+  metadata fields (e.g. `category`) are fine for humans/tooling but must never be load-bearing
+  for triggering, since Claude's skill-triggering only reads `name` + `description`.
+- **A cheap-model background `Agent` call is for mechanical, non-judgment subtasks only** —
+  e.g. `hyperframes-import.md`'s identity-copy and metadata-translation steps. Anything with a
+  judgment call or a human-confirmation gate (timing recovery, shot rebuild, anything the
+  routing table calls a "gate") stays in the foreground on the full model.
+- **Extend the mechanical test suite, don't just review.** `tests/unit/test_skill_docs.py` and
+  `tests/unit/test_task_headers.py` (both `task`-marked) already check some of this by
+  grepping the shipped markdown — referenced tasks exist, no by-path task invocation, no raw
+  `fonttools`, frontmatter present, routing table targets exist. When you add a new
+  mechanically-checkable claim to a skill doc (a path, a task name, a forbidden pattern), add
+  an assertion for it there rather than trusting the next edit not to break it silently.
+
 ## Commands
 
 Run from repo root (mise monorepo — these fan out to every config root):

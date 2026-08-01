@@ -1,5 +1,6 @@
 ---
 name: comonteur
+category: video-editing
 description: >
   Build and edit video scenes, shots, animations and timelines inside Blender through the
   comonteur helper library, in a project that has `master.blend`, `timeline.toml` or
@@ -10,16 +11,16 @@ description: >
   timeline from `timeline.toml`, and importing an existing HyperFrames project. Read this
   before writing any `bpy` code against such a project — raw `bpy` bypasses the ownership
   and journal system that lets a human edit the same `.blend` at the same time.
+tags: ["blender", "vse", "video", "animation", "montage"]
 ---
 
 # comonteur — start here
 
-A human is editing this `.blend` at the same time as you, live. Everything below exists to
-make that safe. The scene is the source of truth; you never regenerate it, you only mutate
-it.
+A human edits this `.blend` live, at the same time as you. Everything below exists to keep
+that safe. The scene is the source of truth. You mutate it. You never regenerate it.
 
-You reach Blender through the official Blender MCP server's `execute_python` only. There is
-no comonteur MCP tool — the library *is* the typed surface.
+Reach Blender through the official Blender MCP server's `execute_python` only. There is no
+comonteur MCP tool — the library is the typed surface.
 
 ## The one code shape
 
@@ -37,94 +38,89 @@ with cmt.journal.batch("shot-03: title fade-up"):
     cmt.anim.tween(title, "location", 1, frm=-0.4, to=0.0, start=1, dur=18, ease="power2.out")
 ```
 
-The batch is not a convention you can skip. `journal.set()` and `anim.tween()` **raise**
-outside one (`journal.py:86`, `anim.py:82`). The batch is what produces the journal entries,
-bumps `cmt_rev`, gates the human-edit detector so your own writes aren't misread as theirs,
-and emits exactly one labelled undo step the human can undo in one keystroke.
+The batch is not optional. `journal.set()` and `anim.tween()` raise outside one (`journal.py:86`,
+`anim.py:82`). The batch writes the journal entries, bumps `cmt_rev`, gates the human-edit
+detector so your own writes aren't misread as theirs, and produces one labelled undo step.
 
-Label batches with what a human would want to see in an undo menu: `"shot-03: title
-fade-up"`, not `"batch 1"`.
+Label batches for a human reading an undo menu: `"shot-03: title fade-up"`, not `"batch 1"`.
 
 ## Hard rules
 
-Each of these is a silent-corruption bug, not a style preference.
+Break one of these and you corrupt the project silently.
 
-- **Never save the `.blend`.** No `bpy.ops.wm.save_mainfile()`, ever. Saving is a human
-  action; saving under them can destroy unsaved work you cannot see.
-- **Never regenerate.** Your only operation on existing data is mutation.
-  `scene.new_scene()` returns the existing scene when the `cmt_id` already exists
-  (`scene.py:20`) — that is deliberate, don't work around it by deleting first.
-  Delete-and-recreate throws away every human edit and breaks journal continuity.
-- **Untagged data is human data.** Anything without `cmt_origin` was made by the human.
-  Do not modify or delete it unless the current instruction names it. Check with
-  `cmt.provenance.origin(id_block)` before touching anything you did not create in this
-  session.
-- **`shared` means the human has touched it.** `cmt.provenance.claimed_paths(id_block)`
-  returns the paths **the human has claimed** — the ones whose value no longer matches what
-  you last wrote. Those are lost to you: mutate anything *except* them, and **never** delete
-  a `shared` datablock.
-- **Prefer `cmt.*` over raw `bpy`.** Raw `bpy` is not forbidden and is sometimes the only
-  way, but it is untracked: it never reaches the journal, `revert` cannot undo it, and the
-  human's ownership view will not show it. If you must, keep it to reads, or do the write
-  through `cmt.journal.set(obj, "path", value)` so it is recorded.
-- **Prefer `mise run comonteur:<task>` over raw shell** in a project that has them
-  (`mise tasks`). The task is what the human can re-run and what pins the tools; an ad-hoc
-  command in a chat log is neither. Add a task rather than improvising a repeatable one.
-- **`batch()` does not nest** (`journal.py:61`). One batch per logical unit of work; not
-  one per property write, not one for the whole session.
+- **Never save the `.blend`.** No `bpy.ops.wm.save_mainfile()`. Saving is the human's call —
+  saving under them can destroy work you can't see.
+- **Never regenerate.** Mutate existing data, never delete-and-recreate it.
+  `scene.new_scene()` returns the existing scene when `cmt_id` already exists (`scene.py:20`)
+  — that's deliberate, don't route around it. Delete-and-recreate throws away every human
+  edit and breaks the journal's history.
+- **Untagged data is human data.** No `cmt_origin` means a human made it. Don't touch it
+  unless the current instruction names it. Check `cmt.provenance.origin(id_block)` before
+  touching anything you didn't create this session.
+- **`shared` means the human touched it.** `cmt.provenance.claimed_paths(id_block)` returns
+  every path a human has claimed since — anything whose live value no longer matches what you
+  last wrote there. Those paths are lost to you: mutate anything else, and never delete a
+  `shared` datablock. (Mechanism and limits: `references/api.md`.)
+- **Prefer `cmt.*` over raw `bpy`.** Raw `bpy` isn't forbidden, but it's untracked — it never
+  hits the journal, `revert` can't undo it, the human's ownership view won't show it. If you
+  must, keep it to reads, or route the write through `cmt.journal.set(obj, "path", value)`.
+- **Prefer `mise run comonteur:<task>` over raw shell**, in a project that has them (check
+  `mise tasks`). A task is what the human can re-run and what pins the tools — a command in a
+  chat log is neither. Add a task instead of improvising a repeat.
+- **`batch()` does not nest** (`journal.py:61`). One batch per logical unit of work. Not one
+  per write, not one for the whole session.
 
 ## The loop
 
-This is the loop for **one shot**. For the work around it — starting a project, ingesting
-upstream material, assembling, delivering — read `references/workflows.md` first.
+This is the loop for one shot. For work around it — starting a project, ingest, assembly,
+delivery — read `references/workflows.md` first.
 
-1. **Read the intent** — `narrative.toml` (and `STORYBOARD.md` if present) for what the
-   shot says; `timeline.toml` for where it sits.
-2. **Read the scene before writing to it** — `cmt.introspect.outline(scn)`,
-   `describe(obj, "data")`, `animated_paths(scn)`. These are capped and truncated on
-   purpose (`introspect.py:1`). Never dump `bpy.data` or walk a whole tree; you will burn
-   the context you need for the actual work.
+1. **Read the intent.** `narrative.toml` (and `STORYBOARD.md` if present) for what the shot
+   says; `timeline.toml` for where it sits.
+2. **Read the scene before writing to it.** `cmt.introspect.outline(scn)`,
+   `describe(obj, "data")`, `animated_paths(scn)`. These are capped and truncated on purpose
+   (`introspect.py:1`). Never dump `bpy.data` or walk a whole tree — that burns the context
+   you need for the actual work.
 3. **Build, in one batch.** See `references/api.md`.
 4. **Look at it.** `cmt.preview.frames(scn, [1, 45, 90])` returns PNG paths under
    `.comonteur/review/`. Read those images.
-5. **Adjust and re-preview**, then report what you did and stop.
+5. **Adjust, re-preview, report, stop.**
 
-**Gate: never say a shot is done without having read a rendered frame of it.** Blender
-fails silently and visually — text off-canvas, a material that never got assigned, an
-F-curve on the wrong array index. Code that ran without error proves nothing here.
+**Gate: never call a shot done without reading a rendered frame of it.** Blender fails
+silently and visually — text off-canvas, a missing material, an F-curve on the wrong array
+index. Code that ran without error proves nothing here.
 
-**Tell the human to save** when you finish. You cannot, and their Blender session holds
-your work in memory only.
+**Tell the human to save when you finish.** You can't, and their Blender session holds your
+work in memory only.
 
 ## Routing
 
 | Read | When |
 |---|---|
-| `references/workflows.md` | Starting a project, or deciding which workflow a directory is: project-level order of work, ingest, rendering and delivery. |
+| `references/workflows.md` | Starting a project, or deciding which workflow a directory is: order of work, ingest, rendering, delivery. |
 | `references/api.md` | Writing any scene content: scenes, text, animation, eases, components, preview, provenance. |
 | `references/timeline.md` | Assembling or changing the edit: `timeline.toml`, anchors, `reconcile`, VSE strips, audio, transitions. |
 | `references/hyperframes-import.md` | Converting an existing HyperFrames project into a comonteur project. |
 
 Read the matching reference before the first call in that area — these are command
-contracts, not background reading. Do not read them all speculatively.
+contracts, not background reading. Don't read them all speculatively.
 
 ## Ownership, in eight lines
 
-Every datablock you create carries `cmt_id` (stable logical id), `cmt_origin`, and
-`cmt_rev` (bumped once per batch). A text object bound with `scene.bind_param()` also carries
-`cmt_param`.
+Every datablock you create carries `cmt_id` (stable id), `cmt_origin`, `cmt_rev` (bumped per
+batch). A text object bound with `scene.bind_param()` also carries `cmt_param`.
 
 | `cmt_origin` | You may |
 |---|---|
 | `agent` | mutate and delete freely |
-| `shared` | mutate paths not in `claimed_paths()`; **never** delete |
+| `shared` | mutate paths not in `claimed_paths()`; never delete |
 | `human` | mutate only when the current instruction names it; never delete |
 | *(absent)* | treat as `human` |
 
-The flip from `agent` to `shared` is automatic: a `depsgraph_update_post` handler catches
-human edits to your data (`provenance.py:36`). The human can also override either way from
-the comonteur sidebar panel in Blender (*Take ownership* / *Return to agent*) — that panel
-acts on the active **object**, so scenes and actions only ever flip automatically.
+The flip from `agent` to `shared` is automatic — a `depsgraph_update_post` handler catches
+human edits to your data (`provenance.py:36`). The human can override either way from the
+comonteur sidebar panel (*Take ownership* / *Return to agent*), acting on the active object —
+scenes and actions only ever flip automatically.
 
-When a human has claimed a property you wanted to change, **route around it and say so** in
-your report. Do not overwrite it back, and do not ask them to undo their edit.
+When a human has claimed a property you wanted to change, route around it and say so in your
+report. Don't overwrite it back, don't ask them to undo their edit.

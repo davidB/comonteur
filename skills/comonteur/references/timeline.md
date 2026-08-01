@@ -1,7 +1,7 @@
 # Assembly — `timeline.toml` → VSE strips
 
-`timeline.toml` is the **only** file you treat as desired state. It governs assembly
-(what plays, when, for how long) and says nothing about what is inside a shot.
+`timeline.toml` is the only file you treat as desired state. It governs assembly — what
+plays, when, for how long — and says nothing about what's inside a shot.
 
 ## Schema
 
@@ -29,17 +29,16 @@ path = "audio/narration.wav"
 start = 0
 ```
 
-- `start` **xor** `anchor` — one or the other, per shot and per audio track.
-- `duration` and `in` are **frames**; `anchor.offset` and `transition.duration` are
-  **seconds** (they are timed against the recording, not the edit grid).
-- `transition` sits on a shot and crossfades it with the shot immediately before it.
-  `cross` is the only type as of M4.
+- `start` xor `anchor` — one or the other, per shot and per audio track.
+- `duration` and `in` are frames; `anchor.offset` and `transition.duration` are seconds (timed
+  against the recording, not the edit grid).
+- `transition` sits on a shot and crossfades it with the shot immediately before it. `cross` is
+  the only type as of M4.
 - Paths are relative to the project root.
 
-Known gap: `in` is resolved into `in_frame` but `reconcile.apply()` does not
-yet write it to the strip (`reconcile.py:141` reconciles `frame_start` and
-`frame_final_duration` only). If a shot needs a media in-point today, say so rather than
-assuming it took effect.
+Known gap: `in` resolves to `in_frame` but `reconcile.apply()` doesn't yet write it to the
+strip (`reconcile.py:141` reconciles `frame_start` and `frame_final_duration` only). If a shot
+needs a media in-point today, say so rather than assuming it took effect.
 
 ## The two-step: the task resolves, the addon applies
 
@@ -53,8 +52,8 @@ mise run comonteur:reconcile
 ```
 
 It defaults to the right paths — `timeline.toml`, `audio/transcript.json` when that file
-exists, and `.comonteur/timeline.resolved.json` for output — so the bare task is usually all
-you need. `--help` lists the overrides:
+exists, `.comonteur/timeline.resolved.json` for output — so the bare task is usually all you
+need. `--help` lists the overrides:
 
 ```bash
 mise run comonteur:reconcile --timeline timeline.toml \
@@ -66,7 +65,7 @@ A transcript is required if any shot or audio entry uses `anchor`.
 The resolved JSON is plain: `{fps, resolution, shots: [{id, source, start_frame,
 duration_frames, in_frame, transition: {type, duration_frames}}], audio: [{id, path,
 start_frame}]}`. No TOML, no anchors, no seconds. Note `transition.type` — `kind` is the key
-inside `source`, and mixing them up gets you a silent fallback to a cross dissolve.
+inside `source`; mixing them up gets a silent fallback to a cross dissolve.
 
 **2. Inside Blender**, through `execute_python`:
 
@@ -84,9 +83,9 @@ with open(os.path.join(root, ".comonteur", "timeline.resolved.json")) as f:
 cmt.reconcile.apply(bpy.context.scene, resolved, root)
 ```
 
-`apply()` opens its own `journal.batch("reconcile timeline")` — **do not wrap it in one**,
-batches do not nest. Run it against `master.blend`'s scene; it creates the sequence editor
-if there isn't one.
+`apply()` opens its own `journal.batch("reconcile timeline")` — don't wrap it in another;
+`batch()` doesn't nest (see `../SKILL.md` Hard rules). Run it against `master.blend`'s scene;
+it creates the sequence editor if there isn't one.
 
 Then preview and tell the human to save.
 
@@ -104,7 +103,7 @@ Strips are matched by `cmt_id`, which is the shot's `id` (transitions use
 `<shot-id>:transition`). So:
 
 - id in the plan, not in the VSE → **create**
-- in both → **update only the fields that changed and are not claimed**
+- in both → **update only the fields that changed and aren't claimed**
 - in the VSE, not in the plan → **delete only if agent-owned and unclaimed**
 
 Renaming a shot's `id` is therefore a delete + create, losing every human tweak on that
@@ -112,16 +111,15 @@ strip. Don't rename ids to tidy them up.
 
 ## Reconcile is not exempt from provenance
 
-"Authoritative for assembly" means authoritative for what you *propose*, not a licence to
+"Authoritative for assembly" means authoritative for what you propose, not a licence to
 clobber. If the human dragged a strip's duration in the timeline, that field is claimed and
-reconcile **skips it** — it does not reset it to the `timeline.toml` value. Report the skip;
-if the spec and the human disagree, that is a question for them, not a conflict for you to
+reconcile skips it — it doesn't reset it to the `timeline.toml` value. Report the skip; if
+the spec and the human disagree, that's a question for them, not a conflict for you to
 resolve.
 
-One subtlety worth knowing: VSE strips are not ID datablocks, so the automatic
-`agent → shared` origin flip never fires for a strip edit. Delete-safety here rests on
-`claimed_paths()` — derived straight from the journal — not on `cmt_origin`
-(`reconcile.py:50`).
+One subtlety: VSE strips aren't ID datablocks, so the automatic `agent → shared` origin flip
+never fires for a strip edit. Delete-safety here rests on `claimed_paths()` — derived
+straight from the journal — not on `cmt_origin` (`reconcile.py:50`).
 
 ## Anchors
 
@@ -131,22 +129,22 @@ A shot may be positioned by an absolute `start`, or by a word in the voiceover:
 anchor = {word = "observability", occurrence = 1, offset = -0.2}
 ```
 
-This exists because **audio processing invalidates every absolute `start` in the
-project** — silence removal, a re-record, a re-cut. Anchored shots survive: re-transcribe,
-re-resolve, done.
+This exists because audio processing invalidates every absolute `start` in the project —
+silence removal, a re-record, a re-cut. Anchored shots survive: re-transcribe, re-resolve,
+done.
 
 Order of operations:
 
-1. Capture anchors **before** any destructive audio edit.
+1. Capture anchors before any destructive audio edit.
 2. Process audio.
 3. Re-transcribe to word-level `audio/transcript.json`
    (`mise run comonteur:ingest_captions <input> --kind whisper` writes `captions/vo.json`;
    the reconcile step reads `audio/transcript.json`, so put it there).
 4. `mise run comonteur:reconcile` → `cmt.reconcile.apply()`.
 
-If an anchor word is missing, or its occurrence count changed, the task **fails loudly**.
-That means the script has drifted from the recording. Stop and tell the human — do not
-switch the shot to an absolute `start` to make the error go away.
+If an anchor word is missing, or its occurrence count changed, the task fails loudly. That
+means the script has drifted from the recording. Stop and tell the human — don't switch the
+shot to an absolute `start` to make the error go away.
 
 Resolved anchor positions are journalled like any other agent write, so a human override of
 `frame_start` is claimed normally and survives the next re-resolution.

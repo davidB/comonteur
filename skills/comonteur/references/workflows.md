@@ -1,15 +1,15 @@
 # Project-level workflows
 
-`../SKILL.md`'s loop is **per shot**. This file is the order of work **around** it: how a
-project starts, what gets ingested, and what shipping means. Read it when the human asks for
-a video rather than for a shot.
+`../SKILL.md`'s loop is per shot. This file is the order of work around it: how a project
+starts, what gets ingested, what shipping means. Read it when the human asks for a video, not
+just a shot.
 
 ## Run tasks, not shell
 
-If the project has `mise-tasks/comonteur/` (or `mise tasks` lists `comonteur:*`), **use
-`mise run comonteur:<task>`** — never the raw command it wraps. Reasons, in order: the human
-can re-run exactly what you ran, the tools are pinned so it behaves the same tomorrow, and
-`mise tasks` is a menu they can read without a chat transcript.
+If the project has `mise-tasks/comonteur/` (or `mise tasks` lists `comonteur:*`), use
+`mise run comonteur:<task>` — never the raw command it wraps. The human can re-run exactly
+what you ran, the tools stay pinned so it behaves the same tomorrow, and `mise tasks` is a
+menu they can read without a chat transcript.
 
 The menu, as `init` installs it:
 
@@ -27,27 +27,25 @@ The menu, as `init` installs it:
 | `comonteur:edit` | open `master.blend` |
 | `comonteur:render` | render the timeline to `renders/` |
 
-If a repeatable command has no task, **add one** under `mise-tasks/comonteur/` (a
+If a repeatable command has no task, add one under `mise-tasks/comonteur/` (a
 `#!/usr/bin/env -S uv run --script` shebang, a `#MISE description=` line, `#USAGE arg`/`flag`
-headers for any arguments —
-[docs](https://mise.jdx.dev/tasks/task-arguments.html#file-task-headers) — and
-`#MISE dir="{{config_root}}"` instead of a `cd`) rather than running it ad-hoc. Every existing
-task is stdlib-only Python except `convert_fonts`, which needs a Brotli decoder for WOFF2 that
-the stdlib has not got; keep it that way so a user never has to install anything, and reuse
-`_common.py` next to them. Anything
-the comonteur stack adds to a user's project is namespaced `comonteur:` — the project may be
-someone else's mise project, so never claim a bare name like `render` or `build`.
+headers for arguments, `#MISE dir="{{config_root}}"` instead of a `cd`) rather than running it
+ad-hoc. Every existing task is stdlib-only Python except `convert_fonts`, which needs a Brotli
+decoder for WOFF2 the stdlib lacks — keep it that way so a user never has to install anything,
+and reuse `_common.py` next to them. Anything the comonteur stack adds to a user's project is
+namespaced `comonteur:` — the project may be someone else's mise project, so never claim a
+bare name like `render` or `build`.
 
-**Before a project has tasks**, `init` is the one command run by path — `uv run
-<skill>/scripts/init.py` (`../scripts/` from here — it is the task directory itself). It
-scaffolds the rest, and after `mise trust` there is only one way to say anything:
-`mise run comonteur:<task>`. The human does not need a checkout of the comonteur repo, so
-never tell them to clone one.
+Before a project has tasks, `init` is the one command run by path — `uv run
+<skill>/scripts/init.py` (`../scripts/` from here — it's the task directory itself). It
+scaffolds the rest, and after `mise trust` there's only one way to say anything: `mise run
+comonteur:<task>`. The human doesn't need a checkout of the comonteur repo — never tell them
+to clone one.
 
 Don't install system tooling silently. If doctor reports a ✗, relay those lines and let the
 human run `mise run comonteur:install` — or ask before running it for them.
 
-Check `--help` on a task rather than guessing its arguments; each one declares them in its own
+Check `--help` on a task rather than guessing its arguments; each declares them in its own
 `#USAGE` header.
 
 ## Which workflow is this?
@@ -58,17 +56,17 @@ Decide before touching anything, by looking at the directory:
 |---|---|
 | Nothing, or only raw material (a brief, footage, a `.wav`) | **A — from scratch** |
 | `index.html` + `hyperframes.json` + `compositions/frames/*.html` | **B — import** → `hyperframes-import.md`, stop reading here |
-| Harness output (script, shot list, `assets/`, TTS audio, captions) but **no** HTML compositions | **C — harness upstream, Blender rendering** |
+| Harness output (script, shot list, `assets/`, TTS audio, captions) but no HTML compositions | **C — harness upstream, Blender rendering** |
 | `master.blend` + `timeline.toml` + `.comonteur/` | An existing comonteur project — go straight to the per-shot loop |
 
-If it's ambiguous, ask.
+If ambiguous, ask.
 
 ## A — from scratch
 
 1. **Initialize the folder** — this skill's own script, no checkout involved. `uv` must run
-   this one command before any mise task exists to provision it, so check first: if `uv` is
-   not on `PATH`, use `mise` instead of asking the human to install `uv` directly — most
-   users have `mise`, not a bare `uv`.
+   this one command before any mise task exists to provision it, so check first: if `uv` isn't
+   on `PATH`, use `mise` instead of asking the human to install `uv` directly — most users have
+   `mise`, not a bare `uv`.
 
    ```bash
    uv run <skill>/scripts/init.py <dir>            # uv on PATH
@@ -78,26 +76,25 @@ If it's ambiguous, ask.
    If neither is on `PATH`, ask the human to install `mise` (https://mise.jdx.dev) — this
    project standardizes on it for everything after `init` anyway.
 
-   It creates the §5.1b tree, every `comonteur:*` task (`mise-tasks/comonteur/`, from
+   It creates the project tree, every `comonteur:*` task (`mise-tasks/comonteur/`, from
    `<skill>/templates/`), and stub `narrative.toml` / `timeline.toml` / `meta.json`. It
-   writes no `AGENTS.md`/`CLAUDE.md` — this skill *is* the contract, and a project's own
-   agent-instruction files belong to the human. It is **add-only**: an existing folder with
-   footage, a `.blend`, or its own
-   `mise.toml` is a normal input — nothing already there is overwritten, and re-running it
-   tops up what's missing and prints what it kept. Everything after this step, `install` and
-   `doctor` included, is `mise run comonteur:*` from inside the project. Tell the human to
-   `mise trust` once — the task files are new to mise.
+   writes no `AGENTS.md`/`CLAUDE.md` — this skill is the contract, and a project's own
+   agent-instruction files belong to the human. It's add-only: an existing folder with
+   footage, a `.blend`, or its own `mise.toml` is a normal input — nothing already there is
+   overwritten, and re-running it tops up what's missing and prints what it kept. Everything
+   after this step, `install` and `doctor` included, is `mise run comonteur:*` from inside the
+   project. Tell the human to `mise trust` once — the task files are new to mise.
 
-2. **Ask about git and Git LFS — do not decide for them.** `init` takes `--git` and `--lfs`
+2. **Ask about git and Git LFS — don't decide for them.** `init` takes `--git` and `--lfs`
    (LFS needs git), both off by default. Ask once, plainly:
 
    > *Version-control this project with git? And `.blend`/media files are large — track them
    > with Git LFS?*
 
    Mention the one fact that makes the timing matter: LFS retrofitted onto binaries already
-   committed to history means a history rewrite, so it is much cheaper to decide now. If they
+   committed to history means a history rewrite, so it's much cheaper to decide now. If they
    decline, initialize without and don't raise it again. Never run `git init` inside a folder
-   that is already in a git work tree — `init --git` refuses, deliberately.
+   already in a git work tree — `init --git` refuses, deliberately.
 
 3. **Write `narrative.toml`** from what the human described — `shots: [{id, intent,
    target_duration, vo, broll}]` — then validate it, don't eyeball it:
@@ -106,10 +103,10 @@ If it's ambiguous, ask.
    mise run comonteur:ingest_narrative
    ```
 
-   Keep any prose brief (`STORYBOARD.md`, `design.md`) verbatim alongside it. The TOML is
-   the machine-readable projection, not a replacement for the human's own words.
+   Keep any prose brief (`STORYBOARD.md`, `design.md`) verbatim alongside it. The TOML is the
+   machine-readable projection, not a replacement for the human's own words.
 
-4. **Ingest what exists.** Assets and captions only — skip either if there is none:
+4. **Ingest what exists.** Assets and captions only — skip either if there's none:
 
    ```bash
    mise run comonteur:convert_fonts        # .woff/.woff2 -> .ttf/.otf, Blender reads sfnt only
@@ -120,14 +117,13 @@ If it's ambiguous, ask.
    `--kind tts` when the audio was synthesized (timing marks beat ASR on proper nouns),
    `whisper` (the default) for human-recorded VO. Every task carries `--help`, generated from
    its own header — check that rather than guessing at arguments. No voiceover is a
-   first-class case, not a
-   degraded one (§5.5) — on-screen text and music drive the pacing instead.
+   first-class case, not a degraded one — on-screen text and music drive the pacing instead.
 
-5. **Create `master.blend` and `lib/brand.blend`** — brand colours, fonts and node groups
-   first, marked as assets, so shots link them instead of redefining them eight times.
+5. **Create `master.blend` and `lib/brand.blend`** — brand colours, fonts, node groups first,
+   marked as assets, so shots link them instead of redefining them eight times.
 
-6. **Fill in `narrative.toml`'s "This project" header** — what this video is, whether there
-   is a voiceover, where the brand lives.
+6. **Fill in `narrative.toml`'s "This project" header** — what this video is, whether there's
+   a voiceover, where the brand lives.
 
 7. **Hand back.** Tell the human to open `master.blend` — `mise run comonteur:edit` — and
    leave it open; you talk to that live session. Then the per-shot loop in `../SKILL.md`, one
@@ -138,26 +134,26 @@ If it's ambiguous, ask.
 ## C — HyperFrames harness upstream, Blender rendering
 
 The harness (script → shot list → asset prep → TTS → word-level captions) is worth keeping.
-The renderer is not — that is the whole point of comonteur.
+The renderer is not — that's the whole point of comonteur.
 
-**Do not create `index.html`, any HTML composition, or run the HyperFrames renderer.** Shots
-are authored in Blender from the first frame. There is no HTML to parse afterwards, so none
-of workflow B's lossiness applies — do not import your own output.
+**Don't create `index.html`, any HTML composition, or run the HyperFrames renderer.** Shots
+are authored in Blender from the first frame. There's no HTML to parse afterwards, so none of
+workflow B's lossiness applies — don't import your own output.
 
-1. Run the harness for production prep only. Its output already matches the production
-   contract (§5.3): shot list, `assets/`, `audio/`, word-level captions. `init` on
-   that folder is safe — it adds what's missing and keeps what the harness produced.
-2. Map its files onto §5.1b names using the metadata table in `hyperframes-import.md` §2
+1. Run the harness for production prep only. Its output already matches the shot-list /
+   `assets/` / `audio/` / word-level-caption contract. `init` on that folder is safe — it adds
+   what's missing and keeps what the harness produced.
+2. Map its files onto project names using the metadata table in `hyperframes-import.md`
    (`STORYBOARD.md` → `narrative.toml`, `audio_meta.json` → `audio/meta.json`, tokens →
-   `lib/brand.blend`). **Metadata only** — that document's §3 timing recovery and §5 shot
-   rebuilding are for imports and have no equivalent here.
+   `lib/brand.blend`). Metadata only — that document's timing-recovery and shot-rebuilding
+   steps are for imports and have no equivalent here.
 3. Then A's steps 2–8, skipping what the harness already produced.
 4. **Prefer `anchor` over absolute `start`** in `timeline.toml` (`timeline.md`). TTS gets
    re-synthesized; anchors survive it, absolute frames don't.
 
 ## Rendering and delivery — all three workflows
 
-The deliverable is **video + title + description + thumbnail**, not video alone.
+The deliverable is video + title + description + thumbnail, not video alone.
 
 - `mise run comonteur:render` — renders `master.blend`'s timeline into `renders/` using the
   file's own output settings. Never overwrite a render the human is holding onto without
@@ -165,11 +161,21 @@ The deliverable is **video + title + description + thumbnail**, not video alone.
 - `thumbnail/thumbnail.png` renders from a dedicated `compositions/frames/thumbnail.blend`
   reusing the components already in `lib/` — a real frame from the real project, not a
   screenshot.
-- `meta.json` (§5.6): title, description, tags, chapters.
+- `meta.json`: title, description, tags, chapters.
 
 **The rendered-frame gate applies here too.** Never report an assembly or a delivery as done
-without having read a frame out of it — a shot can be perfect and still land on the wrong
-strip, at the wrong length, over the wrong audio.
+without reading a frame out of it — a shot can be perfect and still land on the wrong strip,
+at the wrong length, over the wrong audio.
+
+## Delegating mechanical work to a cheaper model
+
+Most of this skill needs judgment — reading a scene before touching it, picking an ease,
+deciding whether a claimed path matters. One workflow doesn't: HyperFrames import (workflow
+B) starts with a large, purely mechanical file-mapping and metadata-copy pass before the
+judgment-heavy parts (timing recovery, shot rebuild) begin. For that pass only, launch a
+background `Agent` call with a cheaper model (e.g. `haiku`) instead of doing the copying
+yourself — see `hyperframes-import.md`'s "Delegate the mechanical pass" section for exactly
+what to hand off and what to keep.
 
 ## Always the human's, never yours
 
