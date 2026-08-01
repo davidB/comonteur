@@ -1,3 +1,20 @@
+## [0.20260801.1] - 2026-08-01
+
+### 🐛 Bug Fixes
+
+- *(release)* Fail cleanly and roll back local commit/tag on step failure
+- *(addon)* Stop journal.set() from shadowing builtin set in annotations
+- Build addon failed to check LICENSE when multiple zip (version) files
+
+### 🚜 Refactor
+
+- *(release)* Build everything before any git/gh call
+
+### ⚙️ Miscellaneous Tasks
+
+- Add a basic ci github workflow
+- Add weekly renovate workflow for mise, uv, and github actions
+- Declare uv & blender as top level tool to be cached by ci...
 ## [0.20260801.0] - 2026-08-01
 
 ### 🚀 Features
@@ -55,3 +72,4 @@
 - [**breaking**] Relicense to GPL-3.0-or-later, add extension validate/build tasks
 - Untrack gitnexus-generated skills so skill installers don't propose them
 - Gitnexus analyze
+- *(release)* 0.20260801.0
