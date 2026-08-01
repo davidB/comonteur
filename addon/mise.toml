@@ -22,7 +22,8 @@ description = "Build the publishable extension zip into addon/build/"
 depends = ["validate"]
 run = [
   # `extension build` does not create --output-dir and hard-fails without it
-  "mkdir -p build",
+  "mkdir -p build || true",
+  "rm -rf build/*",
   "blender --command extension build --source-dir comonteur --output-dir build",
   # the builder skips symlinks, so a symlinked LICENSE would silently not ship
   "unzip -Z1 build/comonteur-*.zip | rg -qx LICENSE",
