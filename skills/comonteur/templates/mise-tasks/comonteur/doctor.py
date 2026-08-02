@@ -213,10 +213,7 @@ def main(argv: list[str]) -> int:
     healthy &= check_addons()
     check_mcp()
 
-    for tool, why in (
-        ("rec", "only needed to record a voiceover locally"),
-        ("git-lfs", "only needed if you version .blend/media with git"),
-    ):
+    for tool, why in (("rec", "only needed to record a voiceover locally"),):
         if shutil.which(tool):
             ok(tool)
         else:

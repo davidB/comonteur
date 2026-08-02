@@ -88,7 +88,9 @@ genuinely needs a local tweak.
 layout collapses to a single `master.blend` and the "never write the same file" property
 is lost. This is the highest-impact unknown in the design.
 
-Git LFS is mandatory for `*.blend` and all media.
+`*.blend` and all media are LFS-sized; `init` ships LFS attribute patterns for them, but
+tracking/using git-lfs is entirely up to whoever manages git for the project — comonteur
+never runs `git`/`git lfs` itself.
 
 ### 5.2 `timeline.toml` — authoritative
 

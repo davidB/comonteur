@@ -73,12 +73,6 @@ def test_apply_is_idempotent(template: Path, tmp_path: Path) -> None:
     assert set(kept_again) == set(created)
 
 
-def test_lfs_without_git_is_rejected() -> None:
-    with pytest.raises(SystemExit) as excinfo:
-        init.parse_args(["--lfs"])
-    assert excinfo.value.code == 2
-
-
 def test_defaults_to_the_current_directory() -> None:
     args = init.parse_args([])
-    assert (args.dir, args.git, args.lfs) == (".", False, False)
+    assert args.dir == "."

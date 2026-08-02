@@ -57,8 +57,9 @@ Install these yourself — everything else comes from `comonteur:install` (see
 | **An agent** | any MCP-capable coding agent that can read a skill/instructions directory; developed and tested with [Claude Code](https://claude.com/claude-code) |
 | **`npx`** | Node 20+, to install the skill (`npx skills add …`) |
 
-Pulled in for you: `uv`, the Blender add-on, Blender's MCP server, `ffmpeg` / `ffprobe`. Optional: Git + Git LFS if you want the project version-controlled (off by
-default), `sox` if you record a voiceover locally.
+Pulled in for you: `uv`, the Blender add-on, Blender's MCP server, `ffmpeg` / `ffprobe`.
+`sox` if you record a voiceover locally. Git/Git LFS are entirely your call — the project
+ships a ready `.gitignore`/`.gitattributes`, but nothing here runs git for you.
 
 ---
 
@@ -183,8 +184,8 @@ Nothing upstream — a brief, your own components, maybe some footage and a voic
    folder that already has your footage or another mise project and nothing there is touched;
    re-running it tops up what's missing.
 
-   Git and Git LFS are **off** by default (`--git`, `--lfs`) — the agent asks before enabling
-   them rather than deciding for you.
+   Git and Git LFS are entirely up to you — the project ships a ready `.gitignore`/
+   `.gitattributes`, but nothing here ever runs `git` or `git lfs` for you.
 
 2. Tell the agent what the video is — *"a 90-second launch video for X, here's the script"* —
    and it fills in `narrative.toml`, validates it, and ingests your assets and voiceover.
@@ -240,7 +241,7 @@ that set the machine up — is re-runnable from the project afterwards:
 | Task | What it does |
 |---|---|
 | `comonteur:install` | Install/repair everything, then doctor — chains the two below |
-| `comonteur:init [dir] [--git] [--lfs]` | Initialize or top up a project — add-only, never overwrites |
+| `comonteur:init [dir]` | Initialize or top up a project — add-only, never overwrites |
 | `comonteur:doctor` | Toolchain **and** project checks, one ✓/✗ list |
 | `comonteur:ingest_narrative` | Validates `narrative.toml` |
 | `comonteur:ingest_manifest` | `assets/` → `assets/manifest.json` (sha256 + `ffprobe`) |

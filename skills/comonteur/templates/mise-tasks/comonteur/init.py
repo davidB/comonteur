@@ -1,8 +1,6 @@
 #!/usr/bin/env -S uv run --script
 #MISE description="Initialize a video project folder (additive, never overwrites)"
 #USAGE arg "<dir>" help="project folder — created if missing, never overwritten" default="."
-#USAGE flag "--git" help="git init (refused if already inside a work tree)"
-#USAGE flag "--lfs" help="track .blend and media with Git LFS (needs --git)"
 #MISE tools={uv = "latest"}
 # /// script
 # requires-python = ">=3.11"
@@ -23,21 +21,23 @@ from __future__ import annotations
 
 import argparse
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 
-from _common import TaskError, die, tasks_dir
+from _common import tasks_dir
 
 # Copied verbatim if absent. `mise.toml` is deliberately not here — see plan().
 # No `AGENTS.md`/`CLAUDE.md`: the agent contract lives in the skill (`SKILL.md` and
 # `references/`), which is what an agent actually loads. A project's own agent-instruction
 # files are the human's, and comonteur never writes or edits them.
+# `.gitignore`/`.gitattributes` are static and inert — this task never runs `git`/`git lfs`
+# itself; version control is entirely up to whoever manages the project.
 ROOT_FILES = [
     "narrative.toml",
     "timeline.toml",
     "meta.json",
     ".gitignore",
+    ".gitattributes",
 ]
 
 DIRS = [
@@ -100,40 +100,12 @@ def apply(target: Path, template: Path, created: list[str]) -> None:
         shutil.copy2(template / rel, dest)
 
 
-def setup_git(target: Path, lfs: bool) -> list[str]:
-    inside = subprocess.run(
-        ["git", "-C", str(target), "rev-parse", "--is-inside-work-tree"],
-        capture_output=True,
-        text=True,
-    )
-    if inside.returncode == 0:
-        raise TaskError(
-            f"refusing --git: {target} is already inside a git work tree",
-            "nothing else was skipped; drop --git and commit however that repo does it",
-        )
-    subprocess.run(["git", "-C", str(target), "init", "-q"], check=True)
-    added = [".git/"]
-    if lfs:
-        subprocess.run(["git", "-C", str(target), "lfs", "install", "--local"], check=True)
-        subprocess.run(
-            ["git", "-C", str(target), "lfs", "track", "*.blend", "assets/**", "audio/**"],
-            check=True,
-        )
-        added.append(".gitattributes")
-    return added
-
-
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="comonteur:init", description="Initialize a video project folder (add-only)"
     )
     parser.add_argument("dir", nargs="?", default=".", help="project folder")
-    parser.add_argument("--git", action="store_true", help="git init")
-    parser.add_argument("--lfs", action="store_true", help="track media with Git LFS")
-    args = parser.parse_args(argv)
-    if args.lfs and not args.git:
-        parser.error("--lfs needs --git (LFS is a git feature). Re-run with both, or neither.")
-    return args
+    return parser.parse_args(argv)
 
 
 def main(argv: list[str]) -> int:
@@ -149,8 +121,6 @@ def main(argv: list[str]) -> int:
     apply(target, template, created)
     if "mise.toml" in kept:
         print(MISE_TOML_HINT)
-    if args.git:
-        created += setup_git(target, args.lfs)
 
     print()
     if created:
@@ -176,7 +146,4 @@ Blender — and leave it open, the agent works against that live session.""")
 
 
 if __name__ == "__main__":
-    try:
-        sys.exit(main(sys.argv[1:]))
-    except TaskError as e:
-        sys.exit(die(e))
+    sys.exit(main(sys.argv[1:]))

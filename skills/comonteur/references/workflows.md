@@ -86,16 +86,13 @@ If ambiguous, ask.
    project. Ask permission, then run `mise trust` and `mise run comonteur:install` yourself,
    from inside the project — the human never needs a terminal for this.
 
-2. **Ask about git and Git LFS — don't decide for them.** `init` takes `--git` and `--lfs`
-   (LFS needs git), both off by default. Ask once, plainly:
-
-   > *Version-control this project with git? And `.blend`/media files are large — track them
-   > with Git LFS?*
-
-   Mention the one fact that makes the timing matter: LFS retrofitted onto binaries already
-   committed to history means a history rewrite, so it's much cheaper to decide now. If they
-   decline, initialize without and don't raise it again. Never run `git init` inside a folder
-   already in a git work tree — `init --git` refuses, deliberately.
+2. **Never manage git or Git LFS.** `init` ships a `.gitignore` and a `.gitattributes` (LFS
+   by binary media extension — `.blend`, video, raster image, audio — not by directory, so
+   small text/vector files under `assets/`, like `manifest.json` or an `.svg`, stay in plain
+   git) so the project is ready the moment someone runs `git init`/`git lfs install`
+   themselves, but this skill never runs `git` or `git lfs` commands and never asks whether
+   to. Version control is the human's call, on their own or via another tool — not this
+   skill's job.
 
 3. **Write `narrative.toml`** from what the human described — `shots: [{id, intent,
    target_duration, vo, broll}]` — then validate it, don't eyeball it:

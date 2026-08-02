@@ -303,10 +303,11 @@ files are kept and reported, never overwritten, never deleted; a folder holding 
 the tool does not destroy what it did not create — and it is what makes workflow C (HyperFrames
 harness output, no HTML) a one-command setup rather than a merge.
 
-**git and Git LFS are opt-in** (`--git`, `--lfs`; LFS requires git), and the skill must ask
-before passing either. `.blend` and media want LFS, but wanting is not deciding: the ask
-happens at init because retrofitting LFS onto binaries already in history costs a rewrite.
-`init --git` refuses inside an existing work tree rather than silently skipping.
+**git and Git LFS are entirely the human's business.** `init` ships static `.gitignore`/
+`.gitattributes` files (LFS patterns for `.blend`/media, inert until `git lfs install` runs)
+so a project is ready if someone sets up git, but no task ever shells out to `git` or
+`git lfs` — plenty of video projects never use git, and hobbyists who want it can manage it
+themselves or through another tool.
 
 **Reversibility (§7.5).** These scripts are the final form, not a placeholder for CLI
 subcommands — see the language-policy note in §7.5. The task names are the stable interface;

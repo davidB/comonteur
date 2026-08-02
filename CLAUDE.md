@@ -146,7 +146,7 @@ mise run addon:build      # publishable zip into addon/build/, asserts LICENSE s
 User-facing bootstrap (see `docs/mcp-and-tooling.md` §8.2):
 
 ```bash
-mise run comonteur:init [dir] [--git] [--lfs]   # initialize a video project — add-only
+mise run comonteur:init [dir]       # initialize a video project — add-only
 mise run comonteur:install          # both Blender add-ons + MCP server, then doctor
 mise run comonteur:doctor           # blender 5.2 / ffmpeg / uv / task scripts / addon / MCP
 ```
