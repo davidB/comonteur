@@ -32,6 +32,13 @@ def new_scene(
     scn.frame_start, scn.frame_end = frame_range
     scn.render.film_transparent = transparent
     scn.view_settings.view_transform = view_transform or ("Standard" if kind == "2d" else "AgX")
+    if kind == "2d":
+        # bpy.ops.scene.new(type='EMPTY') copies settings from the active scene, not
+        # factory defaults — pin these explicitly so a flat/unlit scene is deterministic
+        # regardless of what the previously active scene had enabled.
+        scn.eevee.use_fast_gi = False
+        scn.eevee.use_raytracing = False
+        scn.eevee.indirect_light_intensity = 0.0
 
     provenance.tag(scn, name)
     return scn

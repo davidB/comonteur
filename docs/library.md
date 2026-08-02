@@ -18,7 +18,7 @@ equally to **reduce agent token consumption**: the agent calls
 | `journal.py` | `batch()` context manager, `set()`, JSONL, snapshot, revert |
 | `scene.py` | `new_scene()` — see §6.1. Scene params interface. |
 | `anim.py` | `tween`, `stagger`, easing map, F-curve helpers |
-| `text.py` | text objects, styling, fit-to-box, per-character split |
+| `text.py` | text objects, styling, fit-to-box, per-character split. `style()`/`create()` color defaults to `shading='flat'` (Emission, since `kind='2d'` scenes have no lights) — pass `shading='lit'` for plain Base Color in lit 3D scenes. |
 | `vse.py` | assembly, scene strips, transitions, audio |
 | `library.py` | link `lib/*.blend` (component library) and `compositions/frames/*.blend` (per-shot scenes), asset catalog discovery |
 | `introspect.py` | `outline`, `describe`, `animated_paths`, `find`, `drift` |
@@ -44,8 +44,13 @@ Must:
 3. Set `view_settings.view_transform`. **`'Standard'` for 2D/graphics scenes** — the
    default AgX will visibly shift brand colours. `'AgX'` only for 3D scenes intended to
    be photographic.
-4. Tag `cmt_id` / `cmt_origin` / `cmt_rev`.
-5. Be idempotent by `cmt_id`: if a scene with that id exists, return it rather than
+4. For `kind='2d'`, pin `scene.eevee.use_fast_gi = False`, `use_raytracing = False`,
+   `indirect_light_intensity = 0.0` explicitly — `bpy.ops.scene.new(type='EMPTY')` copies
+   settings from the active scene, not factory defaults, so a prior scene's GI settings
+   otherwise leak in. Without this, an emissive flat-shaded plane can self-illuminate
+   bounce toward washed-out colours (a pure-red test card rendering as `(255, 66, 77)`).
+5. Tag `cmt_id` / `cmt_origin` / `cmt_rev`.
+6. Be idempotent by `cmt_id`: if a scene with that id exists, return it rather than
    creating a duplicate.
 
 ### 6.2 `anim.py` — real F-curves preferred

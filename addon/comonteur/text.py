@@ -4,7 +4,7 @@ Objects, not a Geometry Nodes String to Curves tree — GN instances aren't
 independently keyframeable, and §6.2 requires real F-curves.
 """
 
-from typing import Any
+from typing import Any, Literal
 
 import bpy
 
@@ -19,6 +19,7 @@ def create(
     size: float = 1.0,
     font: Any = None,
     color: tuple[float, ...] | None = None,
+    shading: Literal["flat", "lit"] = "flat",
 ) -> Any:
     name = name or body[:24] or "Text"
     data = bpy.data.curves.new(name, type="FONT")
@@ -30,7 +31,7 @@ def create(
     scene.collection.objects.link(obj)
     provenance.tag(obj, name)
     if color is not None:
-        style(obj, color=color)
+        style(obj, color=color, shading=shading)
     return obj
 
 
@@ -40,7 +41,12 @@ def style(
     size: float | None = None,
     font: Any = None,
     color: tuple[float, ...] | None = None,
+    shading: Literal["flat", "lit"] = "flat",
 ) -> Any:
+    """color defaults to flat/emission shading — new_scene(kind="2d") has no lights,
+    so Base-Color-only Principled BSDF renders black. shading="lit" restores plain
+    Base Color for scenes with actual lighting.
+    """
     data = obj.data
     if size is not None:
         data.size = size
@@ -55,7 +61,13 @@ def style(
         bsdf = mat.node_tree.nodes.get("Principled BSDF")
         if bsdf is not None:
             rgba = (*color[:3], color[3] if len(color) > 3 else 1.0)
-            bsdf.inputs["Base Color"].default_value = rgba
+            if shading == "flat":
+                bsdf.inputs["Base Color"].default_value = (0.0, 0.0, 0.0, rgba[3])
+                bsdf.inputs["Emission Color"].default_value = rgba
+                bsdf.inputs["Emission Strength"].default_value = 1.0
+            else:
+                bsdf.inputs["Base Color"].default_value = rgba
+                bsdf.inputs["Emission Strength"].default_value = 0.0
     return obj
 
 
