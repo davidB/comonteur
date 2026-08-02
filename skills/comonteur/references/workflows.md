@@ -42,8 +42,8 @@ scaffolds the rest, and after `mise trust` there's only one way to say anything:
 comonteur:<task>`. The human doesn't need a checkout of the comonteur repo — never tell them
 to clone one.
 
-Don't install system tooling silently. If doctor reports a ✗, relay those lines and let the
-human run `mise run comonteur:install` — or ask before running it for them.
+Don't install system tooling silently. If doctor reports a ✗, ask permission, then run
+`mise run comonteur:install` yourself — don't hand the human a command to type.
 
 Check `--help` on a task rather than guessing its arguments; each declares them in its own
 `#USAGE` header.
@@ -83,7 +83,8 @@ If ambiguous, ask.
    footage, a `.blend`, or its own `mise.toml` is a normal input — nothing already there is
    overwritten, and re-running it tops up what's missing and prints what it kept. Everything
    after this step, `install` and `doctor` included, is `mise run comonteur:*` from inside the
-   project. Tell the human to `mise trust` once — the task files are new to mise.
+   project. Ask permission, then run `mise trust` and `mise run comonteur:install` yourself,
+   from inside the project — the human never needs a terminal for this.
 
 2. **Ask about git and Git LFS — don't decide for them.** `init` takes `--git` and `--lfs`
    (LFS needs git), both off by default. Ask once, plainly:
@@ -126,9 +127,9 @@ If ambiguous, ask.
 6. **Fill in `narrative.toml`'s "This project" header** — what this video is, whether there's
    a voiceover, where the brand lives.
 
-7. **Hand back.** Tell the human to run `mise run comonteur:edit` — it creates `master.blend`
-   on first run and opens it; leave it open, you talk to that live session. Then the per-shot
-   loop in `../SKILL.md`, one shot at a time.
+7. **Hand back.** Ask the human to open Blender, or run `mise run comonteur:edit` yourself to
+   open it for them — either way, no terminal step for the human. Leave it open; you talk to
+   that live session. Then the per-shot loop in `../SKILL.md`, one shot at a time.
 
 8. **Assemble** with `timeline.md` once the shots exist.
 

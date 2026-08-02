@@ -66,7 +66,8 @@ Break one of these and you corrupt the project silently.
   must, keep it to reads, or route the write through `cmt.journal.set(obj, "path", value)`.
 - **Prefer `mise run comonteur:<task>` over raw shell**, in a project that has them (check
   `mise tasks`). A task is what the human can re-run and what pins the tools — a command in a
-  chat log is neither. Add a task instead of improvising a repeat.
+  chat log is neither. Add a task instead of improvising a repeat. Ask permission, then run it
+  yourself — don't tell the human to open a terminal.
 - **`batch()` does not nest** (`journal.py:61`). One batch per logical unit of work. Not one
   per write, not one for the whole session.
 
