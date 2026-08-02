@@ -45,6 +45,7 @@ style(obj, *, size=None, font=None, color=None, shading="flat") -> Object
 fit_to_box(obj, width, height, *, min_size=0.01, step=0.9) -> Object
 split_chars(obj, *, spacing=0.0, space_width_factor=0.3) -> list[Object]
 measure(obj) -> dict
+check_fonts(scn) -> list[dict]                                  # read-only
 ```
 
 `color` is RGB or RGBA floats. `style()` creates a Principled BSDF material named
@@ -52,6 +53,19 @@ measure(obj) -> dict
 and zeroes `Base Color` — matches `kind="2d"` scenes, which have no lights. Pass
 `shading="lit"` for plain `Base Color` in a lit 3D scene; re-styling flips both inputs, so
 switching an object between the two is idempotent.
+
+Load a font once and reuse the `VectorFont` across every `create()`/`style()` call — `.load()`
+makes a new datablock each call, so guard it with `.get()`:
+
+```python
+vfont = bpy.data.fonts.get("Inter-Bold") or bpy.data.fonts.load("assets/fonts/Inter-Bold.ttf")
+cmt.text.create(scn, "Ship faster", font=vfont)
+cmt.text.check_fonts(scn)   # [] once every FONT object has a real font
+```
+
+`check_fonts()` flags any FONT object still on Blender's built-in default ("Bfont Regular") —
+a silently-substituted default is easy to miss in a low-res preview. Run it before calling a
+shot done.
 
 `fit_to_box()` is a measure-and-shrink loop, not a layout engine: it multiplies `data.size` by
 `step` until the object fits, forcing a depsgraph update each pass. So call it before
@@ -193,6 +207,15 @@ Two link functions, and picking the wrong one fails:
 Both link, never append, so the data stays read-only where used. Both tag provenance only if
 the datablock isn't tagged already — a human's component keeps its `human` origin across the
 link.
+
+Brand values set once via `set_param()` on a `PARAMS` scene in `lib/brand.blend` come back the
+same way as any other custom property — `link()` returns the Scene, index it directly. Don't
+re-hardcode brand hex/font values per shot; link and read:
+
+```python
+brand = cmt.library.link("lib/brand.blend", "scenes", "PARAMS")
+cmt.text.create(scn, "Ship faster", color=brand["ink_black"], font=vfont)
+```
 
 ## `cmt.introspect` — read before you write *(read-only)*
 

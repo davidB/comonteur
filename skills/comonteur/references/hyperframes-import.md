@@ -107,7 +107,8 @@ Use the task rather than `fonttools` directly — its CLI has a `decompress` ver
 only, and plain `.woff` has none, so the raw command quietly converts half your fonts.
 
 A shot built with a silently-substituted default font looks wrong in a way that's easy to
-miss in a low-res preview. Check the fonts resolved before you build the first title.
+miss in a low-res preview. Load-and-apply and the `check_fonts()` gate are in `api.md`'s
+`cmt.text` section — run the check before you call a shot done.
 
 ## 5. Rebuild the shots
 
@@ -118,8 +119,9 @@ Read the shot's HTML for intent, not structure: what text appears, in what order
 emphasis, entering how. Then express that with `cmt.text` and `cmt.anim`. The GSAP ease names
 carry straight across (`api.md`); the DOM structure doesn't.
 
-Build the shared brand pieces into `lib/brand.blend` first and link them, rather than
-rebuilding the same lockup eight times.
+Build the shared brand pieces into `lib/brand.blend` first and link them back in every shot
+(`api.md`'s `cmt.library` example) — don't re-hardcode the same hex/font values per shot, or
+`brand.blend` becomes decorative and a human's edit to it stops reaching anything downstream.
 
 ## 6. Assemble
 

@@ -103,6 +103,18 @@ def measure(obj: Any) -> dict[str, Any]:
     }
 
 
+def check_fonts(scn: Any) -> list[dict[str, Any]]:
+    """Read-only: FONT objects still on Blender's built-in default font — a new
+    FONT curve starts on "Bfont Regular" (filepath "<builtin>"), not None, so a
+    forgotten font= is easy to miss in a low-res preview.
+    """
+    return [
+        {"name": obj.name}
+        for obj in scn.objects
+        if obj.type == "FONT" and obj.data.font.filepath == "<builtin>"
+    ]
+
+
 def split_chars(obj: Any, *, spacing: float = 0.0, space_width_factor: float = 0.3) -> list[Any]:
     """Replace obj with one FONT object per character, left to right, positioned by
     each character's measured advance width — the fallback from docs/M3-FINDINGS.md
