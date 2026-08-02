@@ -144,6 +144,39 @@ def _strip_fields(strip: Any, fields: tuple[str, ...]) -> dict[str, Any]:
     return {f: int(getattr(strip, f)) for f in fields}
 
 
+def apply_render_settings(scene: Any, resolved: dict[str, Any]) -> None:
+    """The render/output settings a container scene needs, derived from `resolved`.
+
+    Split out of `apply()` so a partial reconcile (no shots/audio yet, e.g. right
+    after `comonteur:init`) can set just these without faking the rest of the
+    resolved-plan schema.
+    """
+    from . import journal
+
+    for key, value in scene_range(resolved).items():
+        if key == "resolution":
+            journal.set(scene, "render.resolution_x", value[0])
+            journal.set(scene, "render.resolution_y", value[1])
+        elif key == "fps":
+            journal.set(scene, "render.fps", value)
+        elif key == "video":
+            codec, container = value
+            journal.set(scene, "render.image_settings.media_type", "VIDEO")
+            journal.set(scene, "render.image_settings.file_format", "FFMPEG")
+            journal.set(scene, "render.ffmpeg.codec", codec)
+            journal.set(scene, "render.ffmpeg.format", container)
+        elif key == "audio_codec":
+            journal.set(scene, "render.ffmpeg.audio_codec", value)
+        else:
+            journal.set(scene, key, value)
+    # Output folder is a fixed project convention, not derived from the resolved
+    # timeline plan, so it's not a scene_range() key — but journal.set() (not a raw
+    # scn.render.filepath = ...) is still the right way to write it: same as
+    # fps/resolution above, reconcile stays authoritative and re-syncs it on every
+    # call rather than drifting, and the write is journalled for audit either way.
+    journal.set(scene, "render.filepath", "//renders/")
+
+
 def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
     """Reconcile scene.sequence_editor against a resolved timeline plan. One
     journal.batch (one undo_push) for the whole reconcile — imports the bpy-dependent
@@ -258,19 +291,4 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
         shot_strips = reconcile_shots(shots)
         reconcile_audio(resolved.get("audio", []))
         reconcile_transitions(shots, shot_strips)
-        for key, value in scene_range(resolved).items():
-            if key == "resolution":
-                journal.set(scene, "render.resolution_x", value[0])
-                journal.set(scene, "render.resolution_y", value[1])
-            elif key == "fps":
-                journal.set(scene, "render.fps", value)
-            elif key == "video":
-                codec, container = value
-                journal.set(scene, "render.image_settings.media_type", "VIDEO")
-                journal.set(scene, "render.image_settings.file_format", "FFMPEG")
-                journal.set(scene, "render.ffmpeg.codec", codec)
-                journal.set(scene, "render.ffmpeg.format", container)
-            elif key == "audio_codec":
-                journal.set(scene, "render.ffmpeg.audio_codec", value)
-            else:
-                journal.set(scene, key, value)
+        apply_render_settings(scene, resolved)

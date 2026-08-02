@@ -28,7 +28,7 @@ def main(argv: list[str]) -> int:
     if not Path("master.blend").exists():
         raise TaskError(
             f"no master.blend in {Path.cwd()}",
-            "create and save it in Blender first — the agent never saves for you",
+            "run `mise run comonteur:edit` first — it creates master.blend",
         )
     Path("renders").mkdir(parents=True, exist_ok=True)
     cmd = [exe, "-b", "master.blend", "-a", *argv]

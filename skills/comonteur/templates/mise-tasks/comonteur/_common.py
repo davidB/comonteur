@@ -17,6 +17,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 BLENDER_PIN = "5.2"
@@ -122,6 +123,33 @@ def blender_py(expr: str, *, check: bool = True) -> str:
     return run(
         [require_blender(), "-b", "--python-expr", expr], check=check, capture=True
     ).stdout
+
+
+def blender_headless(script: str, *, blend: Path | None = None, check: bool = True) -> str:
+    """Run `script` inside a background Blender, optionally opening `blend` first.
+
+    Written to a temp file rather than --python-expr: the script here is multi-line and
+    would need fragile quoting otherwise. `--python-exit-code 1` is load-bearing: without
+    it, Blender exits 0 even when the script raises, and a failure silently no-ops instead
+    of surfacing as a TaskError (verified — an uncaught exception left `check=True`'s
+    caller none the wiser).
+    """
+    with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as f:
+        f.write(script)
+        script_path = f.name
+    try:
+        cmd = [
+            require_blender(),
+            "-b",
+            *([str(blend)] if blend else []),
+            "--python-exit-code",
+            "1",
+            "--python",
+            script_path,
+        ]
+        return run(cmd, check=check, capture=True).stdout
+    finally:
+        os.unlink(script_path)
 
 
 def enable_addon(module: str) -> None:

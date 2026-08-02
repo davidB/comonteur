@@ -144,7 +144,8 @@ end of this section).
 
 ### The loop, whichever workflow you're in
 
-1. Open `master.blend` in Blender and **leave it open**. The agent talks to that live session.
+1. Run `mise run comonteur:edit` — it creates `master.blend` on first run, then opens it in
+   Blender. **Leave it open.** The agent talks to that live session.
 2. Ask for one shot at a time:
 
    ```
@@ -187,7 +188,8 @@ Nothing upstream — a brief, your own components, maybe some footage and a voic
 
 2. Tell the agent what the video is — *"a 90-second launch video for X, here's the script"* —
    and it fills in `narrative.toml`, validates it, and ingests your assets and voiceover.
-3. Open `master.blend` (`mise run comonteur:edit`), and follow the loop above.
+3. Run `mise run comonteur:edit` — creates `master.blend` and opens it — and follow the loop
+   above.
 
 Details for the agent: [`skills/comonteur/references/workflows.md`](./skills/comonteur/references/workflows.md),
 [`SKILL.md`](./skills/comonteur/SKILL.md).
@@ -245,7 +247,7 @@ that set the machine up — is re-runnable from the project afterwards:
 | `comonteur:ingest_captions <in.json> [--kind whisper\|tts]` | Normalizes word-level timing |
 | `comonteur:convert_fonts` | `.woff`/`.woff2` → `.ttf`/`.otf` — Blender reads sfnt only |
 | `comonteur:reconcile` | `timeline.toml` → resolved plan the add-on applies |
-| `comonteur:edit` / `comonteur:render` | Open `master.blend` / render the timeline |
+| `comonteur:edit` / `comonteur:render` | Create (first run) and open `master.blend` / render the timeline |
 | `comonteur:install_addon [--ref <tag>]` | The comonteur add-on into Blender (symlinked from a checkout, fetched otherwise) |
 | `comonteur:install_mcp` | Blender's MCP add-on **and** the MCP server it talks to |
 

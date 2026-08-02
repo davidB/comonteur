@@ -119,15 +119,16 @@ If ambiguous, ask.
    its own header — check that rather than guessing at arguments. No voiceover is a
    first-class case, not a degraded one — on-screen text and music drive the pacing instead.
 
-5. **Create `master.blend` and `lib/brand.blend`** — brand colours, fonts, node groups first,
-   marked as assets, so shots link them instead of redefining them eight times.
+5. **Create `lib/brand.blend`** — brand colours, fonts, node groups first, marked as assets,
+   so shots link them instead of redefining them eight times. `master.blend` itself needs no
+   manual step — `mise run comonteur:edit` creates it on first run.
 
 6. **Fill in `narrative.toml`'s "This project" header** — what this video is, whether there's
    a voiceover, where the brand lives.
 
-7. **Hand back.** Tell the human to open `master.blend` — `mise run comonteur:edit` — and
-   leave it open; you talk to that live session. Then the per-shot loop in `../SKILL.md`, one
-   shot at a time.
+7. **Hand back.** Tell the human to run `mise run comonteur:edit` — it creates `master.blend`
+   on first run and opens it; leave it open, you talk to that live session. Then the per-shot
+   loop in `../SKILL.md`, one shot at a time.
 
 8. **Assemble** with `timeline.md` once the shots exist.
 

@@ -60,6 +60,8 @@ them.
 │   ├── brand.blend          #   colours, fonts, node groups (assets)
 │   └── titles.blend         #   human-authored components
 ├── master.blend              # VSE assembly only. Links compositions/** + lib/**. git-lfs.
+│                              # `comonteur:edit` creates it on first run if missing —
+│                              # the one exception to "the agent never saves" (§4.5).
 ├── timeline.toml             # authoritative for assembly (§5.2)
 ├── .comonteur/
 │   ├── journal.jsonl
