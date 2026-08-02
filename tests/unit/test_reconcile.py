@@ -80,6 +80,27 @@ def test_dropped_untagged_human_id_is_never_deleted() -> None:
     assert plan.to_delete == []
 
 
+def test_scene_range_derives_fps_resolution_and_frame_end() -> None:
+    resolved = {
+        "fps": 30,
+        "resolution": [1920, 1080],
+        "shots": [
+            {"start_frame": 0, "duration_frames": 90},
+            {"start_frame": 60, "duration_frames": 1174},  # ends latest, 1234
+        ],
+    }
+    assert reconcile.scene_range(resolved) == {
+        "fps": 30,
+        "resolution": (1920, 1080),
+        "frame_end": 1234,
+    }
+
+
+def test_scene_range_omits_frame_end_when_no_shots() -> None:
+    resolved = {"fps": 30, "resolution": [1920, 1080], "shots": []}
+    assert reconcile.scene_range(resolved) == {"fps": 30, "resolution": (1920, 1080)}
+
+
 def test_dropped_agent_owned_id_with_claimed_field_is_not_deleted() -> None:
     # VSE strips aren't ID datablocks, so the automatic origin flip (SPEC.md §4.3)
     # never fires for a strip edit (docs/M4-FINDINGS.md) — origin can stay "agent"

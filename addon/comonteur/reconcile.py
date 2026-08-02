@@ -80,6 +80,27 @@ def diff(
     return ReconcilePlan(to_create, to_update, to_delete)
 
 
+def scene_range(resolved: dict[str, Any]) -> dict[str, Any]:
+    """fps/resolution/frame_end to apply to the container scene, derived from the
+    resolved plan. Pure so the "984 frames short" class of bug (scene left on scaffold
+    defaults because nothing ever read `resolved["fps"]`/shot end frames) has a fast test
+    that doesn't need Blender. `frame_end` is absent from the result when there are no
+    shots — nothing to derive it from.
+    """
+    out: dict[str, Any] = {}
+    fps = resolved.get("fps")
+    if fps:
+        out["fps"] = int(fps)
+    resolution = resolved.get("resolution")
+    if resolution:
+        out["resolution"] = (int(resolution[0]), int(resolution[1]))
+    shots = resolved.get("shots") or []
+    ends = [s["start_frame"] + s["duration_frames"] for s in shots]
+    if ends:
+        out["frame_end"] = max(ends)
+    return out
+
+
 def _existing_index(se: Any, types: tuple[str, ...]) -> dict[str, Any]:
     return {
         s.get(const.PROP_ID): s
@@ -206,3 +227,11 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
         shot_strips = reconcile_shots(shots)
         reconcile_audio(resolved.get("audio", []))
         reconcile_transitions(shots, shot_strips)
+        for key, value in scene_range(resolved).items():
+            if key == "resolution":
+                journal.set(scene, "render.resolution_x", value[0])
+                journal.set(scene, "render.resolution_y", value[1])
+            elif key == "fps":
+                journal.set(scene, "render.fps", value)
+            else:
+                journal.set(scene, key, value)
