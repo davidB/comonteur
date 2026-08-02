@@ -28,6 +28,8 @@ assert scn.render.image_settings.file_format == "FFMPEG"
 assert scn.render.ffmpeg.codec == "H264"
 assert scn.render.ffmpeg.format == "MPEG4"
 assert scn.render.ffmpeg.audio_codec == "AAC"
+assert scn.render.ffmpeg.constant_rate_factor == "MEDIUM"
+assert scn.render.ffmpeg.ffmpeg_preset == "GOOD"
 assert scn.render.filepath == "//renders/"
 
 # Same as fps/resolution: reconcile stays authoritative and re-syncs the output

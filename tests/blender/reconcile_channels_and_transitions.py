@@ -41,6 +41,10 @@ cmt.reconcile.apply(scn, resolved, "/project")
 se = scn.sequence_editor
 strips = {s.name: s for s in se.strips}
 
+# apply() must point the render at the VSE, not the 3D viewport, or comonteur:render
+# produces the wrong output.
+assert scn.render.use_sequencer is True
+
 shot1 = strips["shot-01"]
 assert shot1.type == "MOVIE"
 assert shot1.channel == cmt.reconcile.CHANNEL_SHOTS_A == 5

@@ -172,10 +172,15 @@ def apply_render_settings(scene: Any, resolved: dict[str, Any]) -> None:
             journal.set(scene, "render.fps", value)
         elif key == "video":
             codec, container = value
+            # media_type must be set before file_format — Blender ignores FFMPEG's
+            # codec/format properties on an image_settings block still in its default
+            # (IMAGE) media_type.
             journal.set(scene, "render.image_settings.media_type", "VIDEO")
             journal.set(scene, "render.image_settings.file_format", "FFMPEG")
             journal.set(scene, "render.ffmpeg.codec", codec)
             journal.set(scene, "render.ffmpeg.format", container)
+            journal.set(scene, "render.ffmpeg.constant_rate_factor", "MEDIUM")
+            journal.set(scene, "render.ffmpeg.ffmpeg_preset", "GOOD")
         elif key == "audio_codec":
             journal.set(scene, "render.ffmpeg.audio_codec", value)
         else:
@@ -357,6 +362,9 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
             prev = shot
 
     with journal.batch("reconcile timeline"):
+        # comonteur assembles the timeline in the VSE, not the 3D viewport — render
+        # must read from the sequencer or `comonteur:render` produces the wrong frame.
+        journal.set(scene, "render.use_sequencer", True)
         shots = resolved.get("shots", [])
         shot_strips = reconcile_shots(shots)
         reconcile_audio(resolved.get("audio", []))
