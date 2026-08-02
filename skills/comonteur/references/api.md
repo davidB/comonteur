@@ -44,7 +44,14 @@ create(scene, body, *, name=None, size=1.0, font=None, color=None, shading="flat
 style(obj, *, size=None, font=None, color=None, shading="flat") -> Object
 fit_to_box(obj, width, height, *, min_size=0.01, step=0.9) -> Object
 split_chars(obj, *, spacing=0.0, space_width_factor=0.3) -> list[Object]
+style_spans(chars, spans) -> list[Object]        # spans = [(start, end, style_kwargs), ...]
+word_spans(body) -> list[tuple[int, int]]                       # read-only
 measure(obj) -> dict
+measure_many(objs) -> dict                                      # read-only
+highlight_bg(scn, objs, color, *, padding=0.05, name=None) -> Object
+color_target(obj) -> ShaderNodeTree                              # read-only
+color_path(obj, shading="flat") -> str                            # read-only
+karaoke(scn, obj, color, *, start, word_gap, dur, ease=None) -> list[Object]
 check_fonts(scn) -> list[dict]                                  # read-only
 ```
 
@@ -84,12 +91,59 @@ per-character objects.
 real metrics (`min[0]`..`max[0]` at `y = min[1] - gap`) without splitting the object into
 per-character pieces just to measure it.
 
+### Multi-color / multi-style inline spans
+
+Color and font live on individual objects (one material per `FONT` object), so styling part
+of a string means `split_chars()` first, then `style_spans()` over index ranges into the
+result — `chars[i]` is `body[i]`:
+
+```python
+chars = cmt.text.split_chars(title)
+cmt.text.style_spans(chars, [(0, 3, {"color": (0.9, 0.2, 0.2, 1.0)}), (4, 9, {"font": vfont})])
+```
+
+`word_spans(body)` gives whitespace-delimited `(start, end)` pairs for grouping `chars` by
+word instead of by hand-picked indices. `measure_many(objs)` unions `measure()`'s bbox across
+several objects — size a highlight/background around a whole word, not one glyph:
+
+```python
+words = cmt.text.word_spans(title.data.body)
+chars = cmt.text.split_chars(title)
+bg = cmt.text.highlight_bg(scn, chars[words[0][0]:words[0][1]], (1.0, 0.9, 0.2, 0.4))
+```
+
+Color lives on the object's material's node tree, which is its own ID-block — `keyframe_insert`
+can't cross from the Object into it, so `tween()`/`stagger()` must target `color_target(obj)`
+(the node tree), not `obj`, with the path from `color_path(obj)`:
+
+```python
+target = cmt.text.color_target(styled_obj)
+cmt.anim.tween(target, cmt.text.color_path(styled_obj), 3, frm=0.0, to=1.0, start=1, dur=10)
+```
+
+`color_path(obj, shading="flat")` don't hand-type the node/input path — it must match
+`style()`'s naming exactly, and Blender itself stores a node input's F-curve path by numeric
+index, not name, so `color_path()` resolves that index for you. `index` picks the channel:
+`0`/`1`/`2`/`3` = R/G/B/A.
+
+`karaoke(scn, obj, color, *, start, word_gap, dur, ease=None)` bundles the whole word-by-word
+highlight sweep — `split_chars()` + `word_spans()` + one `highlight_bg()` per word + a
+`stagger()` on alpha — into one call:
+
+```python
+cmt.text.karaoke(scn, title, (1.0, 0.9, 0.2, 1.0), start=1, word_gap=6, dur=10, ease="power2.out")
+```
+
+Reach for this instead of hand-rolling per-word grouping — matching a GSAP `SplitText`
+word-stagger's granularity is the point, not a whole-line fade or a per-letter ripple.
+
 ## `cmt.anim` — motion
 
 ```python
 tween(obj, path, index, frm, to, start, dur, ease=None)
 stagger(objs, path, index, offset, **tween_kwargs)   # tween_kwargs must include start=
 idle_jitter(obj, path, index, amplitude, cycles, start, dur, ease=None)
+pulse(obj, path, index, peak, start, dur, ease=None)
 instance_as_nla(obj, track_name, frame_offset) -> NlaStrip
 ```
 
@@ -98,6 +152,12 @@ by the human in the Graph Editor. Frames, not seconds. `index` is the array inde
 `location` X/Y/Z = 0/1/2, `rotation_euler` and `scale` likewise. For a scalar property with no
 components (e.g. `empty_display_size`), pass `index=None` — the journal then records the bare
 path, the same string a human edit would touch.
+
+A `rotateY`-equivalent 3D tilt is just `tween()` on `rotation_euler` index `1`:
+
+```python
+cmt.anim.tween(obj, "rotation_euler", 1, frm=0.4, to=0.0, start=1, dur=12, ease="power2.out")
+```
 
 Prefer `tween`/`stagger`/`idle_jitter` over a raw-`bpy` driver or hand-baked keyframes: real
 keyframes are journaled and land in the dope sheet/graph editor exactly where the human
@@ -169,6 +229,15 @@ Reads `path[index]`'s current value as the center, then bakes a base keyframe, a
 peak/trough pair per cycle, and a closing base keyframe — `2*cycles + 2` real keyframes
 total, same `_keyframe()`/easing machinery as `tween()`. Must run inside `journal.batch()`.
 
+### Flash-pulse (one-shot)
+
+```python
+cmt.anim.pulse(obj, "data.materials[0].node_tree.nodes[\"Principled BSDF\"].inputs[\"Emission Strength\"].default_value", None, peak=3.0, start=1, dur=6)
+```
+
+`pulse()` is a single spike — base → `peak` at 30% of `dur` → back to base at `dur` — not a
+repeating wobble. Use it for a flash/pop; use `idle_jitter()` for a sustained breathing hold.
+
 ## `cmt.card` — image + border + shadow bundle
 
 ```python
@@ -183,6 +252,16 @@ shadow are flat offset planes with Emission-only materials, not raytraced shadow
 scenes have no lights (same reason `cmt.text` defaults to `shading="flat"`), and adding a
 light for one card would break that baseline for every other object in frame. Pass
 `border_color=None` (default) to skip the border; `shadow=False` to skip the shadow.
+
+## `cmt.fx` — frame-level overlay effects
+
+```python
+vignette(scn, *, color=(0.0, 0.0, 0.0), strength=0.6, name=None) -> Object
+```
+
+A camera-facing plane whose alpha/emission falls off toward the edges via a radial gradient —
+the darken-the-corners overlay a CSS/GSAP vignette usually is. `strength` is the alpha at the
+frame edge; center stays fully transparent.
 
 ## `cmt.library` — components from `lib/*.blend`
 

@@ -4,6 +4,7 @@ from . import (  # noqa: F401
     anim,
     card,
     doctor,
+    fx,
     introspect,
     journal,
     library,

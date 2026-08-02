@@ -81,9 +81,10 @@ def tween(
     """Set `path[index]` to `frm` at `start` and `to` at `start+dur`, both real
     keyframes. Must run inside journal.batch() (see module docstring).
 
-    `index` is the array component (`location` X/Y/Z = 0/1/2). Pass `index=None` for a scalar
-    property, which has no components — the journal then records the bare path, so revert and
-    claimed_paths() see the same string the human's edit would touch.
+    `index` is the array component (`location` X/Y/Z = 0/1/2, `rotation_euler` Y = 1 for a
+    rotateY-equivalent tilt). Pass `index=None` for a scalar property, which has no
+    components — the journal then records the bare path, so revert and claimed_paths() see
+    the same string the human's edit would touch.
     """
     if not journal.batch_active():
         raise RuntimeError("anim.tween() must run inside journal.batch()")
@@ -136,6 +137,33 @@ def idle_jitter(
             obj, path, index, frame + cycle_len * 0.75, base - amplitude, interpolation, easing
         )
         frame += cycle_len
+    _keyframe(obj, path, index, start + dur, base, interpolation, easing)
+
+
+def pulse(
+    obj: Any,
+    path: str,
+    index: int | None,
+    peak: float,
+    start: float,
+    dur: float,
+    ease: str | None = None,
+) -> None:
+    """One-shot spike around `path[index]`'s current value: base -> peak at 30% of
+    `dur` -> back to base at `dur`. Distinct from idle_jitter() (a repeating
+    peak/trough oscillation, base+amplitude/base-amplitude per cycle) — a flash-pulse
+    decays back to base once, it doesn't wobble.
+    """
+    if not journal.batch_active():
+        raise RuntimeError("anim.pulse() must run inside journal.batch()")
+    interpolation, easing = _parse_ease(ease)
+    journal_path = path if index is None else f"{path}[{index}]"
+    base = paths.resolve(obj, journal_path)
+    journal.set(obj, journal_path, base)
+
+    peak_frame = start + dur * 0.3
+    _keyframe(obj, path, index, start, base, interpolation, easing)
+    _keyframe(obj, path, index, peak_frame, peak, interpolation, easing)
     _keyframe(obj, path, index, start + dur, base, interpolation, easing)
 
 

@@ -119,6 +119,14 @@ Read the shot's HTML for intent, not structure: what text appears, in what order
 emphasis, entering how. Then express that with `cmt.text` and `cmt.anim`. The GSAP ease names
 carry straight across (`api.md`); the DOM structure doesn't.
 
+Match the granularity and fidelity of each named effect — a `SplitText` word-stagger stays a
+word-stagger, not a whole-statement fade; a flash-pulse, a 3D tilt, a vignette all have direct
+tools (`cmt.text.karaoke`, `cmt.anim.pulse`, `cmt.anim.tween` on `rotation_euler`,
+`cmt.fx.vignette` — `api.md`) and reproducing them at that granularity is the default, not the
+simplified read. Only simplify with a concrete, stated reason (a verified missing capability,
+an explicit instruction, a real performance concern) — never just because it's less work; log
+it under "Report honestly" below either way.
+
 Build the shared brand pieces into `lib/brand.blend` first and link them back in every shot
 (`api.md`'s `cmt.library` example) — don't re-hardcode the same hex/font values per shot, or
 `brand.blend` becomes decorative and a human's edit to it stops reaching anything downstream.

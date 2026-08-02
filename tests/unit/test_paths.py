@@ -23,10 +23,22 @@ class Vec:
         self._v[i] = val
 
 
+class Named:
+    def __init__(self) -> None:
+        self._by_name: dict[str, Any] = {}
+
+    def __setitem__(self, key: str, val: Any) -> None:
+        self._by_name[key] = val
+
+    def __getitem__(self, key: str) -> Any:
+        return self._by_name[key]
+
+
 class Obj:
     def __init__(self) -> None:
         self.location = Vec(0.0, 0.0, 0.0)
         self.child: Any = None
+        self.nodes = Named()
 
 
 def test_resolve_plain_attr() -> None:
@@ -57,3 +69,17 @@ def test_bad_segment_raises() -> None:
     o = Obj()
     with pytest.raises(ValueError):
         paths.resolve(o, "loc[[1]")
+
+
+def test_resolve_quoted_string_index() -> None:
+    o = Obj()
+    o.nodes["Principled BSDF"] = Vec(1.0, 2.0, 3.0)
+    assert paths.resolve(o, 'nodes["Principled BSDF"]') is o.nodes["Principled BSDF"]
+
+
+def test_set_quoted_string_index() -> None:
+    o = Obj()
+    o.child = Obj()
+    o.child.nodes["Emission Color"] = Vec(0.0, 0.0, 0.0, 1.0)
+    paths.set_(o, 'child.nodes["Emission Color"]', Vec(9.0))
+    assert o.child.nodes["Emission Color"][0] == 9.0

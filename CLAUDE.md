@@ -261,7 +261,8 @@ Agent writes are grouped into a `journal.batch(...)` context manager: exactly on
 | `journal.py` | `batch()` context manager, `set()`, JSONL, snapshot, revert |
 | `scene.py` | `new_scene()` — deterministic baseline, never inherits `bpy.context.scene` state |
 | `anim.py` | `tween`, `stagger`, easing map (GSAP-equivalent), F-curve helpers — real keyframes preferred over baked/driver animation |
-| `text.py` | text objects, styling, fit-to-box, per-character split |
+| `text.py` | text objects, styling, fit-to-box, per-character split, multi-color inline spans, karaoke word highlight |
+| `fx.py` | camera/frame-level overlay effects (vignette) |
 | `library.py` | link `lib/*.blend` components and `compositions/frames/*.blend` scenes; asset catalog discovery |
 | `introspect.py` | `outline`, `describe`, `animated_paths`, `find`, `drift` — progressive disclosure, token-budgeted, never dumps a full tree |
 | `preview.py` | render frames for agent visual review (`.comonteur/review/`) |

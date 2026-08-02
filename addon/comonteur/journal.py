@@ -85,7 +85,12 @@ def batch(label: str) -> Iterator[str]:
         for entry in writes:
             _append(entry)
         for id_block in touched:
-            id_block[const.PROP_REV] = id_block.get(const.PROP_REV, 0) + 1
+            # split_chars() replaces its input object within the same batch — a datablock
+            # touched earlier in the batch can be gone by the time it exits.
+            try:
+                id_block[const.PROP_REV] = id_block.get(const.PROP_REV, 0) + 1
+            except ReferenceError:
+                continue
         if writes:
             # depsgraph_update_post is deferred, not synchronous with property
             # writes — force evaluation now, while batch_active() still gates the
