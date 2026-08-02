@@ -4,6 +4,7 @@ Ported from cli/src/manifest.rs's #[cfg(test)] module when the Rust CLI was diss
 mise tasks. parse_probe() is tested against literal ffprobe fixtures — no subprocess.
 """
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -94,6 +95,26 @@ def test_sha256_matches_known_vector(tmp_path: Path) -> None:
         manifest.sha256_file(path)
         == "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
     )
+
+
+def test_probe_asset_falls_back_to_sha256_when_ffprobe_cant_read_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A non-media asset (e.g. a font) makes ffprobe exit non-zero with no streams — record
+    sha256/path only instead of aborting the whole manifest build.
+    """
+    font = tmp_path / "brand.woff2"
+    font.write_bytes(b"not-a-media-file")
+
+    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.CompletedProcess(args, returncode=1, stdout=b"", stderr=b"invalid data")
+
+    monkeypatch.setattr(manifest.subprocess, "run", fake_run)
+    entry = manifest.probe_asset(font, "brand.woff2")
+    assert entry["path"] == "brand.woff2"
+    assert "sha256" in entry
+    assert "duration" not in entry
+    assert "codec" not in entry
 
 
 def test_walk_files_skips_dotfiles_and_recurses(tmp_path: Path) -> None:

@@ -108,7 +108,10 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def run_ffprobe(path: Path) -> dict[str, Any]:
+def run_ffprobe(path: Path) -> dict[str, Any] | None:
+    """`None` means ffprobe ran but couldn't parse `path` (not a media file, e.g. a font) —
+    the caller records sha256/path only instead of aborting the whole manifest build.
+    """
     try:
         out = subprocess.run(
             [
@@ -128,18 +131,21 @@ def run_ffprobe(path: Path) -> dict[str, Any]:
             f"running ffprobe (is it on PATH? see `mise run comonteur:doctor`): {e}"
         ) from e
     if out.returncode != 0:
-        raise SystemExit(f"ffprobe failed on {path}: {out.stderr.decode(errors='replace')}")
+        return None
     try:
-        return json.loads(out.stdout)
+        probe_json = json.loads(out.stdout)
     except json.JSONDecodeError as e:
         raise SystemExit(f"parsing ffprobe JSON output: {e}") from e
+    return probe_json if probe_json.get("streams") else None
 
 
 def probe_asset(path: Path, rel_path: str) -> dict[str, Any]:
     # sha256 first, then probe — same order as the Rust original, so a probe failure on a
     # late asset leaves the same partial state.
     entry = {"sha256": sha256_file(path), "path": rel_path}
-    entry.update(parse_probe(run_ffprobe(path)))
+    probe_json = run_ffprobe(path)
+    if probe_json is not None:
+        entry.update(parse_probe(probe_json))
     return entry
 
 
