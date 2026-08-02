@@ -1,3 +1,24 @@
+## [0.20260802.0] - 2026-08-02
+
+### 🚀 Features
+
+- *(skill)* Prefer keyframes over drivers/baked anim, don't force it
+- *(addon)* Add anim.idle_jitter(), text.measure(), and cmt.card.create()
+- *(addon)* Multi-color inline text spans, karaoke/pulse/vignette effects
+- *(timeline)* Add [encode] table for video/audio codec + container
+- *(edit)* Auto-create master.blend on first mise run comonteur:edit
+- *(skill)* Agent runs mise trust/install/edit itself instead of telling the human
+- *(skill)* Remove active git/git-lfs management from init — dropped --git/--lfs subprocess calls from comonteur:init
+- *(reconcile)* Pro VSE channel layout, auto-overlapping transitions, and with_audio movie sync
+- *(reconcile)* Force VSE render output and set ffmpeg quality defaults
+- *(skill)* Tighten preview cadence and add per-shot subagent delegation
+
+### 🐛 Bug Fixes
+
+- *(addon)* Sync scene fps/resolution/frame_end in reconcile.apply()
+- *(ingest_manifest)* Fall back to sha256+path when ffprobe can't probe an asset (fonts, etc.) instead of aborting the whole manifest build
+- *(addon)* Flat/unlit shading for kind="2d" scenes
+- *(addon,skill)* Wire font-loading recipe + check_fonts(), document brand.blend read-back
 ## [0.20260801.1] - 2026-08-01
 
 ### 🐛 Bug Fixes
@@ -15,6 +36,7 @@
 - Add a basic ci github workflow
 - Add weekly renovate workflow for mise, uv, and github actions
 - Declare uv & blender as top level tool to be cached by ci...
+- *(release)* 0.20260801.1
 ## [0.20260801.0] - 2026-08-01
 
 ### 🚀 Features
