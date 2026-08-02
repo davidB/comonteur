@@ -7,7 +7,7 @@ comes back per-module").
 import math
 from typing import Any, Iterable
 
-from . import journal
+from . import journal, paths
 
 # GSAP name -> (interpolation, easing). `.in`/`.out`/`.inOut` select easing; the base
 # name selects interpolation. BEZIER's handles are computed separately (see _keyframe).
@@ -102,6 +102,41 @@ def stagger(
     base_start = tween_kwargs.pop("start")
     for i, obj in enumerate(objs):
         tween(obj, path, index=index, start=base_start + i * offset, **tween_kwargs)
+
+
+def idle_jitter(
+    obj: Any,
+    path: str,
+    index: int | None,
+    amplitude: float,
+    cycles: int,
+    start: float,
+    dur: float,
+    ease: str | None = None,
+) -> None:
+    """Sine-like oscillation around `path[index]`'s current value, baked as real
+    keyframes (§6.2 forbids drivers-as-animation). Pre-sampled tween(), not a
+    generic curve sampler: base -> (peak, trough) per cycle -> base.
+    """
+    if not journal.batch_active():
+        raise RuntimeError("anim.idle_jitter() must run inside journal.batch()")
+    interpolation, easing = _parse_ease(ease)
+    journal_path = path if index is None else f"{path}[{index}]"
+    base = paths.resolve(obj, journal_path)
+    journal.set(obj, journal_path, base)
+
+    cycle_len = dur / cycles
+    frame = start
+    _keyframe(obj, path, index, start, base, interpolation, easing)
+    for _ in range(cycles):
+        _keyframe(
+            obj, path, index, frame + cycle_len * 0.25, base + amplitude, interpolation, easing
+        )
+        _keyframe(
+            obj, path, index, frame + cycle_len * 0.75, base - amplitude, interpolation, easing
+        )
+        frame += cycle_len
+    _keyframe(obj, path, index, start + dur, base, interpolation, easing)
 
 
 def instance_as_nla(obj: Any, track_name: str, frame_offset: float) -> Any:

@@ -7,6 +7,7 @@ independently keyframeable, and §6.2 requires real F-curves.
 from typing import Any, Literal
 
 import bpy
+from mathutils import Vector
 
 from . import provenance
 
@@ -82,6 +83,24 @@ def fit_to_box(
         obj.data.size *= step
         bpy.context.view_layer.update()
     return obj
+
+
+def measure(obj: Any) -> dict[str, Any]:
+    """Read-only bounding box in world space, for positioning underlines/accents
+    without restructuring the text object (§11: no layout engine). Same
+    view_layer.update() + dimensions precedent as fit_to_box().
+    """
+    bpy.context.view_layer.update()
+    corners = [obj.matrix_world @ Vector(c) for c in obj.bound_box]
+    mins = (min(c.x for c in corners), min(c.y for c in corners), min(c.z for c in corners))
+    maxs = (max(c.x for c in corners), max(c.y for c in corners), max(c.z for c in corners))
+    return {
+        "width": obj.dimensions.x,
+        "height": obj.dimensions.y,
+        "depth": obj.dimensions.z,
+        "min": mins,
+        "max": maxs,
+    }
 
 
 def split_chars(obj: Any, *, spacing: float = 0.0, space_width_factor: float = 0.3) -> list[Any]:

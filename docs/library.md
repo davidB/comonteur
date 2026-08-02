@@ -17,10 +17,11 @@ equally to **reduce agent token consumption**: the agent calls
 | `provenance.py` | tag / flip handler / `claimed_paths` / ownership queries / take-ownership operators |
 | `journal.py` | `batch()` context manager, `set()`, JSONL, snapshot, revert |
 | `scene.py` | `new_scene()` — see §6.1. Scene params interface. |
-| `anim.py` | `tween`, `stagger`, easing map, F-curve helpers |
-| `text.py` | text objects, styling, fit-to-box, per-character split. `style()`/`create()` color defaults to `shading='flat'` (Emission, since `kind='2d'` scenes have no lights) — pass `shading='lit'` for plain Base Color in lit 3D scenes. |
+| `anim.py` | `tween`, `stagger`, `idle_jitter` (sine wobble, pre-sampled), easing map, F-curve helpers |
+| `text.py` | text objects, styling, fit-to-box, `measure` (world-space bounding box), per-character split. `style()`/`create()` color defaults to `shading='flat'` (Emission, since `kind='2d'` scenes have no lights) — pass `shading='lit'` for plain Base Color in lit 3D scenes. |
 | `vse.py` | assembly, scene strips, transitions, audio |
 | `library.py` | link `lib/*.blend` (component library) and `compositions/frames/*.blend` (per-shot scenes), asset catalog discovery |
+| `card.py` | `create()` — image plane + hairline border + soft shadow bundle, the HyperFrames "card" pattern |
 | `introspect.py` | `outline`, `describe`, `animated_paths`, `find`, `drift` |
 | `preview.py` | render frames for agent review |
 | `reconcile.py` | timeline.toml → VSE |
@@ -65,7 +66,12 @@ untracked/drift caveat as any other raw `bpy` write (§4.4-4.5).
 anim.tween(obj, "location", index=1, frm=-0.4, to=0.0,
            start=12, dur=20, ease="BACK_OUT")
 anim.stagger(objs, "location", index=1, offset=2, **tween_kwargs)
+anim.idle_jitter(obj, "rotation_euler", 2, amplitude=0.02, cycles=3, start=1, dur=60)
 ```
+
+`idle_jitter` is a pre-sampled tween, not a generic curve sampler: it bakes a base
+keyframe, a peak/trough pair per cycle, and a closing base keyframe around the
+path's current value — real F-curves, same as `tween`, just more of them.
 
 Easing map (from the discussion — the sets are near-identical by design):
 
@@ -111,6 +117,19 @@ looking, makes review auditable after the fact and survives context loss.
 
 "The headline crosses title-safe at frame 40" is real review. Structural inspection
 happens afterward, scoped to the one thing being fixed.
+
+### 6.5 `card.py` — image + border + shadow bundle
+
+```python
+card.create(scn, "shot/thumb.png", w=2.0, h=1.0,
+            border_color=(1, 1, 1, 1), shadow=True)
+```
+
+Returns the root Empty the image/border/shadow planes are parented to, so one
+`anim.tween(card, "location", ...)` moves the whole bundle. Border and shadow are
+flat offset planes with Emission-only materials, not raytraced shadows — no light is
+added, since `new_scene(kind='2d')` pins `use_raytracing = False` (§6.1) and a light
+for one card would break that baseline for every other object in frame.
 
 ---
 

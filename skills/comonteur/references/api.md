@@ -44,6 +44,7 @@ create(scene, body, *, name=None, size=1.0, font=None, color=None, shading="flat
 style(obj, *, size=None, font=None, color=None, shading="flat") -> Object
 fit_to_box(obj, width, height, *, min_size=0.01, step=0.9) -> Object
 split_chars(obj, *, spacing=0.0, space_width_factor=0.3) -> list[Object]
+measure(obj) -> dict
 ```
 
 `color` is RGB or RGBA floats. `style()` creates a Principled BSDF material named
@@ -64,11 +65,17 @@ tight. Reason it exists: Geometry Nodes *String to Curves* yields one multi-spli
 whose instances can't be keyframed independently — real per-character animation needs real
 per-character objects.
 
+`measure()` is a read-only bounding box in world space — `{"width", "height", "depth", "min",
+"max"}`, `min`/`max` as `(x, y, z)` tuples. Use it to position an underline or accent against
+real metrics (`min[0]`..`max[0]` at `y = min[1] - gap`) without splitting the object into
+per-character pieces just to measure it.
+
 ## `cmt.anim` — motion
 
 ```python
 tween(obj, path, index, frm, to, start, dur, ease=None)
 stagger(objs, path, index, offset, **tween_kwargs)   # tween_kwargs must include start=
+idle_jitter(obj, path, index, amplitude, cycles, start, dur, ease=None)
 instance_as_nla(obj, track_name, frame_offset) -> NlaStrip
 ```
 
@@ -78,12 +85,13 @@ by the human in the Graph Editor. Frames, not seconds. `index` is the array inde
 components (e.g. `empty_display_size`), pass `index=None` — the journal then records the bare
 path, the same string a human edit would touch.
 
-`cmt.anim` only offers keyframe tweens — no driver or bake helper exists yet. Prefer
-`tween`/`stagger` over a raw-`bpy` driver or baked keyframes: real keyframes are
-journaled and land in the dope sheet/graph editor exactly where the human expects to
-find and edit them. If a motion genuinely can't be expressed as a tween (a cyclic
-wobble, say), a driver or baked bake via raw `bpy` is a valid escape hatch — same
-untracked/drift caveat as any other raw `bpy` write (`SKILL.md` Hard rules).
+Prefer `tween`/`stagger`/`idle_jitter` over a raw-`bpy` driver or hand-baked keyframes: real
+keyframes are journaled and land in the dope sheet/graph editor exactly where the human
+expects to find and edit them. `idle_jitter()` covers the common "breathing hold" case — a
+sine-like oscillation around the path's current value, baked as `2*cycles + 2` real
+keyframes, no driver involved. If a motion still can't be expressed as a tween or a jitter, a
+driver or hand-baked keyframes via raw `bpy` is a valid escape hatch — same untracked/drift
+caveat as any other raw `bpy` write (`SKILL.md` Hard rules).
 
 ### Ease names (GSAP vocabulary)
 
@@ -136,6 +144,31 @@ cmt.anim.stagger(chars, "location", index=1, offset=2,
 `frame_offset` and clears the active action. Reusable motion should be one Action instanced N
 times, not N copies of the same F-curves — the human edits it once. Raises `ValueError` if
 the object has no action to instance.
+
+### Idle jitter (breathing holds)
+
+```python
+cmt.anim.idle_jitter(obj, "rotation_euler", 2, amplitude=0.02, cycles=3, start=1, dur=60)
+```
+
+Reads `path[index]`'s current value as the center, then bakes a base keyframe, a
+peak/trough pair per cycle, and a closing base keyframe — `2*cycles + 2` real keyframes
+total, same `_keyframe()`/easing machinery as `tween()`. Must run inside `journal.batch()`.
+
+## `cmt.card` — image + border + shadow bundle
+
+```python
+create(scn, image_path, w, h, border_color=None, *,
+       border_width=0.02, shadow=True, name=None) -> Object
+```
+
+Builds the common HyperFrames "card" pattern in one call: an image plane, an optional
+hairline border plane, and an optional soft shadow plane, all parented to a returned root
+Empty — `anim.tween(card, "location", ...)` on the root moves the whole bundle. Border and
+shadow are flat offset planes with Emission-only materials, not raytraced shadows: `kind="2d"`
+scenes have no lights (same reason `cmt.text` defaults to `shading="flat"`), and adding a
+light for one card would break that baseline for every other object in frame. Pass
+`border_color=None` (default) to skip the border; `shadow=False` to skip the shadow.
 
 ## `cmt.library` — components from `lib/*.blend`
 

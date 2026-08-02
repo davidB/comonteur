@@ -2,6 +2,7 @@
 
 from . import (  # noqa: F401
     anim,
+    card,
     doctor,
     introspect,
     journal,
