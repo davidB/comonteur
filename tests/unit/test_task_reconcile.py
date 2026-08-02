@@ -142,6 +142,34 @@ def test_resolve_converts_transition_seconds_to_frames() -> None:
     assert resolved == {"type": "crossfade", "duration_frames": 15}
 
 
+def test_resolve_shifts_transitioned_shot_earlier_and_extends_duration() -> None:
+    # 0.5s @ 30fps = 15 frames — the shot must start 15 frames before its authored cut
+    # point and last 15 frames longer, so it overlaps the previous shot for the crossfade.
+    shot = scene_shot("shot-02", start=90, duration=120)
+    shot["transition"] = {"type": "crossfade", "duration": 0.5}
+    resolved = timeline.resolve(doc_with([shot]), None, 30)["shots"][0]
+    assert resolved["start_frame"] == 75
+    assert resolved["duration_frames"] == 135
+
+
+def test_resolve_shot_without_transition_is_unshifted() -> None:
+    shot = scene_shot("shot-01", start=90, duration=120)
+    resolved = timeline.resolve(doc_with([shot]), None, 30)["shots"][0]
+    assert resolved["start_frame"] == 90
+    assert resolved["duration_frames"] == 120
+
+
+def test_resolve_transition_shift_composes_with_anchor() -> None:
+    transcript = [word("data", 1.0, 1.4)]
+    anchor = {"word": "data", "occurrence": 1, "offset": 0.0}
+    shot = scene_shot("shot-02", anchor=anchor, duration=120)
+    shot["transition"] = {"type": "crossfade", "duration": 0.5}
+    resolved = timeline.resolve(doc_with([shot]), transcript, 30)["shots"][0]
+    # anchor resolves to 1.0s * 30fps = 30, shifted 15 frames earlier by the transition
+    assert resolved["start_frame"] == 15
+    assert resolved["duration_frames"] == 135
+
+
 def test_round_half_away_from_zero_matches_rust() -> None:
     # Python's built-in round() is banker's rounding and would give 0 here; Rust's
     # f64::round rounds half away from zero. Frame numbers must match the old CLI.

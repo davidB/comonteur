@@ -1,0 +1,85 @@
+"""reconcile.apply() end-to-end: channel layout, transition overlap, and with_audio companion
+strip (see addon/comonteur/reconcile.py, skills/comonteur/references/timeline.md). Media
+paths don't need to exist — new_movie()/new_sound() accept a missing file and just default
+frame_final_duration to 1 until reconciled to an explicit value, which this resolved plan
+always does, so no media fixtures are needed.
+"""
+
+import _bl
+import bpy
+
+cmt = _bl.setup()
+
+scn = bpy.context.scene
+resolved = {
+    "fps": 30,
+    "resolution": [1920, 1080],
+    "shots": [
+        {
+            "id": "shot-01",
+            "source": {"kind": "movie", "path": "raw/a.mp4"},
+            "start_frame": 0,
+            "duration_frames": 90,
+            "in_frame": None,
+            "transition": None,
+        },
+        {
+            "id": "shot-02",
+            # 90 -> 75 / 120 -> 135: pre-shifted by the resolver's 15-frame (0.5s@30fps)
+            # transition overlap, same as skills/.../reconcile.py::resolve() would produce.
+            "source": {"kind": "movie", "path": "raw/b.mp4", "with_audio": True},
+            "start_frame": 75,
+            "duration_frames": 135,
+            "in_frame": None,
+            "transition": {"type": "cross", "duration_frames": 15},
+        },
+    ],
+    "audio": [{"id": "vo", "path": "audio/narration.wav", "start_frame": 10}],
+}
+
+cmt.reconcile.apply(scn, resolved, "/project")
+se = scn.sequence_editor
+strips = {s.name: s for s in se.strips}
+
+shot1 = strips["shot-01"]
+assert shot1.type == "MOVIE"
+assert shot1.channel == cmt.reconcile.CHANNEL_SHOTS_A == 5
+assert shot1.frame_start == 0
+assert int(shot1.frame_final_duration) == 90
+
+shot2 = strips["shot-02"]
+assert shot2.type == "MOVIE"
+assert shot2.channel == cmt.reconcile.CHANNEL_SHOTS_B == 6
+assert shot2.frame_start == 75
+assert int(shot2.frame_final_duration) == 135
+
+# The two shots must actually overlap for the CROSS effect to have a real blend range.
+assert shot1.frame_start < shot2.frame_start < shot1.frame_start + shot1.frame_final_duration
+
+transition = strips["shot-02:transition"]
+assert transition.type == "CROSS"
+assert transition.channel == cmt.reconcile.CHANNEL_TRANSITIONS == 7
+assert transition.frame_start == 75
+assert int(transition.frame_final_duration) == 15
+
+companion_audio = strips["shot-02:audio"]
+assert companion_audio.type == "SOUND"
+assert companion_audio.channel == cmt.reconcile.CHANNEL_AUDIO == 1
+assert companion_audio.frame_start == 75
+assert int(companion_audio.frame_final_duration) == 135
+
+vo = strips["vo"]
+assert vo.type == "SOUND"
+assert vo.channel == cmt.reconcile.CHANNEL_AUDIO == 1
+assert vo.frame_start == 10
+
+# Re-running reconcile against the same plan is a no-op: nothing new created or deleted.
+strip_count = len(se.strips)
+cmt.reconcile.apply(scn, resolved, "/project")
+assert len(se.strips) == strip_count
+
+# Dropping shot-02 deletes its strips (agent-owned, unclaimed).
+resolved_one_shot = {**resolved, "shots": resolved["shots"][:1], "audio": []}
+cmt.reconcile.apply(scn, resolved_one_shot, "/project")
+remaining = {s.name for s in se.strips}
+assert remaining == {"shot-01"}

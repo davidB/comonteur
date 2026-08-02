@@ -14,9 +14,20 @@ try:
 except ImportError:  # imported standalone (tests/unit/test_reconcile.py, no bpy/package)
     import const  # type: ignore[no-redef]
 
-CHANNEL_SHOTS = 1
-CHANNEL_AUDIO = 2
-CHANNEL_TRANSITIONS = 3
+# Bottom-up, matching pro NLE convention: audio at the bottom, video in the middle,
+# overlay/titles reserved at the top. Video and audio ranges are never interleaved.
+CHANNEL_AUDIO = 1  # SOUND — voiceover/dialogue, and any with_audio movie shot's own audio
+# 2-4 reserved: human audio (music/SFX/ambience) — timeline.toml has no schema for these
+# roles yet, so a human adds them by hand; kept next to dialogue at the bottom of the stack.
+CHANNEL_SHOTS_A = 5
+CHANNEL_SHOTS_B = 6  # shots alternate A/B by position so any two temporally adjacent shots
+# sit on different channels — required for a CROSS effect between them to have a real
+# overlapping frame range to blend across (same channel can't display two strips at once).
+CHANNEL_TRANSITIONS = 7  # CROSS effect, above both shot channels
+# 8-9 reserved: human video overlay (PiP, B-roll insert)
+# 10+ reserved: titles/subtitles/karaoke overlay, topmost — nothing agent-side writes here
+# yet (comonteur's text objects live in-scene, not as VSE text strips).
+_SHOT_CHANNELS = (CHANNEL_SHOTS_A, CHANNEL_SHOTS_B)
 
 _TRANSITION_TYPES = {"cross": "CROSS"}
 
@@ -189,9 +200,20 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
         se = scene.sequence_editor_create()
 
     def plan_for(
-        desired: list[dict[str, Any]], types: tuple[str, ...], fields: tuple[str, ...]
+        desired: list[dict[str, Any]],
+        types: tuple[str, ...],
+        fields: tuple[str, ...],
+        id_filter: Any = None,
     ) -> tuple[ReconcilePlan, dict[str, Any]]:
         existing = _existing_index(se, types)
+        if id_filter is not None:
+            # Two passes can share a strip `type` (SOUND: plain [[audio]] tracks vs. a
+            # movie shot's with_audio companion) — without this, each pass's diff() sees
+            # the other pass's strips as "not in my desired list" and deletes them as
+            # strays, right after they were created earlier in the same batch. That's a
+            # dangling reference to a live-in-batch strip and segfaults Blender, not just
+            # a logic bug — found by running the with_audio blender test, not by reading.
+            existing = {cid: s for cid, s in existing.items() if id_filter(cid)}
         existing_info = {
             cid: {"origin": provenance.origin(s), "fields": _strip_fields(s, fields)}
             for cid, s in existing.items()
@@ -210,12 +232,12 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
             blend = os.path.join(project_root, source["blend"])
             linked = library.link_scene(blend, source["scene"])
             strip = se.strips.new_scene(
-                name=item["id"], scene=linked, channel=CHANNEL_SHOTS, frame_start=1
+                name=item["id"], scene=linked, channel=item["channel"], frame_start=1
             )
         elif kind == "movie":
             path = os.path.join(project_root, source["path"])
             strip = se.strips.new_movie(
-                name=item["id"], filepath=path, channel=CHANNEL_SHOTS, frame_start=1
+                name=item["id"], filepath=path, channel=item["channel"], frame_start=1
             )
         else:
             raise ValueError(f"unknown shot source kind: {kind!r}")
@@ -223,15 +245,21 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
         return strip
 
     def reconcile_shots(shots: list[dict[str, Any]]) -> dict[str, Any]:
-        fields = ("frame_start", "frame_final_duration")
+        # channel alternates by position, not a fixed constant: a shot with a transition
+        # must overlap the previous one in time, which requires them on different
+        # channels (Blender neither validates nor blends two strips sharing a channel).
+        # channel therefore has to be a synced field too — a shot inserted/removed shifts
+        # every later shot's parity, so an update must be able to move an existing strip.
+        fields = ("frame_start", "frame_final_duration", "channel")
         desired = [
             {
                 "id": s["id"],
                 "source": s["source"],
                 "frame_start": s["start_frame"],
                 "frame_final_duration": s["duration_frames"],
+                "channel": _SHOT_CHANNELS[i % 2],
             }
-            for s in shots
+            for i, s in enumerate(shots)
         ]
         shot_plan, existing = plan_for(desired, ("SCENE", "MOVIE"), fields)
 
@@ -250,7 +278,49 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
         desired = [
             {"id": a["id"], "path": a["path"], "frame_start": a["start_frame"]} for a in audio
         ]
-        audio_plan, existing = plan_for(desired, ("SOUND",), fields)
+        # id_filter excludes `<shot-id>:audio` companions — reconcile_shot_audio owns those.
+        audio_plan, existing = plan_for(
+            desired, ("SOUND",), fields, id_filter=lambda cid: not cid.endswith(":audio")
+        )
+
+        for item in audio_plan.to_create:
+            path = os.path.join(project_root, item["path"])
+            strip = se.strips.new_sound(
+                name=item["id"], filepath=path, channel=CHANNEL_AUDIO, frame_start=1
+            )
+            provenance.tag(strip, item["id"])
+            write_fields(strip, {f: item[f] for f in fields})
+        for update in audio_plan.to_update:
+            write_fields(existing[update["id"]], update["fields"])
+        for cmt_id in audio_plan.to_delete:
+            se.strips.remove(existing[cmt_id])
+
+    def reconcile_shot_audio(shots: list[dict[str, Any]]) -> None:
+        """Companion SOUND strip for a movie shot with `source.with_audio` — e.g. a
+        lip-synced dialogue take, where cutting the video (removing an "um", trimming
+        silence) must move its own audio along with it. "Linked" here just means comonteur
+        re-syncs both strips' frame range on every reconcile; Blender only creates a real
+        video/audio link when both come from one `movie_strip_add` operator call, which
+        `new_movie()`/`new_sound()` called separately don't give us. `:audio`-suffixed id,
+        same convention as `reconcile_transitions`'s `:transition`, so it never collides
+        with a `[[audio]]`-declared track's id.
+        """
+        fields = ("frame_start", "frame_final_duration")
+        desired = [
+            {
+                "id": f"{s['id']}:audio",
+                "path": s["source"]["path"],
+                "frame_start": s["start_frame"],
+                "frame_final_duration": s["duration_frames"],
+            }
+            for s in shots
+            if s["source"].get("kind") == "movie" and s["source"].get("with_audio")
+        ]
+        # id_filter: only ids this pass itself could have created — the mirror image of
+        # reconcile_audio's filter, for the same cross-pass-deletion reason.
+        audio_plan, existing = plan_for(
+            desired, ("SOUND",), fields, id_filter=lambda cid: cid.endswith(":audio")
+        )
 
         for item in audio_plan.to_create:
             path = os.path.join(project_root, item["path"])
@@ -290,5 +360,6 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
         shots = resolved.get("shots", [])
         shot_strips = reconcile_shots(shots)
         reconcile_audio(resolved.get("audio", []))
+        reconcile_shot_audio(shots)
         reconcile_transitions(shots, shot_strips)
         apply_render_settings(scene, resolved)

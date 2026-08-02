@@ -201,19 +201,32 @@ def resolve(
         shot_id = str(shot.get("id", ""))
         transition = shot.get("transition")
         resolved_transition = None
+        transition_frames = 0
         if transition is not None:
+            transition_frames = _round_half_away(float(transition.get("duration", 0.0)) * fps)
             resolved_transition = {
                 "type": transition.get("type"),
                 # Seconds, like an anchor's offset — both are timed relative to the
                 # transcript/audio, not the edit grid, so both convert at resolve time.
-                "duration_frames": _round_half_away(float(transition.get("duration", 0.0)) * fps),
+                "duration_frames": transition_frames,
             }
+        # A shot with a transition needs to actually overlap the previous shot for the CROSS
+        # effect to have something to blend across — shift this shot's own start earlier by
+        # the transition length and extend its duration to match, so its authored `start`
+        # stays the frame where the previous shot's untouched footage ends. Only this shot
+        # moves: shots authored back-to-back (next start == previous start + duration, the
+        # documented convention) then overlap the previous shot by exactly the transition's
+        # length without the previous shot needing any adjustment at all.
+        start_frame = resolve_position(shot_id, shot, transcript, fps) - transition_frames
+        duration_frames = shot.get("duration")
+        if duration_frames is not None:
+            duration_frames = duration_frames + transition_frames
         shots.append(
             {
                 "id": shot_id,
                 "source": shot.get("source"),
-                "start_frame": resolve_position(shot_id, shot, transcript, fps),
-                "duration_frames": shot.get("duration"),
+                "start_frame": start_frame,
+                "duration_frames": duration_frames,
                 "in_frame": shot.get("in"),
                 "transition": resolved_transition,
             }
