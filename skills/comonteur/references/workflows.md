@@ -176,6 +176,34 @@ background `Agent` call with a cheaper model (e.g. `haiku`) instead of doing the
 yourself — see `hyperframes-import.md`'s "Delegate the mechanical pass" section for exactly
 what to hand off and what to keep.
 
+## Delegating shots to a subagent
+
+Building more than a couple of shots in one session grows the orchestrator's context with
+every screenshot and tool call along the way, even though each shot's work is self-contained.
+There's only one live Blender process and one journal, so shots still run strictly one at a
+time — this is about context, not concurrency.
+
+For each shot, launch a foreground `Agent` call (`run_in_background: false` — you need the
+outcome before starting the next shot; the shared Blender instance can't run two at once
+anyway). Hand it a self-contained prompt: the shot's `narrative.toml` entry, its
+`timeline.toml` placement, the project root, and that Blender is already open and
+connected — the subagent reaches it through `execute_python` exactly as you would. Shared
+assets under `lib/*.blend` and `assets/` need no separate hand-off: the subagent links the
+same files you would.
+
+Have it run `../SKILL.md`'s loop and report back short: what it built, confirmation the
+rendered-frame gate was met, and any `shared`/`human`-owned path it routed around — not the
+raw tool transcript. That's what keeps your context flat across many shots instead of growing
+per shot.
+
+Pick the subagent's model per shot, from the shot's own intent — a judgment call, not a fixed
+rule. A single title card or one tween is `haiku`-tier; camera work, multi-object
+choreography, or a likely ownership conflict stays on the default model.
+
+This changes nothing about the per-shot contract: one shot fully built, previewed, and
+reported before the next begins; same journal, same Blender instance; the rendered-frame gate
+(`../SKILL.md`'s loop) still applies inside the subagent's own run.
+
 ## Always the human's, never yours
 
 - **Saving the `.blend`.** Always. Say so at the end of every batch of work.

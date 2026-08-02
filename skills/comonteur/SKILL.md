@@ -85,7 +85,10 @@ delivery — read `references/workflows.md` first.
 3. **Build, in one batch.** See `references/api.md`.
 4. **Look at it.** `cmt.preview.frames(scn, [1, 45, 90])` returns PNG paths under
    `.comonteur/review/`. Read those images.
-5. **Adjust, re-preview, report, stop.**
+5. **Adjust, re-preview, report, stop.** For a structural fix (wrong object, wrong path,
+   missing keyframe), re-check with `introspect.animated_paths`/`describe` first — free, and
+   catches the same mistakes a render would. Only call `preview.frames()` again once you've
+   actually changed the scene, not to re-confirm what you already saw.
 
 **Gate: never call a shot done without reading a rendered frame of it.** Blender fails
 silently and visually — text off-canvas, a missing material, an F-curve on the wrong array
@@ -102,7 +105,7 @@ task — tell the human and offer to draft a GitHub issue at
 
 | Read | When |
 |---|---|
-| `references/workflows.md` | Starting a project, or deciding which workflow a directory is: order of work, ingest, rendering, delivery. |
+| `references/workflows.md` | Starting a project, or deciding which workflow a directory is: order of work, ingest, rendering, delivery. Also covers delegating shots to a subagent when building more than a couple in one session. |
 | `references/api.md` | Writing any scene content: scenes, text, animation, eases, components, preview, provenance. |
 | `references/timeline.md` | Assembling or changing the edit: `timeline.toml`, anchors, `reconcile`, VSE strips, audio, transitions. |
 | `references/hyperframes-import.md` | Converting an existing HyperFrames project into a comonteur project. |

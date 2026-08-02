@@ -330,6 +330,8 @@ only when materials or lighting are the actual question. (5.2 names it `BLENDER_
 `BLENDER_EEVEE_NEXT`; valid set is `BLENDER_EEVEE`, `BLENDER_WORKBENCH`, `CYCLES`.)
 
 Preview at least three frames of a shot — start, middle, end. One frame can't show motion.
+A re-preview confirms a fix you just made — not a habit. If nothing changed since the last
+call, don't call it again.
 
 ## `cmt.journal` — the audit surface
 
