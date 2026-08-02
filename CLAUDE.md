@@ -260,7 +260,7 @@ Agent writes are grouped into a `journal.batch(...)` context manager: exactly on
 | `provenance.py` | tag / flip handler / `claimed_paths` / ownership queries / take-ownership operators |
 | `journal.py` | `batch()` context manager, `set()`, JSONL, snapshot, revert |
 | `scene.py` | `new_scene()` — deterministic baseline, never inherits `bpy.context.scene` state |
-| `anim.py` | `tween`, `stagger`, easing map (GSAP-equivalent), F-curve helpers — real keyframes only, no baked/driver animation |
+| `anim.py` | `tween`, `stagger`, easing map (GSAP-equivalent), F-curve helpers — real keyframes preferred over baked/driver animation |
 | `text.py` | text objects, styling, fit-to-box, per-character split |
 | `library.py` | link `lib/*.blend` components and `compositions/frames/*.blend` scenes; asset catalog discovery |
 | `introspect.py` | `outline`, `describe`, `animated_paths`, `find`, `drift` — progressive disclosure, token-budgeted, never dumps a full tree |

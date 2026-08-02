@@ -73,8 +73,12 @@ by the human in the Graph Editor. Frames, not seconds. `index` is the array inde
 components (e.g. `empty_display_size`), pass `index=None` — the journal then records the bare
 path, the same string a human edit would touch.
 
-No baked transforms, no drivers-as-animation, no custom evaluator. If motion can't be
-expressed as keyframes, it doesn't belong in comonteur.
+`cmt.anim` only offers keyframe tweens — no driver or bake helper exists yet. Prefer
+`tween`/`stagger` over a raw-`bpy` driver or baked keyframes: real keyframes are
+journaled and land in the dope sheet/graph editor exactly where the human expects to
+find and edit them. If a motion genuinely can't be expressed as a tween (a cyclic
+wobble, say), a driver or baked bake via raw `bpy` is a valid escape hatch — same
+untracked/drift caveat as any other raw `bpy` write (`SKILL.md` Hard rules).
 
 ### Ease names (GSAP vocabulary)
 

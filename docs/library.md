@@ -48,11 +48,13 @@ Must:
 5. Be idempotent by `cmt_id`: if a scene with that id exists, return it rather than
    creating a duplicate.
 
-### 6.2 `anim.py` — real F-curves, non-negotiable
+### 6.2 `anim.py` — real F-curves preferred
 
-The agent's animation output **must** be editable in the dope sheet and graph editor.
-That means real keyframes on real data paths — no drivers-as-animation, no baked
-transforms, no custom evaluation.
+The agent's animation output should be editable in the dope sheet and graph editor,
+so real keyframes on real data paths are the preferred path — not drivers-as-animation
+or baked transforms. `anim.py` only ships keyframe tweens; a driver or baked bake via
+raw `bpy` is a valid escape hatch when a tween can't express the motion, with the same
+untracked/drift caveat as any other raw `bpy` write (§4.4-4.5).
 
 ```python
 anim.tween(obj, "location", index=1, frm=-0.4, to=0.0,

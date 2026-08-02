@@ -93,6 +93,10 @@ index. Code that ran without error proves nothing here.
 **Tell the human to save when you finish.** You can't, and their Blender session holds your
 work in memory only.
 
+**Hit a real gap or bug in comonteur itself** — a missing helper, a wrong doc, a broken mise
+task — tell the human and offer to draft a GitHub issue at
+`https://github.com/davidB/comonteur/issues`. Propose it, don't file it yourself.
+
 ## Routing
 
 | Read | When |
