@@ -101,6 +101,36 @@ def test_scene_range_omits_frame_end_when_no_shots() -> None:
     assert reconcile.scene_range(resolved) == {"fps": 30, "resolution": (1920, 1080)}
 
 
+def test_scene_range_derives_container_from_codec() -> None:
+    resolved = {"shots": [], "video_codec": "h264"}
+    assert reconcile.scene_range(resolved)["video"] == ("H264", "MPEG4")
+
+
+def test_scene_range_uses_explicit_container_override() -> None:
+    resolved = {"shots": [], "video_codec": "av1", "video_container": "mkv"}
+    assert reconcile.scene_range(resolved)["video"] == ("AV1", "MKV")
+
+
+def test_scene_range_falls_back_to_mkv_for_unknown_codec() -> None:
+    resolved = {"shots": [], "video_codec": "flac"}
+    assert reconcile.scene_range(resolved)["video"] == ("FLAC", "MKV")
+
+
+def test_scene_range_omits_video_when_no_codec() -> None:
+    resolved = {"shots": []}
+    assert "video" not in reconcile.scene_range(resolved)
+
+
+def test_scene_range_passes_through_audio_codec() -> None:
+    resolved = {"shots": [], "audio_codec": "opus"}
+    assert reconcile.scene_range(resolved)["audio_codec"] == "OPUS"
+
+
+def test_scene_range_omits_audio_codec_when_absent() -> None:
+    resolved = {"shots": []}
+    assert "audio_codec" not in reconcile.scene_range(resolved)
+
+
 def test_dropped_agent_owned_id_with_claimed_field_is_not_deleted() -> None:
     # VSE strips aren't ID datablocks, so the automatic origin flip (SPEC.md §4.3)
     # never fires for a strip edit (docs/M4-FINDINGS.md) — origin can stay "agent"

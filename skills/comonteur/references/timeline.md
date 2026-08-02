@@ -9,6 +9,11 @@ plays, when, for how long — and says nothing about what's inside a shot.
 fps = 30
 resolution = [1920, 1080]
 
+[encode]
+video_codec = "H265"        # optional, default "H265" — any scene.render.ffmpeg.codec identifier
+video_container = "MPEG4"   # optional — auto-picked per codec when omitted
+audio_codec = "AAC"          # optional — only set on the scene when given
+
 [[shots]]
 id = "shot-01"
 source = {kind = "scene", blend = "compositions/frames/shot-01.blend", scene = "GEN_hook"}
@@ -35,6 +40,8 @@ start = 0
 - `transition` sits on a shot and crossfades it with the shot immediately before it. `cross` is
   the only type as of M4.
 - Paths are relative to the project root.
+- `[encode]` is optional; its values pass straight through to Blender's FFmpeg codec/format
+  enums unvalidated — an invalid identifier fails at apply time, not at resolve time.
 
 Known gap: `in` resolves to `in_frame` but `reconcile.apply()` doesn't yet write it to the
 strip (`reconcile.py:141` reconciles `frame_start` and `frame_final_duration` only). If a shot

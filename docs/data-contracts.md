@@ -97,6 +97,11 @@ about scene interiors.
 fps = 30
 resolution = [1920, 1080]
 
+[encode]
+video_codec = "H265"        # optional, default "H265" — any scene.render.ffmpeg.codec identifier
+video_container = "MPEG4"   # optional — auto-picked per codec when omitted
+audio_codec = "AAC"          # optional — only set on the scene when given
+
 [[shots]]
 id = "shot-01"
 source = {kind = "scene", blend = "compositions/frames/shot-01.blend", scene = "GEN_hook"}
@@ -121,6 +126,12 @@ start = 0
 immediately before it; `duration` is seconds, like `anchor.offset` — both are timed
 relative to the transcript/audio, not the edit grid. `cross` is the only type as of M4
 (`docs/M4-FINDINGS.md`); more VSE effect-strip types can be added to the enum later.
+
+`[encode]` is optional and, unlike `transition.type`, its values are **not** enum-checked
+by `reconcile.py` — `video_codec`/`video_container`/`audio_codec` pass straight through to
+`scene.render.ffmpeg.codec`/`.format`/`.audio_codec` and Blender itself rejects an invalid
+identifier at apply time. Omitting `[encode]` entirely is equivalent to
+`video_codec = "H265"` with its container auto-picked and audio settings left untouched.
 
 Reconcile: match VSE strips by `cmt_id`, update owned fields, delete agent strips no
 longer listed, never touch untagged strips. Reconcile is not exempt from provenance

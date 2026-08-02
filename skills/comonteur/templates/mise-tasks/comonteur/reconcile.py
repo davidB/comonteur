@@ -230,9 +230,13 @@ def resolve(
             }
         )
 
+    encode = doc.get("encode") or {}
     return {
         "fps": doc.get("fps"),
         "resolution": doc.get("resolution"),
+        "video_codec": encode.get("video_codec", "H265"),
+        "video_container": encode.get("video_container"),
+        "audio_codec": encode.get("audio_codec"),
         "shots": shots,
         "audio": audio,
     }

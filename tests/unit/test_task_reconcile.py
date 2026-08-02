@@ -157,6 +157,23 @@ def test_resolve_audio_tracks() -> None:
     assert resolved["audio"] == [{"id": "vo", "path": "audio/vo.wav", "start_frame": 12}]
 
 
+def test_resolve_defaults_encode_when_absent() -> None:
+    doc = doc_with([scene_shot("shot-01", start=0)])
+    resolved = timeline.resolve(doc, None, 30)
+    assert resolved["video_codec"] == "H265"
+    assert resolved["video_container"] is None
+    assert resolved["audio_codec"] is None
+
+
+def test_resolve_passes_through_encode_when_given() -> None:
+    doc = doc_with([scene_shot("shot-01", start=0)])
+    doc["encode"] = {"video_codec": "AV1", "video_container": "WEBM", "audio_codec": "OPUS"}
+    resolved = timeline.resolve(doc, None, 30)
+    assert resolved["video_codec"] == "AV1"
+    assert resolved["video_container"] == "WEBM"
+    assert resolved["audio_codec"] == "OPUS"
+
+
 def test_load_parses_real_toml(tmp_path: Path) -> None:
     path = tmp_path / "timeline.toml"
     path.write_text(

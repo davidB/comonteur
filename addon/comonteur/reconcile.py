@@ -20,6 +20,23 @@ CHANNEL_TRANSITIONS = 3
 
 _TRANSITION_TYPES = {"cross": "CROSS"}
 
+_CONTAINER_FOR_CODEC = {
+    "H264": "MPEG4",
+    "H265": "MPEG4",
+    "AV1": "WEBM",
+    "WEBM": "WEBM",
+    "PRORES": "QUICKTIME",
+    "QTRLE": "QUICKTIME",
+    "DNXHD": "QUICKTIME",
+    "DV": "DV",
+    "FLASH": "FLASH",
+    "MPEG1": "MPEG1",
+    "MPEG2": "MPEG2",
+    "THEORA": "OGG",
+    "HUFFYUV": "AVI",
+}
+_DEFAULT_CONTAINER = "MKV"  # Matroska accepts virtually every ffmpeg codec
+
 
 class ReconcilePlan:
     def __init__(
@@ -81,11 +98,12 @@ def diff(
 
 
 def scene_range(resolved: dict[str, Any]) -> dict[str, Any]:
-    """fps/resolution/frame_end to apply to the container scene, derived from the
+    """fps/resolution/encode/frame_end to apply to the container scene, derived from the
     resolved plan. Pure so the "984 frames short" class of bug (scene left on scaffold
     defaults because nothing ever read `resolved["fps"]`/shot end frames) has a fast test
     that doesn't need Blender. `frame_end` is absent from the result when there are no
-    shots — nothing to derive it from.
+    shots — nothing to derive it from. `video` is a (codec, container) pair — container is
+    either the resolved plan's explicit override or looked up per-codec.
     """
     out: dict[str, Any] = {}
     fps = resolved.get("fps")
@@ -94,6 +112,19 @@ def scene_range(resolved: dict[str, Any]) -> dict[str, Any]:
     resolution = resolved.get("resolution")
     if resolution:
         out["resolution"] = (int(resolution[0]), int(resolution[1]))
+    video_codec = resolved.get("video_codec")
+    if video_codec:
+        codec = str(video_codec).upper()
+        container = resolved.get("video_container")
+        out["video"] = (
+            codec,
+            str(container).upper()
+            if container
+            else _CONTAINER_FOR_CODEC.get(codec, _DEFAULT_CONTAINER),
+        )
+    audio_codec = resolved.get("audio_codec")
+    if audio_codec:
+        out["audio_codec"] = str(audio_codec).upper()
     shots = resolved.get("shots") or []
     ends = [s["start_frame"] + s["duration_frames"] for s in shots]
     if ends:
@@ -233,5 +264,13 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
                 journal.set(scene, "render.resolution_y", value[1])
             elif key == "fps":
                 journal.set(scene, "render.fps", value)
+            elif key == "video":
+                codec, container = value
+                journal.set(scene, "render.image_settings.media_type", "VIDEO")
+                journal.set(scene, "render.image_settings.file_format", "FFMPEG")
+                journal.set(scene, "render.ffmpeg.codec", codec)
+                journal.set(scene, "render.ffmpeg.format", container)
+            elif key == "audio_codec":
+                journal.set(scene, "render.ffmpeg.audio_codec", value)
             else:
                 journal.set(scene, key, value)
