@@ -1,3 +1,30 @@
+## [0.20260803.0] - 2026-08-03
+
+### 🚀 Features
+
+- *(timeline)* Add overlay_of for intent-based overlay-channel shots
+- *(addon)* Add text.split_spans() for word/span-granularity multi-color text
+
+### 🐛 Bug Fixes
+
+- *(addon)* Reconcile set audio render when audio track
+- *(addon)* Render preview frames via scene camera, not ambient viewport
+- *(ci)* Install comonteur addon before running tests
+- *(addon)* Stack card image plane above border/shadow, not below
+- *(ci)* Install libegl1 for headless Blender EEVEE renders
+- *(addon)* Round fractional keyframe frames in anim._keyframe
+- *(addon)* Preserve color/position in split_chars, add alpha fades and reusable helpers
+- *(addon)* Resolve library/VSE asset links portably, not against process cwd
+- [**breaking**] Rename: master.blend -> timeline.blend
+- [**breaking**] Rename `compositions/frames/` → `shots/`
+
+### 🚜 Refactor
+
+- Format
+
+### ⚡ Performance
+
+- *(scene)* Tune EEVEE samples/shadows for flat 2D scenes
 ## [0.20260802.0] - 2026-08-02
 
 ### 🚀 Features
@@ -19,6 +46,10 @@
 - *(ingest_manifest)* Fall back to sha256+path when ffprobe can't probe an asset (fonts, etc.) instead of aborting the whole manifest build
 - *(addon)* Flat/unlit shading for kind="2d" scenes
 - *(addon,skill)* Wire font-loading recipe + check_fonts(), document brand.blend read-back
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* 0.20260802.0
 ## [0.20260801.1] - 2026-08-01
 
 ### 🐛 Bug Fixes
