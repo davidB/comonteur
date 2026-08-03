@@ -12,6 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v4
+      # Blender's headless EEVEE render (preview.frames(), used by the blender-marked
+      # tests) still needs an EGL context even with -b; ubuntu-latest ships libGL but not
+      # libEGL, so bpy.ops.render.render() aborts with SIGABRT before Python sees an error.
+      - run: sudo apt-get update && sudo apt-get install -y libegl1
       - run: mise run comonteur:install_addon
       - run: mise run ci
 
