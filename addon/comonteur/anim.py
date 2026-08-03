@@ -53,6 +53,10 @@ def _keyframe(
 ) -> None:
     # A scalar property has no array index at all; passing index=0 for one is not a harmless
     # default — keyframe_insert rejects it and paths.resolve cannot subscript the value.
+    # Fractional frames (e.g. pulse()'s start + dur*0.3) don't round-trip through
+    # keyframe_insert() bit-for-bit, so an exact-float lookup below can miss. Round to
+    # the whole frame a human scrubbing the timeline expects anyway.
+    frame = round(frame)
     kw = {} if index is None else {"index": index}
     obj.keyframe_insert(path, frame=frame, **kw)
     # 5.2's layered-Action rework replaced Action.fcurves (see docs/M3-FINDINGS.md
@@ -66,6 +70,24 @@ def _keyframe(
         # Symmetric handles around the keyframe; a real editable Bezier, not a
         # custom evaluator (§6.2 forbids that) — the agent can still drag handles.
         kf.handle_left_type = kf.handle_right_type = "AUTO_CLAMPED"
+
+
+def _sequence(
+    obj: Any,
+    path: str,
+    index: int | None,
+    start: float,
+    dur: float,
+    waypoints: Iterable[tuple[float, float]],
+    interpolation: str,
+    easing: str,
+) -> None:
+    """Emit one real keyframe per (t, value) waypoint, t a fraction of dur in [0, 1].
+    Shared by pulse()/idle_jitter() — both are "base, then offsets of dur, back to
+    base"; this keeps the frame math and _keyframe() insert/lookup in one place.
+    """
+    for t, value in waypoints:
+        _keyframe(obj, path, index, start + dur * t, value, interpolation, easing)
 
 
 def tween(
@@ -126,18 +148,13 @@ def idle_jitter(
     base = paths.resolve(obj, journal_path)
     journal.set(obj, journal_path, base)
 
-    cycle_len = dur / cycles
-    frame = start
-    _keyframe(obj, path, index, start, base, interpolation, easing)
-    for _ in range(cycles):
-        _keyframe(
-            obj, path, index, frame + cycle_len * 0.25, base + amplitude, interpolation, easing
-        )
-        _keyframe(
-            obj, path, index, frame + cycle_len * 0.75, base - amplitude, interpolation, easing
-        )
-        frame += cycle_len
-    _keyframe(obj, path, index, start + dur, base, interpolation, easing)
+    cycle = 1.0 / cycles
+    waypoints = [(0.0, base)]
+    for i in range(cycles):
+        waypoints.append((cycle * (i + 0.25), base + amplitude))
+        waypoints.append((cycle * (i + 0.75), base - amplitude))
+    waypoints.append((1.0, base))
+    _sequence(obj, path, index, start, dur, waypoints, interpolation, easing)
 
 
 def pulse(
@@ -161,10 +178,9 @@ def pulse(
     base = paths.resolve(obj, journal_path)
     journal.set(obj, journal_path, base)
 
-    peak_frame = start + dur * 0.3
-    _keyframe(obj, path, index, start, base, interpolation, easing)
-    _keyframe(obj, path, index, peak_frame, peak, interpolation, easing)
-    _keyframe(obj, path, index, start + dur, base, interpolation, easing)
+    _sequence(
+        obj, path, index, start, dur, [(0.0, base), (0.3, peak), (1.0, base)], interpolation, easing
+    )
 
 
 def instance_as_nla(obj: Any, track_name: str, frame_offset: float) -> Any:
