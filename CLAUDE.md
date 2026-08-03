@@ -288,7 +288,7 @@ turns out not to run on Blender's main thread (the documented hard trigger).
 
 Distinct from this repo's own layout. A generated project has `lib/` (human-authored
 components, git-lfs), `compositions/frames/*.blend` (one agent-generated scene per shot,
-**linked** — not appended — into `master.blend` so it stays read-only there),
+**linked** — not appended — into `timeline.blend` so it stays read-only there),
 `timeline.toml` (assembly source of truth), and `.comonteur/journal.jsonl` +
 `snapshot.json`. Don't confuse this with `addon/`, `skills/`, `tests/` which belong to the
 tool itself.

@@ -40,7 +40,7 @@ Cross-cutting; violating any of these produces bugs that are hard to attribute.
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Linked scenes unusable as VSE scene strips (M0.7) | Repo layout collapses; agent and human write the same file | Verify in M0. Fallback: single `master.blend` + LFS, rely on journal + provenance alone |
+| Linked scenes unusable as VSE scene strips (M0.7) | Repo layout collapses; agent and human write the same file | Verify in M0. Fallback: single `timeline.blend` + LFS, rely on journal + provenance alone |
 | Automatic provenance flip too noisy or too coarse | Core UX broken | M1 gates on this. Manual take-ownership operators exist regardless |
 | Token cost of introspection on real scenes | Agent becomes unusable on non-trivial projects | Hard budgets in `introspect`; visual review preferred over structural |
 | Blender 5.2 API drift in helper library | Silent breakage | Pinned version; `docs/M0-FINDINGS.md` as the record of what was verified |

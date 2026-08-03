@@ -9,7 +9,7 @@ not just `-b` — see the reproduction section near the end of this doc.
 ## Verdict on the two highest-impact unknowns
 
 **M0.7 PASSES.** A linked Scene can be used as a VSE Scene strip. §5.1's repo layout
-(`compositions/frames/*.blend` linked into `master.blend`) stands — no revision to §5.1
+(`compositions/frames/*.blend` linked into `timeline.blend`) stands — no revision to §5.1
 needed.
 
 **M0.9 PASSES.** `execute_python` on the official MCP add-on runs on Blender's main

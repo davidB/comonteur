@@ -118,6 +118,6 @@ with journal.batch("retime shot-03"):
 - `batch_active()` gates the provenance handler.
 - Defer if a modal operator is running (transform/grab). Queue and retry.
 - **The agent never saves the `.blend`.** Save is a human action, always. The one
-  exception: `comonteur:edit` creates and saves a brand-new `master.blend` when none
+  exception: `comonteur:edit` creates and saves a brand-new `timeline.blend` when none
   exists yet — nothing to clobber. Every later `edit`/`render` run still refuses to
   re-save an existing file.

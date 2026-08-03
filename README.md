@@ -145,7 +145,7 @@ end of this section).
 
 ### The loop, whichever workflow you're in
 
-1. Run `mise run comonteur:edit` — it creates `master.blend` on first run, then opens it in
+1. Run `mise run comonteur:edit` — it creates `timeline.blend` on first run, then opens it in
    Blender. **Leave it open.** The agent talks to that live session.
 2. Ask for one shot at a time:
 
@@ -162,7 +162,7 @@ end of this section).
    font, drag the strip. That data flips to **shared** and the agent works around your edit.
 5. Ask for the next shot, or for a change to this one. Your edits survive.
 6. When the shots exist: *"assemble the timeline"* — the agent resolves `timeline.toml` and
-   reconciles it into `master.blend`'s sequencer. Then *"render shots 1–3"*.
+   reconciles it into `timeline.blend`'s sequencer. Then *"render shots 1–3"*.
 7. **You save the `.blend`.** The agent never does — saving under you could destroy unsaved
    work it can't see. It'll remind you.
 
@@ -189,7 +189,7 @@ Nothing upstream — a brief, your own components, maybe some footage and a voic
 
 2. Tell the agent what the video is — *"a 90-second launch video for X, here's the script"* —
    and it fills in `narrative.toml`, validates it, and ingests your assets and voiceover.
-3. Run `mise run comonteur:edit` — creates `master.blend` and opens it — and follow the loop
+3. Run `mise run comonteur:edit` — creates `timeline.blend` and opens it — and follow the loop
    above.
 
 Details for the agent: [`skills/comonteur/references/workflows.md`](./skills/comonteur/references/workflows.md),
@@ -248,7 +248,7 @@ that set the machine up — is re-runnable from the project afterwards:
 | `comonteur:ingest_captions <in.json> [--kind whisper\|tts]` | Normalizes word-level timing |
 | `comonteur:convert_fonts` | `.woff`/`.woff2` → `.ttf`/`.otf` — Blender reads sfnt only |
 | `comonteur:reconcile` | `timeline.toml` → resolved plan the add-on applies |
-| `comonteur:edit` / `comonteur:render` | Create (first run) and open `master.blend` / render the timeline |
+| `comonteur:edit` / `comonteur:render` | Create (first run) and open `timeline.blend` / render the timeline |
 | `comonteur:install_addon [--ref <tag>]` | The comonteur add-on into Blender (symlinked from a checkout, fetched otherwise) |
 | `comonteur:install_mcp` | Blender's MCP add-on **and** the MCP server it talks to |
 
@@ -304,7 +304,7 @@ assets/  audio/  captions/   media + word-level timing, manifest.json generated
 lib/                     your Blender components (brand, titles) — human-authored, git-lfs
 compositions/frames/     one .blend per shot, agent-generated, yours to edit too
 timeline.toml            the assembly — authoritative for the edit, not for scene contents
-master.blend             links the above into a VSE timeline
+timeline.blend             links the above into a VSE timeline
 .comonteur/              journal, snapshot, review frames
 renders/  thumbnail/  meta.json    deliverables
 ```

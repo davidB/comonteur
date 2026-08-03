@@ -124,7 +124,7 @@ cmt.reconcile.apply(bpy.context.scene, resolved, root)
 ```
 
 `apply()` opens its own `journal.batch("reconcile timeline")` — don't wrap it in another;
-`batch()` doesn't nest (see `../SKILL.md` Hard rules). Run it against `master.blend`'s scene;
+`batch()` doesn't nest (see `../SKILL.md` Hard rules). Run it against `timeline.blend`'s scene;
 it creates the sequence editor if there isn't one.
 
 Then preview and tell the human to save.

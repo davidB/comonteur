@@ -18,7 +18,7 @@ Do these in order. Stop at the first thing you can't resolve.
 3. **Recover the timing** and get it confirmed — this is the gate.
 4. **Convert the fonts.**
 5. **Rebuild each shot** as a Blender scene, one at a time, previewing each.
-6. **Write `timeline.toml`** and reconcile into `master.blend`.
+6. **Write `timeline.toml`** and reconcile into `timeline.blend`.
 
 Steps 1–2 are mechanical — see "Delegate the mechanical pass" below. Step 3 is a gate that
 needs judgment and human confirmation — keep it in the foreground.
@@ -50,8 +50,8 @@ human-readable description from `capture/extracted/asset-descriptions.md` into t
 | HyperFrames | comonteur |
 |---|---|
 | `STORYBOARD.md` | `narrative.toml` — keep the `.md` verbatim alongside, it's the human-readable intent |
-| `hyperframes.json` | `timeline.toml` (fps, resolution, duration) + `master.blend` |
-| `index.html` | `timeline.toml` + `master.blend` |
+| `hyperframes.json` | `timeline.toml` (fps, resolution, duration) + `timeline.blend` |
+| `index.html` | `timeline.toml` + `timeline.blend` |
 | `audio_meta.json` | `audio/meta.json` |
 | `capture/extracted/tokens.json` | brand parameters in `lib/design.blend` (`cmt.scene.set_param`) |
 | `capture/extracted/asset-descriptions.md` | `description` per asset in `assets/manifest.json` |

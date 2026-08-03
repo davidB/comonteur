@@ -11,13 +11,13 @@ Not a Blender GPU glitch — a font failed to load. Check the Info Editor / star
 Could not find '<file>' in '<dir>'
 ```
 
-That message means Blender resolved a relative path against the `.blend` file's own
-directory and found nothing there — i.e. the font was never linked from `lib/design.blend`
-in the first place, it was loaded as a bare external path
-(`bpy.data.fonts.load("assets/fonts/...")`), which only resolves against whatever the
-process's working directory happened to be at load time. See `api.md`'s `cmt.library`
-section for the link-from-`lib/design.blend` pattern — that's what to use instead, and what
-to convert an old shot to if you find one still doing it the broken way.
+That message means the font was never linked from `lib/design.blend` in the first place —
+it was loaded as a bare external path (`bpy.data.fonts.load("assets/fonts/...")`), which
+only resolves against whatever the process's working directory happened to be at load
+time. `cmt.library.link()` resolves against the project root instead (finds `.comonteur/`
+walking up from the current `.blend`), so it doesn't have this failure mode — see `api.md`'s
+`cmt.library` section for the link-from-`lib/design.blend` pattern, and convert an old shot
+to it if you find one still calling `bpy.data.fonts.load()` directly.
 
 Fix for an already-broken `.blend`: **File > External Data > Find Missing Files**, point it
 at `assets/fonts/` (or wherever the `.ttf`/`.otf` files live), and Blender relinks the VFonts

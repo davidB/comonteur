@@ -3,7 +3,7 @@ name: comonteur
 category: video-editing
 description: >
   Build and edit video scenes, shots, animations and timelines inside Blender through the
-  comonteur helper library, in a project that has `master.blend`, `timeline.toml` or
+  comonteur helper library, in a project that has `timeline.blend`, `timeline.toml` or
   `.comonteur/`, or starting one from scratch. Use for: scaffolding a new video project,
   creating or changing a shot (`compositions/frames/*.blend`),
   title cards and kinetic text, keyframes and GSAP-named eases, staggered reveals,

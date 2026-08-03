@@ -24,7 +24,7 @@ The menu, as `init` installs it:
 | `comonteur:ingest_captions <in.json> [--kind whisper\|tts]` | word timings → `captions/vo.json` |
 | `comonteur:convert_fonts` | `.woff`/`.woff2` → `.ttf`/`.otf` |
 | `comonteur:reconcile` | `timeline.toml` → `.comonteur/timeline.resolved.json` |
-| `comonteur:edit` | open `master.blend` |
+| `comonteur:edit` | open `timeline.blend` |
 | `comonteur:render` | render the timeline to `renders/` |
 
 If a repeatable command has no task, add one under `mise-tasks/comonteur/` (a
@@ -57,7 +57,7 @@ Decide before touching anything, by looking at the directory:
 | Nothing, or only raw material (a brief, footage, a `.wav`) | **from-scratch** |
 | `index.html` + `hyperframes.json` + `compositions/frames/*.html` | **import** → `hyperframes-import.md`, stop reading here |
 | Harness output (script, shot list, `assets/`, TTS audio, captions) but no HTML compositions | **harness-upstream** — Blender rendering |
-| `master.blend` + `timeline.toml` + `.comonteur/` | An existing comonteur project — go straight to the per-shot loop |
+| `timeline.blend` + `timeline.toml` + `.comonteur/` | An existing comonteur project — go straight to the per-shot loop |
 
 If ambiguous, ask.
 
@@ -118,7 +118,7 @@ If ambiguous, ask.
    first-class case, not a degraded one — on-screen text and music drive the pacing instead.
 
 5. **Create `lib/design.blend`** — brand colours, fonts, node groups first, marked as assets,
-   so shots link them instead of redefining them eight times. `master.blend` itself needs no
+   so shots link them instead of redefining them eight times. `timeline.blend` itself needs no
    manual step — `mise run comonteur:edit` creates it on first run.
 
 6. **Fill in `narrative.toml`'s "This project" header** — what this video is, whether there's
@@ -154,7 +154,7 @@ the import workflow's lossiness applies — don't import your own output.
 
 The deliverable is video + title + description + thumbnail, not video alone.
 
-- `mise run comonteur:render` — renders `master.blend`'s timeline into `renders/` using the
+- `mise run comonteur:render` — renders `timeline.blend`'s timeline into `renders/` using the
   file's own output settings. Never overwrite a render the human is holding onto without
   asking.
 - `thumbnail/thumbnail.png` renders from a dedicated `compositions/frames/thumbnail.blend`

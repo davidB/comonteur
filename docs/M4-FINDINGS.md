@@ -37,7 +37,7 @@ report `('Scene', 'Master')` and nothing else.
 
 **Consequence:** `provenance._on_depsgraph_update` (§4.3) checks
 `id_.get("cmt_origin") == "agent"` on `upd.id` — for a strip edit that's the *Scene*,
-which is not agent-tagged (the master scene is human-owned; only individual strips
+which is not agent-tagged (the timeline scene is human-owned; only individual strips
 carry `cmt_id`/`cmt_origin`). So a human dragging a strip in the timeline **never**
 flips that strip's `cmt_origin` from `agent` to `shared`, unlike Object/Action edits.
 

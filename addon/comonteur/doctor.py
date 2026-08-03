@@ -23,7 +23,7 @@ def run(project_root: str | None = None) -> list[tuple[str, str, str]]:
     check("git-lfs-on-path", shutil.which("git-lfs") is not None)
 
     if project_root:
-        check("project-layout", os.path.isfile(os.path.join(project_root, "master.blend")))
+        check("project-layout", os.path.isfile(os.path.join(project_root, "timeline.blend")))
         check("journal-readable", _journal_readable(project_root))
 
     return results
