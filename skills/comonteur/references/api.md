@@ -321,16 +321,21 @@ call them.
 ## `cmt.preview` — look at your work *(read-only, but see below)*
 
 ```python
-frames(scene, frame_numbers, engine="WORKBENCH") -> list[str]
+frames(scene, frame_numbers, engine=None) -> list[str]
 ```
 
-Renders OpenGL stills to `.comonteur/review/frame-<NNN>-at-<S.SS>.png` (frame number and
-seconds, matching HyperFrames' snapshot convention) and returns the paths. Read the images.
+Renders stills through the scene's own camera to `.comonteur/review/frame-<NNN>-at-<S.SS>.png`
+(frame number and seconds, matching HyperFrames' snapshot convention) and returns the paths.
+Read the images.
 
-It swaps the window's active scene, render engine, output filepath, and current frame,
-restoring all four in a `finally` — a preview never redirects the human's next render.
-`WORKBENCH` is fast and correct for layout, spacing, timing; pass `engine="BLENDER_EEVEE"`
-only when materials or lighting are the actual question. (5.2 names it `BLENDER_EEVEE`, not
+Works on any scene — the timeline scene, a human-owned scene, an agent-built shot — regardless
+of which workspace or viewport the human currently has open: it renders by scene name into the
+in-memory Render Result, not the ambient interactive viewport, so it needs no `VIEW_3D` area
+and no camera-locked view. The only state it touches is the current frame, restored in a
+`finally` — it never redirects the human's render output or switches the active window scene.
+Leave `engine` unset to render with whatever the scene is already configured for; pass
+`engine="BLENDER_EEVEE"` only when you need a specific one for this preview (materials,
+lighting) without changing the scene's own setting. (5.2 names it `BLENDER_EEVEE`, not
 `BLENDER_EEVEE_NEXT`; valid set is `BLENDER_EEVEE`, `BLENDER_WORKBENCH`, `CYCLES`.)
 
 Preview at least three frames of a shot — start, middle, end. One frame can't show motion.
