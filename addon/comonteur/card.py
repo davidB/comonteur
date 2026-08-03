@@ -68,25 +68,26 @@ def create(
     scn.collection.objects.link(root)
     provenance.tag(root, name)
 
-    z = 0.0
+    # Camera looks toward -Z, so higher z is closer to camera. Stack closest-to-farthest
+    # as image, border (visible only as a frame in the margin), shadow.
+    image_z, border_z, shadow_z = 0.0, -0.001, -0.002
+
     if shadow:
         shadow_obj = _plane(scn, f"{name}.shadow", w * 1.05, h * 1.05)
-        shadow_obj.location = (0.03 * w, -0.03 * h, z)
-        z -= 0.001
+        shadow_obj.location = (0.03 * w, -0.03 * h, shadow_z)
         _flat_material(shadow_obj, (0.0, 0.0, 0.0, 0.35))
         shadow_obj.parent = root
         provenance.tag(shadow_obj, f"{name}.shadow")
 
     if border_color is not None:
         border_obj = _plane(scn, f"{name}.border", w + 2 * border_width, h + 2 * border_width)
-        border_obj.location = (0, 0, z)
-        z -= 0.001
+        border_obj.location = (0, 0, border_z)
         _flat_material(border_obj, border_color)
         border_obj.parent = root
         provenance.tag(border_obj, f"{name}.border")
 
     image_obj = _plane(scn, f"{name}.image", w, h)
-    image_obj.location = (0, 0, z)
+    image_obj.location = (0, 0, image_z)
     img = bpy.data.images.load(image_path, check_existing=True)
     _image_material(image_obj, img)
     image_obj.parent = root
