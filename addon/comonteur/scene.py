@@ -39,6 +39,14 @@ def new_scene(
         scn.eevee.use_fast_gi = False
         scn.eevee.use_raytracing = False
         scn.eevee.indirect_light_intensity = 0.0
+        # No lights/shadows in a flat scene, so cheap sampling is free perf, not a
+        # quality tradeoff — and the scene has no sound data, so mute the output track.
+        scn.eevee.taa_samples = 2
+        scn.eevee.taa_render_samples = 4
+        scn.eevee.use_shadows = False
+        scn.render.image_settings.media_type = "VIDEO"
+        scn.render.image_settings.file_format = "FFMPEG"
+        scn.render.ffmpeg.audio_codec = "NONE"
 
     provenance.tag(scn, name)
     return scn

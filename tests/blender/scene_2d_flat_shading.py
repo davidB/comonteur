@@ -13,6 +13,12 @@ with cmt.journal.batch("fixture"):
 assert scn.eevee.use_fast_gi is False
 assert scn.eevee.use_raytracing is False
 assert scn.eevee.indirect_light_intensity == 0.0
+assert scn.eevee.taa_samples == 2
+assert scn.eevee.taa_render_samples == 4
+assert scn.eevee.use_shadows is False
+assert scn.render.image_settings.media_type == "VIDEO"
+assert scn.render.image_settings.file_format == "FFMPEG"
+assert scn.render.ffmpeg.audio_codec == "NONE"
 
 with cmt.journal.batch("text"):
     obj = cmt.text.create(scn, "Ship faster", color=(1.0, 0.0, 0.0))
