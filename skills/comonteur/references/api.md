@@ -44,6 +44,7 @@ create(scene, body, *, name=None, size=1.0, font=None, color=None, shading="flat
 style(obj, *, size=None, font=None, color=None, shading="flat") -> Object
 fit_to_box(obj, width, height, *, min_size=0.01, step=0.9) -> Object
 split_chars(obj, *, spacing=0.0, space_width_factor=0.3) -> list[Object]
+split_spans(obj, spans, *, spacing=0.0, space_width_factor=0.3) -> list[Object]
 style_spans(chars, spans) -> list[Object]        # spans = [(start, end, style_kwargs), ...]
 word_spans(body) -> list[tuple[int, int]]                       # read-only
 measure(obj) -> dict
@@ -98,22 +99,37 @@ per-character pieces just to measure it.
 ### Multi-color / multi-style inline spans
 
 Color and font live on individual objects (one material per `FONT` object), so styling part
-of a string means `split_chars()` first, then `style_spans()` over index ranges into the
-result — `chars[i]` is `body[i]`:
+of a string means splitting it first. Reach for `split_spans()` when you don't need
+per-character objects — one object per span, not per glyph:
+
+```python
+words = cmt.text.word_spans(title.data.body)  # [(0, 5), (6, 11)]
+cmt.text.split_spans(title, [
+    (*words[0], {"color": (0.8, 0.8, 0.8, 1.0)}),
+    (*words[1], {"color": (0.9, 0.4, 0.1, 1.0)}),
+])
+```
+
+`word_spans(body)` gives whitespace-delimited `(start, end)` pairs; pass hand-picked indices
+instead for spans finer than a whole word. `split_spans()` preserves the original object's
+base color/font and gaps between spans stay at the source spacing.
+
+Only fall back to `split_chars()` + `style_spans()` when the granularity itself needs to be
+per-character — real letter-level animation (typewriter reveal, per-letter stagger/tilt), not
+just per-letter styling. `style_spans()` applies `style()` per index range over
+`split_chars()`'s output — `chars[i]` is `body[i]`:
 
 ```python
 chars = cmt.text.split_chars(title)
 cmt.text.style_spans(chars, [(0, 3, {"color": (0.9, 0.2, 0.2, 1.0)}), (4, 9, {"font": vfont})])
 ```
 
-`word_spans(body)` gives whitespace-delimited `(start, end)` pairs for grouping `chars` by
-word instead of by hand-picked indices. `measure_many(objs)` unions `measure()`'s bbox across
-several objects — size a highlight/background around a whole word, not one glyph:
+`measure_many(objs)` unions `measure()`'s bbox across several objects — size a
+highlight/background around a whole word, not one glyph:
 
 ```python
-words = cmt.text.word_spans(title.data.body)
-chars = cmt.text.split_chars(title)
-bg = cmt.text.highlight_bg(scn, chars[words[0][0]:words[0][1]], (1.0, 0.9, 0.2, 0.4))
+words = cmt.text.split_spans(title, cmt.text.word_spans(title.data.body))
+bg = cmt.text.highlight_bg(scn, [words[0]], (1.0, 0.9, 0.2, 0.4))
 ```
 
 Color lives on the object's material's node tree, which is its own ID-block — `keyframe_insert`
@@ -131,7 +147,7 @@ index, not name, so `color_path()` resolves that index for you. `index` picks th
 `0`/`1`/`2`/`3` = R/G/B/A.
 
 `karaoke(scn, obj, color, *, start, word_gap, dur, ease=None)` bundles the whole word-by-word
-highlight sweep — `split_chars()` + `word_spans()` + one `highlight_bg()` per word + a
+highlight sweep — `word_spans()` + `split_spans()` + one `highlight_bg()` per word + a
 `stagger()` on alpha — into one call:
 
 ```python

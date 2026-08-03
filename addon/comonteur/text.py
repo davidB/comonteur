@@ -169,6 +169,56 @@ def split_chars(obj: Any, *, spacing: float = 0.0, space_width_factor: float = 0
     return chars
 
 
+def split_spans(
+    obj: Any,
+    spans: list[tuple[int, int]] | list[tuple[int, int, dict[str, Any]]],
+    *,
+    spacing: float = 0.0,
+    space_width_factor: float = 0.3,
+) -> list[Any]:
+    """Replace obj with one FONT object per (start, end[, props]) span, left to right —
+    the word/phrase-granularity counterpart to split_chars(): use this when spans, not
+    individual characters, need independent styling/positioning (e.g. a 2-color 2-word
+    heading), since split_chars() + style_spans() costs one object per glyph even when
+    only 2 are ever restyled independently.
+
+    Gaps between spans (whitespace in the source body) advance the cursor by
+    size * space_width_factor per skipped char -- same fallback split_chars() uses for a
+    zero-width space glyph, so word spacing matches. Preserves obj's base color, same as
+    split_chars(); a span's props (e.g. {"color": ...}) restyle on top of it.
+    """
+    scene = next(s for s in bpy.data.scenes if obj.name in s.objects)
+    body, base_name, base_size, base_font = obj.data.body, obj.name, obj.data.size, obj.data.font
+    color = _captured_color(obj)
+    origin = obj.location.copy()
+    left_x = measure(obj)["min"][0]
+    bpy.data.objects.remove(obj, do_unlink=True)
+
+    parts = []
+    cursor_x = left_x
+    prev_end = 0
+    for i, span in enumerate(spans):
+        start, end = span[0], span[1]
+        props = span[2] if len(span) > 2 else {}
+        cursor_x += sum(
+            base_size * space_width_factor for ch in body[prev_end:start] if ch.isspace()
+        )
+        part_obj = create(
+            scene, body[start:end], name=f"{base_name}.{i}", size=base_size, font=base_font
+        )
+        part_obj.location = origin.copy()
+        part_obj.location.x = cursor_x
+        if color is not None:
+            style(part_obj, color=color[0], shading=color[1])
+        if props:
+            style(part_obj, **props)
+        bpy.context.view_layer.update()
+        cursor_x += part_obj.dimensions.x + spacing
+        prev_end = end
+        parts.append(part_obj)
+    return parts
+
+
 def style_spans(chars: list[Any], spans: list[tuple[int, int, dict[str, Any]]]) -> list[Any]:
     """Apply style() per index range over split_chars()'s output — the hook for
     multi-color/multi-font inline spans, since color/font live on individual objects
@@ -295,16 +345,17 @@ def karaoke(
     dur: float,
     ease: str | None = None,
 ) -> list[Any]:
-    """Word-by-word highlight sweep: split obj into characters, group into words, one
-    highlight_bg() quad per word, stagger the quads' alpha in word order. Bundles the
-    pattern into one call so word-granularity stagger is the easy path, not the one an
-    agent has to hand-roll under time pressure.
+    """Word-by-word highlight sweep: split obj into words, one highlight_bg() quad per
+    word, stagger the quads' alpha in word order. Bundles the pattern into one call so
+    word-granularity stagger is the easy path, not the one an agent has to hand-roll under
+    time pressure. Uses split_spans() (word-level), not split_chars() -- only the quads
+    are ever animated here, never individual letters.
     """
     body, base_name = obj.data.body, obj.name
-    chars = split_chars(obj)
+    words = split_spans(obj, word_spans(body))
     quads = [
-        highlight_bg(scn, chars[s:e], color, name=f"{base_name}.word{i}")
-        for i, (s, e) in enumerate(word_spans(body))
+        highlight_bg(scn, [word_obj], color, name=f"{base_name}.word{i}")
+        for i, word_obj in enumerate(words)
     ]
     anim.stagger(
         [color_target(q) for q in quads],
