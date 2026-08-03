@@ -22,6 +22,7 @@ equally to **reduce agent token consumption**: the agent calls
 | `color.py` | `hex_to_rgba`/`srgb_to_linear` — sRGB hex colors decoded to the linear RGBA Emission/Base Color inputs expect |
 | `vse.py` | assembly, scene strips, transitions, audio |
 | `library.py` | link `lib/*.blend` (component library) and `compositions/frames/*.blend` (per-shot scenes), asset catalog discovery |
+| `project.py` | project-root discovery (`.comonteur/` marker) + portable `//`-relative asset path resolution, used by `library.py`/`journal.py`/`preview.py`/`reconcile.py` |
 | `card.py` | `create()` — image plane + hairline border + soft shadow bundle, the HyperFrames "card" pattern. `reorigin_left()` — re-origin a plane's mesh for edge-anchored scale-growth (progress bars, underline reveals) |
 | `introspect.py` | `outline`, `describe`, `animated_paths`, `find`, `drift` |
 | `preview.py` | render frames for agent review |

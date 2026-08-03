@@ -9,7 +9,7 @@ from typing import Any
 
 import bpy
 
-from . import provenance
+from . import project, provenance
 
 _CATALOG_FILE = "blender_assets.cats.txt"
 
@@ -34,14 +34,21 @@ def _catalog_names(blend_path: str) -> dict[str, str]:
 
 
 def discover(
-    blend_path: str, kinds: tuple[str, ...] = ("actions", "scenes", "node_groups")
+    blend_path: str,
+    kinds: tuple[str, ...] = ("actions", "scenes", "node_groups"),
+    root: str | None = None,
 ) -> list[dict[str, Any]]:
     """List assets in blend_path — description, tags, catalog. Linking (not
     appending) is required to read .asset_data headless; the linked datablocks stay
     in bpy.data as zero-user until link() actually uses one.
+
+    blend_path is project-root-relative (e.g. "lib/design.blend") — resolved to a
+    portable //-relative path via project.to_link_path() rather than passed straight
+    to bpy, which would resolve a bare relative string against the process's cwd.
     """
-    catalogs = _catalog_names(blend_path)
-    with bpy.data.libraries.load(blend_path, link=True, assets_only=True) as (data_from, data_to):
+    catalogs = _catalog_names(project.to_abs_path(blend_path, root))
+    resolved = project.to_link_path(blend_path, root)
+    with bpy.data.libraries.load(resolved, link=True, assets_only=True) as (data_from, data_to):
         for kind in kinds:
             setattr(data_to, kind, list(getattr(data_from, kind, [])))
 
@@ -63,32 +70,42 @@ def discover(
     return found
 
 
-def link(blend_path: str, kind: str, name: str) -> Any:
+def link(blend_path: str, kind: str, name: str, root: str | None = None) -> Any:
     """Link one component (Scene/Action/node group) from blend_path, tagging
     provenance if it isn't already tagged (M0.6: custom props survive linking).
+
+    blend_path is project-root-relative — see discover()'s docstring on why it goes
+    through project.to_link_path() rather than straight to bpy.
     """
-    with bpy.data.libraries.load(blend_path, link=True, assets_only=True) as (data_from, data_to):
+    resolved = project.to_link_path(blend_path, root)
+    with bpy.data.libraries.load(resolved, link=True, assets_only=True) as (data_from, data_to):
         if name not in getattr(data_from, kind):
             raise ValueError(f"{name!r} not found in {kind} of {blend_path}")
         setattr(data_to, kind, [name])
 
     obj = getattr(data_to, kind)[0]
+    # bpy.data.libraries.load() resolves `resolved` to find the file but stores an
+    # absolute Library.filepath regardless of what was passed — set it back to the
+    # //-relative form so the link survives the project folder moving.
+    obj.library.filepath = resolved
     if provenance.origin(obj) is None:
         provenance.tag(obj, f"{os.path.basename(blend_path)}:{name}")
     return obj
 
 
-def link_scene(blend_path: str, scene_name: str) -> Any:
+def link_scene(blend_path: str, scene_name: str, root: str | None = None) -> Any:
     """Link a plain generated Scene (compositions/frames/*.blend, SPEC.md §5.1b) for
     use as a VSE Scene strip (M0.7). Unlike link(), not assets_only — these scenes are
     agent-generated, not asset-marked (docs/M4-FINDINGS.md).
     """
-    with bpy.data.libraries.load(blend_path, link=True) as (data_from, data_to):
+    resolved = project.to_link_path(blend_path, root)
+    with bpy.data.libraries.load(resolved, link=True) as (data_from, data_to):
         if scene_name not in data_from.scenes:
             raise ValueError(f"{scene_name!r} not found in scenes of {blend_path}")
         data_to.scenes = [scene_name]
 
     scn = data_to.scenes[0]
+    scn.library.filepath = resolved
     if provenance.origin(scn) is None:
         provenance.tag(scn, f"{os.path.basename(blend_path)}:{scene_name}")
     return scn

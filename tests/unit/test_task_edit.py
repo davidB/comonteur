@@ -1,4 +1,4 @@
-"""ensure_master() — comonteur:edit creates master.blend on first run when missing.
+"""ensure_timeline() — comonteur:edit creates timeline.blend on first run when missing.
 
 Needs a real headless Blender (imports the comonteur add-on, saves a .blend), so this
 is both a task-script test and a Blender one — skip like the blender-marked suite does
@@ -27,8 +27,8 @@ resolution = [1280, 720]
 """
 
 
-def _read_master(master: Path) -> dict:
-    script = master.parent / "_read.py"
+def _read_timeline(timeline_blend: Path) -> dict:
+    script = timeline_blend.parent / "_read.py"
     script.write_text(
         "import bpy, json\n"
         "scn = bpy.context.scene\n"
@@ -48,7 +48,13 @@ def _read_master(master: Path) -> dict:
         "}))\n"
     )
     proc = subprocess.run(
-        [shutil.which("blender") or "blender", "-b", str(master), "--python", str(script)],
+        [
+            shutil.which("blender") or "blender",
+            "-b",
+            str(timeline_blend),
+            "--python",
+            str(script),
+        ],
         capture_output=True,
         text=True,
         timeout=120,
@@ -58,14 +64,14 @@ def _read_master(master: Path) -> dict:
     return json.loads(line[len("CMT_JSON ") :])
 
 
-def test_creates_master_blend_from_timeline_toml(tmp_path: Path) -> None:
+def test_creates_timeline_blend_from_timeline_toml(tmp_path: Path) -> None:
     (tmp_path / "timeline.toml").write_text(TIMELINE_TOML)
-    master = tmp_path / "master.blend"
+    timeline_blend = tmp_path / "timeline.blend"
 
-    edit.ensure_master(tmp_path)
+    edit.ensure_timeline(tmp_path)
 
-    assert master.exists()
-    info = _read_master(master)
+    assert timeline_blend.exists()
+    info = _read_timeline(timeline_blend)
     assert info["name"] == "timeline"
     assert info["resolution"] == [1280, 720]
     assert info["fps"] == 24
@@ -76,11 +82,11 @@ def test_creates_master_blend_from_timeline_toml(tmp_path: Path) -> None:
 
 def test_second_run_is_a_no_op(tmp_path: Path) -> None:
     (tmp_path / "timeline.toml").write_text(TIMELINE_TOML)
-    master = tmp_path / "master.blend"
+    timeline_blend = tmp_path / "timeline.blend"
 
-    edit.ensure_master(tmp_path)
-    mtime = master.stat().st_mtime_ns
+    edit.ensure_timeline(tmp_path)
+    mtime = timeline_blend.stat().st_mtime_ns
 
-    edit.ensure_master(tmp_path)
+    edit.ensure_timeline(tmp_path)
 
-    assert master.stat().st_mtime_ns == mtime
+    assert timeline_blend.stat().st_mtime_ns == mtime

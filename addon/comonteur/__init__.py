@@ -9,6 +9,7 @@ from . import (  # noqa: F401
     journal,
     library,
     preview,
+    project,
     provenance,
     reconcile,
     scene,

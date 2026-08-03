@@ -184,7 +184,7 @@ def check_project(root: Path) -> None:
         ("narrative.toml", "shot intents live here"),
         ("timeline.toml", "the assembly lives here"),
         (
-            "master.blend",
+            "timeline.blend",
             "create and save it in Blender — the agent never saves for you",
         ),
     ]

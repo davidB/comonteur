@@ -11,7 +11,7 @@ build/
 .gitnexus/
 
 # Journal/review output from running the add-on with an unsaved .blend (journal.py and
-# preview.py fall back to os.getcwd()). Real projects keep theirs next to master.blend.
+# preview.py fall back to os.getcwd()). Real projects keep theirs next to timeline.blend.
 .comonteur/
 
 # Skill eval runs: scaffolded fixture project, run outputs, benchmarks.

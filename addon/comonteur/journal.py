@@ -14,7 +14,7 @@ from typing import Any
 
 import bpy
 
-from . import const, paths
+from . import const, paths, project
 
 _state: dict[str, Any] = {"active": False, "batch_id": None, "writes": [], "touched": []}
 
@@ -28,8 +28,7 @@ def _now() -> str:
 
 
 def _journal_path() -> str:
-    root = os.path.dirname(bpy.data.filepath) if bpy.data.filepath else os.getcwd()
-    d = os.path.join(root, const.JOURNAL_DIR)
+    d = os.path.join(project.find_root(), const.JOURNAL_DIR)
     os.makedirs(d, exist_ok=True)
     return os.path.join(d, const.JOURNAL_FILENAME)
 

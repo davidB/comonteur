@@ -140,7 +140,7 @@ This is the last command you run by path: after `mise trust` every comonteur tas
 installing and repairing the toolchain included — is `mise run comonteur:<task>` from
 inside this project.
 
-Then `mise run comonteur:edit` — it creates master.blend on first run and opens it in
+Then `mise run comonteur:edit` — it creates timeline.blend on first run and opens it in
 Blender — and leave it open, the agent works against that live session.""")
     return 0
 

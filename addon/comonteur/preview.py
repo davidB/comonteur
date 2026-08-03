@@ -12,12 +12,11 @@ from typing import Any, Iterable
 
 import bpy
 
-from . import const
+from . import const, project
 
 
 def frames(scene: Any, frame_numbers: Iterable[int], engine: str | None = None) -> list[str]:
-    root = os.path.dirname(bpy.data.filepath) if bpy.data.filepath else os.getcwd()
-    out_dir = os.path.join(root, const.JOURNAL_DIR, "review")
+    out_dir = os.path.join(project.find_root(), const.JOURNAL_DIR, "review")
     os.makedirs(out_dir, exist_ok=True)
 
     prev_frame = scene.frame_current

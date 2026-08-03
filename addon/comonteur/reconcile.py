@@ -6,7 +6,6 @@ layer that actually mutates the sequence editor, entirely through journal.set() 
 other agent write (§5.2: "reconcile is not exempt from provenance").
 """
 
-import os
 from typing import Any
 
 try:
@@ -233,7 +232,7 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
     journal.batch (one undo_push) for the whole reconcile — imports the bpy-dependent
     submodules locally so this module stays importable (for diff()) without bpy.
     """
-    from . import journal, library, provenance
+    from . import journal, library, project, provenance
 
     se = scene.sequence_editor
     if se is None:
@@ -269,13 +268,12 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
         source = item["source"]
         kind = source["kind"]
         if kind == "scene":
-            blend = os.path.join(project_root, source["blend"])
-            linked = library.link_scene(blend, source["scene"])
+            linked = library.link_scene(source["blend"], source["scene"], root=project_root)
             strip = se.strips.new_scene(
                 name=item["id"], scene=linked, channel=item["channel"], frame_start=1
             )
         elif kind == "movie":
-            path = os.path.join(project_root, source["path"])
+            path = project.to_link_path(source["path"], project_root)
             strip = se.strips.new_movie(
                 name=item["id"], filepath=path, channel=item["channel"], frame_start=1
             )
@@ -371,7 +369,7 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
         )
 
         for item in audio_plan.to_create:
-            path = os.path.join(project_root, item["path"])
+            path = project.to_link_path(item["path"], project_root)
             strip = se.strips.new_sound(
                 name=item["id"], filepath=path, channel=CHANNEL_AUDIO, frame_start=1
             )
@@ -410,7 +408,7 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
         )
 
         for item in audio_plan.to_create:
-            path = os.path.join(project_root, item["path"])
+            path = project.to_link_path(item["path"], project_root)
             strip = se.strips.new_sound(
                 name=item["id"], filepath=path, channel=CHANNEL_AUDIO, frame_start=1
             )

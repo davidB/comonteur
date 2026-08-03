@@ -1,5 +1,5 @@
 #!/usr/bin/env -S uv run --script
-#MISE description="Open master.blend in Blender — leave it open, the agent talks to this session"
+#MISE description="Open timeline.blend in Blender — leave it open, the agent talks to this session"
 #MISE dir="{{config_root}}"
 #MISE tools={uv = "latest"}
 #USAGE arg "[blender_args]…" help="Extra arguments forwarded verbatim to Blender"
@@ -7,7 +7,7 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Open `master.blend` for the human, creating it first if this is the first run.
+"""Open `timeline.blend` for the human, creating it first if this is the first run.
 
 Extra args go straight to Blender.
 """
@@ -47,13 +47,13 @@ def _render_settings_from_timeline(root: Path) -> dict[str, Any]:
     }
 
 
-def ensure_master(root: Path) -> None:
-    """Create `master.blend` if it doesn't exist yet — the one exception to "the
+def ensure_timeline(root: Path) -> None:
+    """Create `timeline.blend` if it doesn't exist yet — the one exception to "the
     agent never saves the .blend" (docs/architecture.md §4.5): nothing to clobber on
     a brand-new file, and every later `edit`/`render` run still refuses to re-save.
     """
-    master = root / "master.blend"
-    if master.exists():
+    timeline_blend = root / "timeline.blend"
+    if timeline_blend.exists():
         return
     settings_json = json.dumps(_render_settings_from_timeline(root))
     script = f"""
@@ -84,21 +84,21 @@ for area in ws.screens[0].areas:
 
 settings = json.loads({settings_json!r})
 scn = bpy.context.scene
-with journal.batch("create master.blend"):
+with journal.batch("create timeline.blend"):
     scn.name = "timeline"
     provenance.tag(scn, "timeline")
     if scn.sequence_editor is None:
         scn.sequence_editor_create()
     cmt_reconcile.apply_render_settings(scn, settings)
-bpy.ops.wm.save_as_mainfile(filepath={str(master)!r})
+bpy.ops.wm.save_as_mainfile(filepath={str(timeline_blend)!r})
 """
     blender_headless(script)
 
 
 def main(argv: list[str]) -> int:
     exe = require_blender()
-    ensure_master(Path.cwd())
-    cmd = [exe, "master.blend", *argv]
+    ensure_timeline(Path.cwd())
+    cmd = [exe, "timeline.blend", *argv]
     # execvp hands the terminal to Blender outright; Windows has no equivalent (it would
     # spawn and return), so there we wait and pass the exit code back.
     if os.name == "posix":

@@ -1,6 +1,6 @@
 """apply_render_settings() sets resolution/fps/codec/output-folder from a resolved
 plan that carries only fps/resolution/encode — no shots/audio/transitions — since
-that's the partial-reconcile shape comonteur:edit's master.blend creation uses (no
+that's the partial-reconcile shape comonteur:edit's timeline.blend creation uses (no
 shots exist yet right after comonteur:init). See addon/comonteur/reconcile.py.
 """
 
