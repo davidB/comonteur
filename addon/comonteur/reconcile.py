@@ -24,10 +24,33 @@ CHANNEL_SHOTS_B = 6  # shots alternate A/B by position so any two temporally adj
 # sit on different channels — required for a CROSS effect between them to have a real
 # overlapping frame range to blend across (same channel can't display two strips at once).
 CHANNEL_TRANSITIONS = 7  # CROSS effect, above both shot channels
-# 8-9 reserved: human video overlay (PiP, B-roll insert)
+# 8-9 reserved: human video overlay (PiP, B-roll insert), and where `overlay_of` shots get
+# dynamically allocated a channel (see _allocate_overlay_channel) — never a fixed constant,
+# since a project may already have human content sitting there.
 # 10+ reserved: titles/subtitles/karaoke overlay, topmost — nothing agent-side writes here
 # yet (comonteur's text objects live in-scene, not as VSE text strips).
 _SHOT_CHANNELS = (CHANNEL_SHOTS_A, CHANNEL_SHOTS_B)
+_RESERVED_CHANNELS = {CHANNEL_AUDIO, CHANNEL_SHOTS_A, CHANNEL_SHOTS_B, CHANNEL_TRANSITIONS}
+
+
+def _allocate_overlay_channel(
+    occupied: list[tuple[int, int, int]],
+    target_channel: int,
+    frame_start: int,
+    frame_end: int,
+) -> int:
+    """Lowest channel above both `target_channel` and the reserved shot/audio/transition
+    range that has no strip overlapping [frame_start, frame_end) — `timeline.toml` only
+    expresses intent (`overlay_of`), this is the addon's strategy for turning that into an
+    actual channel, so it never collides with human content already sitting in 8+.
+    """
+    channel = max(target_channel + 1, CHANNEL_TRANSITIONS + 1)
+    while channel in _RESERVED_CHANNELS or any(
+        c == channel and frame_start < e and s < frame_end for c, s, e in occupied
+    ):
+        channel += 1
+    return channel
+
 
 _TRANSITION_TYPES = {"cross": "CROSS"}
 
@@ -267,17 +290,64 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
         # channels (Blender neither validates nor blends two strips sharing a channel).
         # channel therefore has to be a synced field too — a shot inserted/removed shifts
         # every later shot's parity, so an update must be able to move an existing strip.
+        # `overlay_of` shots are excluded from the alternation (they don't shift it) and
+        # get their channel from _allocate_overlay_channel instead, once their target's
+        # channel is known.
         fields = ("frame_start", "frame_final_duration", "channel")
-        desired = [
-            {
+        shot_ids = {s["id"] for s in shots}
+        desired_by_id: dict[str, dict[str, Any]] = {}
+        i = 0
+        for s in shots:
+            if s.get("overlay_of") is not None:
+                continue
+            desired_by_id[s["id"]] = {
                 "id": s["id"],
                 "source": s["source"],
                 "frame_start": s["start_frame"],
                 "frame_final_duration": s["duration_frames"],
                 "channel": _SHOT_CHANNELS[i % 2],
             }
-            for i, s in enumerate(shots)
+            i += 1
+
+        # Ranges already occupied by anything not part of this shots list — other VSE
+        # content (human overlays, leftovers) — so an overlay never lands on top of it.
+        occupied = [
+            (
+                int(strip.channel),
+                int(strip.frame_start),
+                int(strip.frame_start) + int(strip.frame_final_duration),
+            )
+            for strip in se.strips
+            if strip.get(const.PROP_ID) not in shot_ids
         ]
+
+        pending = [s for s in shots if s.get("overlay_of") is not None]
+        while pending:
+            progressed = []
+            for s in pending:
+                target = desired_by_id.get(s["overlay_of"])
+                if target is None:
+                    continue
+                frame_start = s["start_frame"]
+                frame_end = frame_start + s["duration_frames"]
+                channel = _allocate_overlay_channel(
+                    occupied, target["channel"], frame_start, frame_end
+                )
+                desired_by_id[s["id"]] = {
+                    "id": s["id"],
+                    "source": s["source"],
+                    "frame_start": frame_start,
+                    "frame_final_duration": s["duration_frames"],
+                    "channel": channel,
+                }
+                occupied.append((channel, frame_start, frame_end))
+                progressed.append(s)
+            if not progressed:
+                raise ValueError("overlay_of: target not found in resolved shots (cycle?)")
+            for s in progressed:
+                pending.remove(s)
+
+        desired = [desired_by_id[s["id"]] for s in shots]
         shot_plan, existing = plan_for(desired, ("SCENE", "MOVIE"), fields)
 
         for item in shot_plan.to_create:

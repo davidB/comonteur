@@ -95,3 +95,69 @@ assert remaining == {"shot-01"}
 # No SOUND strips left (shot-01 has no with_audio companion, audio list is empty) —
 # apply() must mute the output track instead of leaving a stale/default AAC codec.
 assert scn.render.ffmpeg.audio_codec == "NONE"
+
+# --- overlay_of: intent in the resolved plan, channel allocated dynamically by apply() ---
+# Only shot-01 (channel 5) remains in the scene. Two overlays both target it and are
+# resolved in the same apply() call, so they must land on different channels even though
+# neither exists yet when allocation starts.
+resolved_with_overlays = {
+    **resolved_one_shot,
+    "shots": [
+        resolved["shots"][0],
+        {
+            "id": "overlay-01",
+            "source": {"kind": "movie", "path": "raw/caption.mp4"},
+            "start_frame": 0,
+            "duration_frames": 90,
+            "in_frame": None,
+            "transition": None,
+            "overlay_of": "shot-01",
+        },
+        {
+            "id": "overlay-02",
+            "source": {"kind": "movie", "path": "raw/watermark.mp4"},
+            "start_frame": 0,
+            "duration_frames": 90,
+            "in_frame": None,
+            "transition": None,
+            "overlay_of": "shot-01",
+        },
+    ],
+}
+cmt.reconcile.apply(scn, resolved_with_overlays, "/project")
+strips = {s.name: s for s in se.strips}
+overlay1 = strips["overlay-01"]
+overlay2 = strips["overlay-02"]
+assert overlay1.channel == 8  # max(shot-01's channel 5 + 1, CHANNEL_TRANSITIONS + 1)
+assert overlay2.channel == 9  # 8 already claimed by overlay-01 within the same apply()
+
+# Idempotent: re-applying the same plan doesn't move either overlay.
+cmt.reconcile.apply(scn, resolved_with_overlays, "/project")
+strips = {s.name: s for s in se.strips}
+assert strips["overlay-01"].channel == 8
+assert strips["overlay-02"].channel == 9
+
+# A human strip sitting on channel 10, overlapping the overlays' time range, must not be
+# clobbered — a third overlay targeting shot-01 has to skip past it to channel 11.
+se.strips.new_effect(name="human-pip", type="COLOR", channel=10, frame_start=0, length=90)
+resolved_with_third_overlay = {
+    **resolved_with_overlays,
+    "shots": [
+        *resolved_with_overlays["shots"],
+        {
+            "id": "overlay-03",
+            "source": {"kind": "movie", "path": "raw/logo.mp4"},
+            "start_frame": 0,
+            "duration_frames": 90,
+            "in_frame": None,
+            "transition": None,
+            "overlay_of": "shot-01",
+        },
+    ],
+}
+cmt.reconcile.apply(scn, resolved_with_third_overlay, "/project")
+strips = {s.name: s for s in se.strips}
+assert strips["overlay-01"].channel == 8
+assert strips["overlay-02"].channel == 9
+assert strips["overlay-03"].channel == 11
+assert strips["human-pip"].channel == 10  # untouched — not agent-owned

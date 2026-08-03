@@ -27,7 +27,8 @@ def scene_shot(
     shot_id: str,
     start: int | None = None,
     anchor: dict[str, Any] | None = None,
-    duration: int = 90,
+    duration: int | None = 90,
+    overlay_of: str | None = None,
 ) -> dict[str, Any]:
     return {
         "id": shot_id,
@@ -41,6 +42,7 @@ def scene_shot(
         "duration": duration,
         "in": None,
         "transition": None,
+        "overlay_of": overlay_of,
     }
 
 
@@ -226,3 +228,85 @@ def test_load_transcript_rejects_missing_words_array(tmp_path: Path) -> None:
     path.write_text("{}")
     with pytest.raises(SystemExit, match="`words` array"):
         timeline.load_transcript(path)
+
+
+def test_overlay_of_shot_needs_no_start_or_duration() -> None:
+    doc = doc_with(
+        [
+            scene_shot("shot-01", start=0, duration=90),
+            scene_shot("overlay-01", duration=None, overlay_of="shot-01"),
+        ]
+    )
+    assert timeline.validate(doc) == []
+
+
+def test_overlay_of_unknown_target_errors() -> None:
+    doc = doc_with([scene_shot("overlay-01", duration=None, overlay_of="does-not-exist")])
+    assert any("not a known shot id" in e for e in timeline.validate(doc))
+
+
+def test_overlay_of_self_reference_errors() -> None:
+    doc = doc_with([scene_shot("shot-01", duration=None, overlay_of="shot-01")])
+    assert any("cannot reference itself" in e for e in timeline.validate(doc))
+
+
+def test_overlay_of_cycle_errors() -> None:
+    doc = doc_with(
+        [
+            scene_shot("a", duration=None, overlay_of="b"),
+            scene_shot("b", duration=None, overlay_of="a"),
+        ]
+    )
+    assert any("forms a cycle" in e for e in timeline.validate(doc))
+
+
+def test_overlay_of_both_start_and_anchor_errors() -> None:
+    anchor = {"word": "hi", "occurrence": 1, "offset": 0.0}
+    doc = doc_with(
+        [
+            scene_shot("shot-01", start=0, duration=90),
+            scene_shot("overlay-01", start=0, anchor=anchor, duration=None, overlay_of="shot-01"),
+        ]
+    )
+    assert any("only one of" in e for e in timeline.validate(doc))
+
+
+def test_resolve_overlay_inherits_start_and_duration_from_target() -> None:
+    doc = doc_with(
+        [
+            scene_shot("shot-01", start=10, duration=90),
+            scene_shot("overlay-01", duration=None, overlay_of="shot-01"),
+        ]
+    )
+    resolved = timeline.resolve(doc, None, 30)
+    target = next(s for s in resolved["shots"] if s["id"] == "shot-01")
+    overlay = next(s for s in resolved["shots"] if s["id"] == "overlay-01")
+    assert overlay["start_frame"] == target["start_frame"] == 10
+    assert overlay["duration_frames"] == target["duration_frames"] == 90
+    assert overlay["overlay_of"] == "shot-01"
+
+
+def test_resolve_overlay_explicit_start_and_duration_override_inheritance() -> None:
+    doc = doc_with(
+        [
+            scene_shot("shot-01", start=10, duration=90),
+            scene_shot("overlay-01", start=20, duration=30, overlay_of="shot-01"),
+        ]
+    )
+    overlay = timeline.resolve(doc, None, 30)["shots"][1]
+    assert overlay["start_frame"] == 20
+    assert overlay["duration_frames"] == 30
+
+
+def test_resolve_overlay_of_overlay_chains_inheritance() -> None:
+    doc = doc_with(
+        [
+            scene_shot("shot-01", start=10, duration=90),
+            scene_shot("overlay-a", duration=None, overlay_of="shot-01"),
+            scene_shot("overlay-b", duration=None, overlay_of="overlay-a"),
+        ]
+    )
+    resolved = timeline.resolve(doc, None, 30)
+    overlay_b = next(s for s in resolved["shots"] if s["id"] == "overlay-b")
+    assert overlay_b["start_frame"] == 10
+    assert overlay_b["duration_frames"] == 90

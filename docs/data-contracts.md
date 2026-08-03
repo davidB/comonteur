@@ -120,6 +120,11 @@ duration = 120
 in = 45
 transition = {type = "cross", duration = 0.4}
 
+[[shots]]
+id = "caption-card"
+source = {kind = "scene", blend = "compositions/frames/caption-card.blend", scene = "GEN_caption"}
+overlay_of = "shot-02"      # inherits shot-02's start/duration; addon picks the channel
+
 [[audio]]
 id = "vo"
 path = "audio/narration.wav"
@@ -130,6 +135,14 @@ start = 0
 immediately before it; `duration` is seconds, like `anchor.offset` — both are timed
 relative to the transcript/audio, not the edit grid. `cross` is the only type as of M4
 (`docs/M4-FINDINGS.md`); more VSE effect-strip types can be added to the enum later.
+
+`overlay_of = "<shot-id>"` (optional, on a shot) makes `start`/`anchor`/`duration`
+optional overrides instead of requirements — omitted, they inherit the target shot's
+resolved values. There is no `channel` field: `timeline.toml` expresses the relationship
+(this shot overlays that one), and `addon/comonteur/reconcile.py`'s
+`_allocate_overlay_channel` owns picking an actual free VSE channel above the target,
+skipping the shot/transition rows and anything else already occupying that time range
+(see `skills/comonteur/references/timeline.md` "Channel layout").
 
 `[encode]` is optional and, unlike `transition.type`, its values are **not** enum-checked
 by `reconcile.py` — `video_codec`/`video_container`/`audio_codec` pass straight through to

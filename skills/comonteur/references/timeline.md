@@ -34,15 +34,27 @@ source = {kind = "movie", path = "raw/take3.mp4", with_audio = true}
 start = 210
 duration = 300
 
+[[shots]]
+id = "caption-card"
+source = {kind = "scene", blend = "compositions/frames/caption-card.blend", scene = "GEN_caption"}
+overlay_of = "talking-head-03"     # same start/duration as talking-head-03, channel picked for you
+
 [[audio]]
 id = "vo"
 path = "audio/narration.wav"
 start = 0
 ```
 
-- `start` xor `anchor` — one or the other, per shot and per audio track.
+- `start` xor `anchor` — one or the other, per shot and per audio track. Not required on a
+  shot that sets `overlay_of` — see below.
 - `duration` and `in` are frames; `anchor.offset` and `transition.duration` are seconds (timed
   against the recording, not the edit grid).
+- `overlay_of = "<shot-id>"` places a shot as an overlay above another shot's channel —
+  e.g. a transparent caption card composited over a movie shot. It inherits `start`/`duration`
+  from the target shot when omitted (either can still be set explicitly to override). No
+  `channel` field exists to set directly: the addon picks the actual VSE channel for you (see
+  "Channel layout" below) — a spec author expresses *which shot this overlays*, not *which
+  channel number*.
 - `transition` sits on a shot and crossfades it with the shot immediately before it. `cross` is
   the only type as of M4.
 - `source.with_audio` (movie shots only, default `false`) keeps the file's own embedded audio
@@ -147,8 +159,8 @@ passes:
 5     CHANNEL_SHOTS_A       shots, alternating with channel 6
 6     CHANNEL_SHOTS_B
 7     CHANNEL_TRANSITIONS   CROSS effect, above both shot channels
-8-9   reserved              human video overlay (PiP, B-roll insert)
-10+   reserved              titles/subtitles/karaoke overlay, topmost
+8+    overlay                `overlay_of` shots, human video overlay (PiP, B-roll insert),
+                             titles/subtitles/karaoke — addon-allocated, see below
 ```
 
 Shots alternate channel by position (even index → 5, odd → 6) rather than sitting on one
@@ -158,7 +170,14 @@ blends that overlap, it just silently renders garbage. `channel` is therefore a 
 for shots (alongside `frame_start`/`frame_final_duration`), so inserting or removing a shot —
 which shifts every later shot's parity — moves the existing strips to their new channel on
 the next reconcile, unless a human has since claimed that strip's `channel` by moving it
-manually, in which case reconcile leaves it alone like any other claimed field.
+manually, in which case reconcile leaves it alone like any other claimed field. `overlay_of`
+shots sit outside this alternation entirely and never shift it.
+
+An `overlay_of` shot's channel is picked, not authored: the addon scans upward from above
+its target's channel (and above 7, so it never lands on the shot/transition rows) for the
+lowest channel with nothing occupying its time range — skipping both other agent strips and
+any human content already sitting there. It's re-derived on every reconcile rather than
+stored as a synced field, so it stays out of the way of whatever else is on those channels.
 
 Strips are matched by `cmt_id`, which is the shot's `id` (transitions use
 `<shot-id>:transition`, a `with_audio` shot's companion sound strip uses `<shot-id>:audio`).

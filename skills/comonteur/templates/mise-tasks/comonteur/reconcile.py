@@ -98,6 +98,22 @@ def _source_errors(i: int, shot_id: str, source: Any) -> list[str]:
     ]
 
 
+def _overlay_cycle(shot_id: str, overlay_targets: dict[str, str]) -> bool:
+    """Walks the `overlay_of` chain from `shot_id`; a chain can't be longer than the number
+    of shots without repeating a node, so that many steps is enough to prove a cycle.
+    """
+    seen = {shot_id}
+    current = overlay_targets.get(shot_id)
+    for _ in range(len(overlay_targets) + 1):
+        if current is None:
+            return False
+        if current in seen:
+            return True
+        seen.add(current)
+        current = overlay_targets.get(current)
+    return True
+
+
 def validate(doc: dict[str, Any]) -> list[str]:
     """Pure logic: fail loudly rather than guess (SPEC.md §5.2)."""
     errors: list[str] = []
@@ -115,11 +131,40 @@ def validate(doc: dict[str, Any]) -> list[str]:
             errors.append(f"shots[{i}]: duplicate id {shot_id!r}")
         else:
             shot_ids.add(shot_id)
-        if not _one_of_start_anchor(shot):
-            errors.append(f"shots[{i}] ({shot_id}): exactly one of `start`/`anchor` must be set")
-        duration = shot.get("duration")
-        if duration is None or duration <= 0:
-            errors.append(f"shots[{i}] ({shot_id}): duration must be > 0, got {duration}")
+
+    overlay_targets = {
+        str(shot.get("id", "")): str(shot.get("overlay_of"))
+        for shot in shots
+        if shot.get("overlay_of") is not None
+    }
+
+    for i, shot in enumerate(shots):
+        shot_id = str(shot.get("id", ""))
+        overlay_of = shot.get("overlay_of")
+        if overlay_of is None:
+            if not _one_of_start_anchor(shot):
+                errors.append(
+                    f"shots[{i}] ({shot_id}): exactly one of `start`/`anchor` must be set"
+                )
+            duration = shot.get("duration")
+            if duration is None or duration <= 0:
+                errors.append(f"shots[{i}] ({shot_id}): duration must be > 0, got {duration}")
+        else:
+            # `overlay_of` inherits start/duration from its target — `start`/`anchor`/
+            # `duration` become optional overrides, not requirements.
+            if shot.get("start") is not None and shot.get("anchor") is not None:
+                errors.append(f"shots[{i}] ({shot_id}): only one of `start`/`anchor` may be set")
+            duration = shot.get("duration")
+            if duration is not None and duration <= 0:
+                errors.append(f"shots[{i}] ({shot_id}): duration must be > 0, got {duration}")
+            if str(overlay_of) == shot_id:
+                errors.append(f"shots[{i}] ({shot_id}): overlay_of cannot reference itself")
+            elif str(overlay_of) not in shot_ids:
+                errors.append(
+                    f"shots[{i}] ({shot_id}): overlay_of {overlay_of!r} is not a known shot id"
+                )
+            elif _overlay_cycle(shot_id, overlay_targets):
+                errors.append(f"shots[{i}] ({shot_id}): overlay_of forms a cycle")
         errors.extend(_source_errors(i, shot_id, shot.get("source")))
         anchor = shot.get("anchor")
         if anchor is not None:
@@ -190,26 +235,26 @@ def resolve_position(
     raise SystemExit(f"{entry_id!r}: exactly one of start/anchor must be set")
 
 
-def resolve(
-    doc: dict[str, Any], transcript: list[dict[str, Any]] | None, fps: int
+def _resolve_shot(
+    shot: dict[str, Any],
+    shot_id: str,
+    transcript: list[dict[str, Any]] | None,
+    fps: int,
+    inherited_start_frame: int | None = None,
+    inherited_duration_frames: int | None = None,
 ) -> dict[str, Any]:
-    """`timeline.toml` (already validated) + an optional transcript → a plan with plain
-    integer frame numbers and no more anchors, ready for `reconcile.py` to apply.
-    """
-    shots: list[dict[str, Any]] = []
-    for shot in doc.get("shots") or []:
-        shot_id = str(shot.get("id", ""))
-        transition = shot.get("transition")
-        resolved_transition = None
-        transition_frames = 0
-        if transition is not None:
-            transition_frames = _round_half_away(float(transition.get("duration", 0.0)) * fps)
-            resolved_transition = {
-                "type": transition.get("type"),
-                # Seconds, like an anchor's offset — both are timed relative to the
-                # transcript/audio, not the edit grid, so both convert at resolve time.
-                "duration_frames": transition_frames,
-            }
+    transition = shot.get("transition")
+    resolved_transition = None
+    transition_frames = 0
+    if transition is not None:
+        transition_frames = _round_half_away(float(transition.get("duration", 0.0)) * fps)
+        resolved_transition = {
+            "type": transition.get("type"),
+            # Seconds, like an anchor's offset — both are timed relative to the
+            # transcript/audio, not the edit grid, so both convert at resolve time.
+            "duration_frames": transition_frames,
+        }
+    if shot.get("start") is not None or shot.get("anchor") is not None:
         # A shot with a transition needs to actually overlap the previous shot for the CROSS
         # effect to have something to blend across — shift this shot's own start earlier by
         # the transition length and extend its duration to match, so its authored `start`
@@ -218,19 +263,72 @@ def resolve(
         # documented convention) then overlap the previous shot by exactly the transition's
         # length without the previous shot needing any adjustment at all.
         start_frame = resolve_position(shot_id, shot, transcript, fps) - transition_frames
-        duration_frames = shot.get("duration")
-        if duration_frames is not None:
-            duration_frames = duration_frames + transition_frames
-        shots.append(
-            {
-                "id": shot_id,
-                "source": shot.get("source"),
-                "start_frame": start_frame,
-                "duration_frames": duration_frames,
-                "in_frame": shot.get("in"),
-                "transition": resolved_transition,
-            }
-        )
+    else:
+        assert inherited_start_frame is not None  # validate() requires start/anchor/overlay_of
+        start_frame = inherited_start_frame
+    duration_frames = shot.get("duration")
+    if duration_frames is not None:
+        duration_frames = duration_frames + transition_frames
+    else:
+        duration_frames = inherited_duration_frames
+    result = {
+        "id": shot_id,
+        "source": shot.get("source"),
+        "start_frame": start_frame,
+        "duration_frames": duration_frames,
+        "in_frame": shot.get("in"),
+        "transition": resolved_transition,
+    }
+    overlay_of = shot.get("overlay_of")
+    if overlay_of is not None:
+        result["overlay_of"] = str(overlay_of)
+    return result
+
+
+def resolve(
+    doc: dict[str, Any], transcript: list[dict[str, Any]] | None, fps: int
+) -> dict[str, Any]:
+    """`timeline.toml` (already validated) + an optional transcript → a plan with plain
+    integer frame numbers and no more anchors, ready for `reconcile.py` to apply.
+
+    `overlay_of` shots are resolved in a second pass, once their target is resolved, so
+    they can inherit the target's `start_frame`/`duration_frames` when they don't set
+    their own — a target can itself be an overlay, so this repeats until nothing left
+    makes progress (`validate()` already rejects cycles, so that always terminates).
+    """
+    shots_in = list(doc.get("shots") or [])
+    resolved_by_id: dict[str, dict[str, Any]] = {}
+    pending: list[dict[str, Any]] = []
+    for shot in shots_in:
+        shot_id = str(shot.get("id", ""))
+        if shot.get("overlay_of") is None:
+            resolved_by_id[shot_id] = _resolve_shot(shot, shot_id, transcript, fps)
+        else:
+            pending.append(shot)
+
+    while pending:
+        still_pending = []
+        progressed = False
+        for shot in pending:
+            target = resolved_by_id.get(str(shot.get("overlay_of")))
+            if target is None:
+                still_pending.append(shot)
+                continue
+            shot_id = str(shot.get("id", ""))
+            resolved_by_id[shot_id] = _resolve_shot(
+                shot,
+                shot_id,
+                transcript,
+                fps,
+                target["start_frame"],
+                target["duration_frames"],
+            )
+            progressed = True
+        if not progressed:
+            raise SystemExit("overlay_of cycle detected (should have failed validate())")
+        pending = still_pending
+
+    shots = [resolved_by_id[str(s.get("id", ""))] for s in shots_in]
 
     audio: list[dict[str, Any]] = []
     for track in doc.get("audio") or []:
