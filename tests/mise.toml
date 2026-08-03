@@ -17,13 +17,17 @@ TASKS_DIR = "{{config_root}}/../skills/comonteur/templates/mise-tasks/comonteur"
 description = "Lint tests/ with ruff, plus the comonteur:* task scripts (ruff check + mypy)"
 run = [
   "uv run ruff check . $TASKS_DIR",
-  "uv run ruff format --check .",
+  "uv run ruff format --check . $TASKS_DIR",
   "uv run mypy $TASKS_DIR",
+  # "uv run mypy .",
 ]
 
 [tasks.autofix]
-description = "Apply ruff's autofixes to tests/ and the task scripts, format tests/ only"
-run = ["uv run ruff check --fix . $TASKS_DIR", "uv run ruff format ."]
+description = "Apply ruff's autofixes & format to tests/ and the task scripts"
+run = [
+  "uv run ruff check --fix . $TASKS_DIR",
+  "uv run ruff format . $TASKS_DIR",
+]
 
 [tasks.test]
 description = "Run the unit tests (pytest); blender-marked tests skip if blender is not on PATH"

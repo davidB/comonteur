@@ -1,8 +1,10 @@
 #!/usr/bin/env -S uv run --script
+# fmt: off
 #MISE description="Install/repair the whole toolchain: both Blender add-ons, the MCP server, then doctor"
 #MISE depends=["comonteur:install_addon", "comonteur:install_mcp"]
 #MISE depends_post=["comonteur:doctor"]
 #MISE tools={uv = "latest"}
+# fmt: on
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []

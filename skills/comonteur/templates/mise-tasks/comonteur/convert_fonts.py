@@ -1,9 +1,11 @@
 #!/usr/bin/env -S uv run --script
+# fmt: off
 #MISE description="Convert .woff/.woff2 fonts to .ttf/.otf so Blender can load them"
 #MISE dir="{{config_root}}"
 #MISE tools={uv = "latest"}
 #USAGE arg "[paths]" var=#true help="Font files or directories to scan (default: assets/fonts)"
 #USAGE flag "-f --force" help="Reconvert even if the .ttf/.otf is up to date"
+# fmt: on
 # /// script
 # requires-python = ">=3.11"
 # dependencies = ["fonttools[woff]>=4.55"]

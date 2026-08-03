@@ -120,9 +120,7 @@ def blender_py(expr: str, *, check: bool = True) -> str:
     Blender writes its banner and quit message to stdout as well, so callers tag their own
     output (doctor emits `CMT ...` lines) and filter, rather than parsing the lot.
     """
-    return run(
-        [require_blender(), "-b", "--python-expr", expr], check=check, capture=True
-    ).stdout
+    return run([require_blender(), "-b", "--python-expr", expr], check=check, capture=True).stdout
 
 
 def blender_headless(script: str, *, blend: Path | None = None, check: bool = True) -> str:

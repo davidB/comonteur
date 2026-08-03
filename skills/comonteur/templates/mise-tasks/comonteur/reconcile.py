@@ -1,4 +1,5 @@
 #!/usr/bin/env -S uv run --script
+# fmt: off
 #MISE description="Resolve timeline.toml (anchors -> frames) into .comonteur/timeline.resolved.json"
 #MISE dir="{{config_root}}"
 #MISE sources=["timeline.toml", "audio/transcript.json"]
@@ -7,6 +8,7 @@
 #USAGE flag "--timeline <timeline>" help="Timeline to resolve (default: timeline.toml)"
 #USAGE flag "--transcript <transcript>" help="Word timings for anchors (default: audio/transcript.json when present)"
 #USAGE flag "-o --out <out>" help="Resolved plan to write (default: .comonteur/timeline.resolved.json)"
+# fmt: on
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []

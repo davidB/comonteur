@@ -1,4 +1,5 @@
 #!/usr/bin/env -S uv run --script
+# fmt: off
 #MISE description="Build assets/manifest.json from assets/ (sha256 + ffprobe metadata)"
 #MISE dir="{{config_root}}"
 #MISE sources=["assets/**/*", "!assets/manifest.json"]
@@ -6,6 +7,7 @@
 #MISE tools={ffmpeg = "latest", uv = "latest"}
 #USAGE arg "[assets_dir]" help="Directory to scan (default: assets)"
 #USAGE arg "[out]" help="Manifest path to write (default: <assets_dir>/manifest.json)"
+# fmt: on
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []
@@ -27,9 +29,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-ALPHA_PIX_FMTS = frozenset(
-    ("rgba", "bgra", "argb", "abgr", "ya8", "ya16le", "ya16be", "gbrap")
-)
+ALPHA_PIX_FMTS = frozenset(("rgba", "bgra", "argb", "abgr", "ya8", "ya16le", "ya16be", "gbrap"))
 
 
 def has_alpha(pix_fmt: str) -> bool:

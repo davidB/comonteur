@@ -1,7 +1,9 @@
 #!/usr/bin/env -S uv run --script
+# fmt: off
 #MISE description="Initialize a video project folder (additive, never overwrites)"
 #USAGE arg "<dir>" help="project folder — created if missing, never overwritten" default="."
 #MISE tools={uv = "latest"}
+# fmt: on
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []

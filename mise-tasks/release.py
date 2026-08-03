@@ -1,6 +1,8 @@
 #!/usr/bin/env -S uv run --script
+# fmt: off
 #MISE description="Bump version, changelog, tag, push, build all 3 zips, publish the GitHub release"
 #MISE tools={"git-cliff" = "latest", gh = "latest"}
+# fmt: on
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []
@@ -97,7 +99,9 @@ def rollback_publish(version: str, *, committed: bool, tagged: bool) -> None:
         if subject == f"chore(release): {version}":
             subprocess.run(["git", "reset", "--hard", "HEAD~1"], cwd=ROOT)
         else:
-            print(f"   ! HEAD commit isn't 'chore(release): {version}', not resetting — check manually")
+            print(
+                f"   ! HEAD commit isn't 'chore(release): {version}', not resetting — check manually"
+            )
 
 
 def next_version() -> str:
@@ -155,7 +159,17 @@ def publish(version: str) -> None:
 
     # Point of no return: pushed. A gh failure from here on can't be safely auto-reverted.
     zips = sorted(str(p) for p in DIST.glob("*.zip"))
-    gh_cmd = ["gh", "release", "create", version, *zips, "--title", version, "--notes-file", str(NOTES_FILE)]
+    gh_cmd = [
+        "gh",
+        "release",
+        "create",
+        version,
+        *zips,
+        "--title",
+        version,
+        "--notes-file",
+        str(NOTES_FILE),
+    ]
     try:
         run(gh_cmd)
     except ReleaseError as e:

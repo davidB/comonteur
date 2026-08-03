@@ -1,4 +1,5 @@
 #!/usr/bin/env -S uv run --script
+# fmt: off
 #MISE description="Install Blender's MCP add-on and its official MCP server, and register it"
 #MISE env={BLENDER_MCP_VERSION = "1.0.0"}
 #USAGE flag "--version <version>" help="Blender MCP server release to install"
@@ -6,6 +7,7 @@
 # wait_for keeps them from overlapping when comonteur:install runs both.
 #MISE wait_for=["comonteur:install_addon"]
 #MISE tools={uv = "latest"}
+# fmt: on
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []
@@ -54,7 +56,10 @@ def install_addon() -> None:
     """
     blender = shutil.which("blender")
     if blender is None:
-        warn("no blender on PATH — skipping the Blender-side MCP add-on", "install Blender, then re-run")
+        warn(
+            "no blender on PATH — skipping the Blender-side MCP add-on",
+            "install Blender, then re-run",
+        )
         return
     step("Installing Blender's MCP add-on")
     module, name, url = ADDON_REPO
@@ -154,12 +159,26 @@ def main(argv: list[str]) -> int:
     step("Registering with Claude Code (scope: user)")
     run([claude, "mcp", "remove", "blender", "--scope", "user"], check=False, capture=True)
     run(
-        [claude, "mcp", "add", "blender", "-s", "user", "--",
-         uv, "run", "--project", str(vendor), "blender-mcp"],
+        [
+            claude,
+            "mcp",
+            "add",
+            "blender",
+            "-s",
+            "user",
+            "--",
+            uv,
+            "run",
+            "--project",
+            str(vendor),
+            "blender-mcp",
+        ],
         capture=True,
     )
 
-    print(f"\nDone ({vendor}). Verify with: claude mcp list, and `comonteur:doctor` for the add-on.")
+    print(
+        f"\nDone ({vendor}). Verify with: claude mcp list, and `comonteur:doctor` for the add-on."
+    )
     return 0
 
 

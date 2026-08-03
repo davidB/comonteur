@@ -1,4 +1,5 @@
 #!/usr/bin/env -S uv run --script
+# fmt: off
 #MISE description="Normalize word-level timing into captions/vo.json"
 #USAGE arg "<input>" help="JSON with word-level timing: Whisper output, or TTS timing marks"
 #USAGE flag "-k --kind <kind>" help="whisper (ASR, human-recorded VO) or tts (synthesis marks)" default="whisper" {
@@ -6,6 +7,7 @@
 #USAGE }
 #MISE dir="{{config_root}}"
 #MISE tools={uv = "latest"}
+# fmt: on
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []

@@ -1,9 +1,11 @@
 #!/usr/bin/env -S uv run --script
+# fmt: off
 #MISE description="Install the comonteur add-on into Blender (symlinked from a checkout, packaged otherwise)"
 #USAGE flag "--source <source>" help="add-on source dir (default: this checkout's addon/comonteur)"
 #USAGE flag "--ref <ref>" help="git tag/branch/sha to fetch the add-on from when not in a checkout"
 #USAGE flag "--copy" help="copy/package instead of symlinking, even from a checkout"
 #MISE tools={uv = "latest"}
+# fmt: on
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []
@@ -86,9 +88,7 @@ def extensions_dir(repo: str = "user_default") -> Path:
     `directory:`, which is the documented way to ask (and the reason no `~/.config/blender/...`
     is assembled here: macOS and Windows put it elsewhere, and a user may have moved it).
     """
-    out = run(
-        [require_blender(), "--command", "extension", "repo-list"], capture=True
-    ).stdout
+    out = run([require_blender(), "--command", "extension", "repo-list"], capture=True).stdout
     current = ""
     for line in out.splitlines():
         if not line.startswith(" ") and line.rstrip().endswith(":"):

@@ -1,7 +1,9 @@
 #!/usr/bin/env -S uv run --script
+# fmt: off
 #MISE description="Check the toolchain, and this project too when run inside one"
 #MISE tools={uv = "latest"}
 #USAGE arg "[project]" help="Project directory to check (default: the enclosing project, if any)"
+# fmt: on
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []
@@ -206,9 +208,7 @@ def main(argv: list[str]) -> int:
     healthy = check_blender()
     for tool in ("ffmpeg", "ffprobe"):
         healthy &= check_tool(tool, "mise install  (pinned in the project's mise.toml)")
-    healthy &= check_tool(
-        "uv", "mise use -g uv  (every comonteur task is a `uv run --script`)"
-    )
+    healthy &= check_tool("uv", "mise use -g uv  (every comonteur task is a `uv run --script`)")
     healthy &= check_task_scripts()
     healthy &= check_addons()
     check_mcp()
