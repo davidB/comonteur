@@ -77,6 +77,10 @@ assert vo.type == "SOUND"
 assert vo.channel == cmt.reconcile.CHANNEL_AUDIO == 1
 assert vo.frame_start == 10
 
+# resolved carries no explicit encode.audio_codec — apply() finds SOUND strips in the
+# reconciled VSE and defaults the container scene's output to AAC.
+assert scn.render.ffmpeg.audio_codec == "AAC"
+
 # Re-running reconcile against the same plan is a no-op: nothing new created or deleted.
 strip_count = len(se.strips)
 cmt.reconcile.apply(scn, resolved, "/project")
@@ -87,3 +91,7 @@ resolved_one_shot = {**resolved, "shots": resolved["shots"][:1], "audio": []}
 cmt.reconcile.apply(scn, resolved_one_shot, "/project")
 remaining = {s.name for s in se.strips}
 assert remaining == {"shot-01"}
+
+# No SOUND strips left (shot-01 has no with_audio companion, audio list is empty) —
+# apply() must mute the output track instead of leaving a stale/default AAC codec.
+assert scn.render.ffmpeg.audio_codec == "NONE"

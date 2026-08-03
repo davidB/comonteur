@@ -155,16 +155,24 @@ def _strip_fields(strip: Any, fields: tuple[str, ...]) -> dict[str, Any]:
     return {f: int(getattr(strip, f)) for f in fields}
 
 
-def apply_render_settings(scene: Any, resolved: dict[str, Any]) -> None:
+def apply_render_settings(
+    scene: Any, resolved: dict[str, Any], *, has_audio: bool | None = None
+) -> None:
     """The render/output settings a container scene needs, derived from `resolved`.
 
     Split out of `apply()` so a partial reconcile (no shots/audio yet, e.g. right
     after `comonteur:init`) can set just these without faking the rest of the
-    resolved-plan schema.
+    resolved-plan schema. `has_audio` is None in that partial-reconcile case (no VSE
+    to inspect yet) — omitted, this leaves `resolved["audio_codec"]` as the sole source
+    of truth, same as before `has_audio` existed. `apply()` passes the real answer
+    (any SOUND strip in the reconciled VSE) once shots/audio are in place, which is
+    what lets a timeline with no audio strips end up video-only instead of carrying
+    a default AAC track nothing feeds.
     """
     from . import journal
 
-    for key, value in scene_range(resolved).items():
+    sr = scene_range(resolved)
+    for key, value in sr.items():
         if key == "resolution":
             journal.set(scene, "render.resolution_x", value[0])
             journal.set(scene, "render.resolution_y", value[1])
@@ -185,6 +193,10 @@ def apply_render_settings(scene: Any, resolved: dict[str, Any]) -> None:
             journal.set(scene, "render.ffmpeg.audio_codec", value)
         else:
             journal.set(scene, key, value)
+    if has_audio is False:
+        journal.set(scene, "render.ffmpeg.audio_codec", "NONE")
+    elif has_audio is True and "audio_codec" not in sr:
+        journal.set(scene, "render.ffmpeg.audio_codec", "AAC")
     # Output folder is a fixed project convention, not derived from the resolved
     # timeline plan, so it's not a scene_range() key — but journal.set() (not a raw
     # scn.render.filepath = ...) is still the right way to write it: same as
@@ -370,4 +382,5 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
         reconcile_audio(resolved.get("audio", []))
         reconcile_shot_audio(shots)
         reconcile_transitions(shots, shot_strips)
-        apply_render_settings(scene, resolved)
+        has_audio = any(s.type == "SOUND" for s in se.strips)
+        apply_render_settings(scene, resolved, has_audio=has_audio)
