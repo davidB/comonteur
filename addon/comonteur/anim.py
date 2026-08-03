@@ -183,6 +183,27 @@ def pulse(
     )
 
 
+def hard_cut(obj: Any, visible_ranges: Iterable[tuple[int, int]]) -> None:
+    """Instant show/hide (no crossfade): CONSTANT-interpolation keyframes on both
+    hide_render and hide_viewport, hidden everywhere except the given inclusive
+    (start_frame, end_frame) ranges. Must run inside journal.batch().
+
+    Both properties get identical keyframes since hide_viewport also gates preview
+    renders and measure()/dimensions (see text.measure()'s docstring) — a cut visible
+    only in the final render but not in preview would silently mismeasure.
+    """
+    if not journal.batch_active():
+        raise RuntimeError("anim.hard_cut() must run inside journal.batch()")
+    events = [(1, True)]
+    for start, end in sorted(visible_ranges):
+        events.append((start, False))
+        events.append((end + 1, True))
+    for path in ("hide_render", "hide_viewport"):
+        for frame, hidden in events:
+            journal.set(obj, path, hidden)
+            _keyframe(obj, path, None, frame, hidden, "CONSTANT", "EASE_IN_OUT")
+
+
 def instance_as_nla(obj: Any, track_name: str, frame_offset: float) -> Any:
     """Push obj's current action onto an NLA track at frame_offset, so reusable
     motion is an Action instance (§6.2), not re-emitted keyframes.

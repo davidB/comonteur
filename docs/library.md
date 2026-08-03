@@ -17,11 +17,12 @@ equally to **reduce agent token consumption**: the agent calls
 | `provenance.py` | tag / flip handler / `claimed_paths` / ownership queries / take-ownership operators |
 | `journal.py` | `batch()` context manager, `set()`, JSONL, snapshot, revert |
 | `scene.py` | `new_scene()` — see §6.1. Scene params interface. |
-| `anim.py` | `tween`, `stagger`, `idle_jitter` (sine wobble, pre-sampled), easing map, F-curve helpers |
-| `text.py` | text objects, styling, fit-to-box, `measure` (world-space bounding box), per-character split. `style()`/`create()` color defaults to `shading='flat'` (Emission, since `kind='2d'` scenes have no lights) — pass `shading='lit'` for plain Base Color in lit 3D scenes. |
+| `anim.py` | `tween`, `stagger`, `idle_jitter` (sine wobble, pre-sampled), `hard_cut` (instant show/hide via CONSTANT hide_render/hide_viewport keyframes), easing map, F-curve helpers |
+| `text.py` | text objects, styling, fit-to-box, `measure`/`measure_many` (world-space bounding box — object must be visible at the current frame, `matrix_world` freezes stale for a hidden one), per-character split (preserves color and true left edge), `alpha_path` (Alpha-input fade, distinct from `color_path`'s alpha channel which Blender ignores). `style()`/`create()` color defaults to `shading='flat'` (Emission, since `kind='2d'` scenes have no lights) — pass `shading='lit'` for plain Base Color in lit 3D scenes. |
+| `color.py` | `hex_to_rgba`/`srgb_to_linear` — sRGB hex colors decoded to the linear RGBA Emission/Base Color inputs expect |
 | `vse.py` | assembly, scene strips, transitions, audio |
 | `library.py` | link `lib/*.blend` (component library) and `compositions/frames/*.blend` (per-shot scenes), asset catalog discovery |
-| `card.py` | `create()` — image plane + hairline border + soft shadow bundle, the HyperFrames "card" pattern |
+| `card.py` | `create()` — image plane + hairline border + soft shadow bundle, the HyperFrames "card" pattern. `reorigin_left()` — re-origin a plane's mesh for edge-anchored scale-growth (progress bars, underline reveals) |
 | `introspect.py` | `outline`, `describe`, `animated_paths`, `find`, `drift` |
 | `preview.py` | render frames for agent review |
 | `reconcile.py` | timeline.toml → VSE |

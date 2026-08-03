@@ -58,6 +58,7 @@ def style(
         if mat is None:
             mat = bpy.data.materials.new(f"{obj.name}.color")
             mat.use_nodes = True
+            mat.blend_method = "BLEND"  # required for a later Alpha-input fade to have any effect
             data.materials.append(mat)
         bsdf = mat.node_tree.nodes.get("Principled BSDF")
         if bsdf is not None:
@@ -89,6 +90,11 @@ def measure(obj: Any) -> dict[str, Any]:
     """Read-only bounding box in world space, for positioning underlines/accents
     without restructuring the text object (§11: no layout engine). Same
     view_layer.update() + dimensions precedent as fit_to_box().
+
+    obj must be visible (hide_viewport=False) at the current frame: Blender freezes
+    matrix_world (and anything derived from it -- dimensions, this function,
+    measure_many()) for a hidden object, with no error. Measure/position everything
+    first, hide as the last step -- not the reverse.
     """
     bpy.context.view_layer.update()
     corners = [obj.matrix_world @ Vector(c) for c in obj.bound_box]
@@ -115,23 +121,47 @@ def check_fonts(scn: Any) -> list[dict[str, Any]]:
     ]
 
 
+def _captured_color(obj: Any) -> tuple[tuple[float, ...], Literal["flat", "lit"]] | None:
+    """Read back the (color, shading) pair a prior style(color=...) call wrote, so
+    split_chars() can restyle its output instead of leaving it material-less.
+    """
+    mats = obj.data.materials
+    if not mats or mats[0] is None:
+        return None
+    bsdf = mats[0].node_tree.nodes.get("Principled BSDF")
+    if bsdf is None:
+        return None
+    base = tuple(bsdf.inputs["Base Color"].default_value)
+    if any(base[:3]):
+        return base, "lit"
+    return tuple(bsdf.inputs["Emission Color"].default_value), "flat"
+
+
 def split_chars(obj: Any, *, spacing: float = 0.0, space_width_factor: float = 0.3) -> list[Any]:
     """Replace obj with one FONT object per character, left to right, positioned by
     each character's measured advance width — the fallback from docs/M3-FINDINGS.md
     Check 1 (GN String to Curves gives one multi-spline object, not N keyframeable
     objects). Space glyphs measure 0 width, so they fall back to size * factor.
+
+    Preserves obj's color (if any) and its true left edge -- measure()'s world-space
+    min.x, not obj.location.x, since align_x='CENTER'/'RIGHT' otherwise leaves the
+    output shifted from where the source text visually was.
     """
     scene = next(s for s in bpy.data.scenes if obj.name in s.objects)
     body, base_name, base_size, base_font = obj.data.body, obj.name, obj.data.size, obj.data.font
+    color = _captured_color(obj)
     origin = obj.location.copy()
+    left_x = measure(obj)["min"][0]
     bpy.data.objects.remove(obj, do_unlink=True)
 
     chars = []
-    cursor_x = origin.x
+    cursor_x = left_x
     for i, ch in enumerate(body):
         char_obj = create(scene, ch, name=f"{base_name}.{i}", size=base_size, font=base_font)
         char_obj.location = origin.copy()
         char_obj.location.x = cursor_x
+        if color is not None:
+            style(char_obj, color=color[0], shading=color[1])
         bpy.context.view_layer.update()
         advance = char_obj.dimensions.x or base_size * space_width_factor
         cursor_x += advance + spacing
@@ -233,6 +263,25 @@ def color_path(obj: Any, shading: Literal["flat", "lit"] = "flat") -> str:
     bsdf = obj.data.materials[0].node_tree.nodes["Principled BSDF"]
     field = "Emission Color" if shading == "flat" else "Base Color"
     idx = list(bsdf.inputs.keys()).index(field)
+    return f'nodes["Principled BSDF"].inputs[{idx}].default_value'
+
+
+def alpha_path(obj: Any) -> str:
+    """RNA path, relative to color_target(obj), for tween()/stagger() to fade a
+    style()'d object in/out via the Principled BSDF's Alpha input.
+
+    color_path()'s alpha component (index 3 of Emission/Base Color) is a red herring
+    for transparency: Blender's Principled BSDF ignores a Color socket's alpha
+    entirely. Only this dedicated scalar Alpha input, combined with the
+    material.blend_method='BLEND' style()/card already sets, actually fades an
+    object -- tweening color_path()'s alpha compiles and runs with no error but the
+    object stays fully opaque throughout.
+
+    Same numeric-index resolution as color_path() -- see its docstring for why the
+    string form ("Alpha") would never match the fcurve tween() looks up afterward.
+    """
+    bsdf = obj.data.materials[0].node_tree.nodes["Principled BSDF"]
+    idx = list(bsdf.inputs.keys()).index("Alpha")
     return f'nodes["Principled BSDF"].inputs[{idx}].default_value'
 
 

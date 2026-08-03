@@ -29,6 +29,7 @@ def _plane(scn: Any, name: str, w: float, h: float) -> Any:
 def _flat_material(obj: Any, rgba: tuple[float, ...]) -> None:
     mat = bpy.data.materials.new(f"{obj.name}.color")
     mat.use_nodes = True
+    mat.blend_method = "BLEND"  # required for a later Alpha-input fade to have any effect
     obj.data.materials.append(mat)
     bsdf = mat.node_tree.nodes.get("Principled BSDF")
     color = (*rgba[:3], rgba[3] if len(rgba) > 3 else 1.0)
@@ -40,6 +41,7 @@ def _flat_material(obj: Any, rgba: tuple[float, ...]) -> None:
 def _image_material(obj: Any, image: Any) -> None:
     mat = bpy.data.materials.new(f"{obj.name}.image")
     mat.use_nodes = True
+    mat.blend_method = "BLEND"  # required for a later Alpha-input fade to have any effect
     obj.data.materials.append(mat)
     nodes = mat.node_tree.nodes
     bsdf = nodes.get("Principled BSDF")
@@ -47,6 +49,19 @@ def _image_material(obj: Any, image: Any) -> None:
     tex.image = image
     mat.node_tree.links.new(tex.outputs["Color"], bsdf.inputs["Emission Color"])
     bsdf.inputs["Emission Strength"].default_value = 1.0
+
+
+def reorigin_left(obj: Any) -> None:
+    """Shift obj's mesh so local X spans 0..w instead of -w/2..w/2 (world position
+    unchanged) -- so a scale.x tween from 0 to 1 grows the plane from its left edge
+    instead of from its center. For progress bars / underline reveals built on any
+    _plane()-based object (card image/border/shadow, text.highlight_bg() quads).
+    """
+    mesh = obj.data
+    min_x = min(v.co.x for v in mesh.vertices)
+    for v in mesh.vertices:
+        v.co.x -= min_x
+    obj.location.x += min_x
 
 
 def create(
