@@ -117,7 +117,7 @@ If ambiguous, ask.
    its own header — check that rather than guessing at arguments. No voiceover is a
    first-class case, not a degraded one — on-screen text and music drive the pacing instead.
 
-5. **Create `lib/brand.blend`** — brand colours, fonts, node groups first, marked as assets,
+5. **Create `lib/design.blend`** — brand colours, fonts, node groups first, marked as assets,
    so shots link them instead of redefining them eight times. `master.blend` itself needs no
    manual step — `mise run comonteur:edit` creates it on first run.
 
@@ -144,7 +144,7 @@ the import workflow's lossiness applies — don't import your own output.
    what's missing and keeps what the harness produced.
 2. Map its files onto project names using the metadata table in `hyperframes-import.md`
    (`STORYBOARD.md` → `narrative.toml`, `audio_meta.json` → `audio/meta.json`, tokens →
-   `lib/brand.blend`). Metadata only — that document's timing-recovery and shot-rebuilding
+   `lib/design.blend`). Metadata only — that document's timing-recovery and shot-rebuilding
    steps are for imports and have no equivalent here.
 3. Then from-scratch's steps 2–8, skipping what the harness already produced.
 4. **Prefer `anchor` over absolute `start`** in `timeline.toml` (`timeline.md`). TTS gets

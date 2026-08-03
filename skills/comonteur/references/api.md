@@ -61,11 +61,15 @@ and zeroes `Base Color` — matches `kind="2d"` scenes, which have no lights. Pa
 `shading="lit"` for plain `Base Color` in a lit 3D scene; re-styling flips both inputs, so
 switching an object between the two is idempotent.
 
-Load a font once and reuse the `VectorFont` across every `create()`/`style()` call — `.load()`
-makes a new datablock each call, so guard it with `.get()`:
+Fonts live in `lib/design.blend`, asset-marked, alongside brand colours and node groups —
+never `bpy.data.fonts.load()` a `.ttf` straight from `assets/fonts/` into a shot. A path
+loaded that way is only as good as the process's current working directory at load time; a
+`lib/design.blend` link travels with the project instead. Load once and reuse the
+`VectorFont` across every `create()`/`style()` call — `link()` makes a new datablock only
+the first time, so guard repeats with `.get()`:
 
 ```python
-vfont = bpy.data.fonts.get("Inter-Bold") or bpy.data.fonts.load("assets/fonts/Inter-Bold.ttf")
+vfont = bpy.data.fonts.get("Inter-Bold") or cmt.library.link("lib/design.blend", "fonts", "Inter-Bold")
 cmt.text.create(scn, "Ship faster", font=vfont)
 cmt.text.check_fonts(scn)   # [] once every FONT object has a real font
 ```
@@ -279,7 +283,7 @@ human's `lib/`.
 Two link functions, and picking the wrong one fails:
 
 - `link()` is `assets_only=True` — for human-authored, asset-marked components in
-  `lib/brand.blend`, `lib/titles.blend`.
+  `lib/design.blend`, `lib/titles.blend`.
 - `link_scene()` is not — for agent-generated shot scenes in `compositions/frames/*.blend`,
   which are plain scenes, never asset-marked (`library.py:83`).
 
@@ -287,12 +291,12 @@ Both link, never append, so the data stays read-only where used. Both tag proven
 the datablock isn't tagged already — a human's component keeps its `human` origin across the
 link.
 
-Brand values set once via `set_param()` on a `PARAMS` scene in `lib/brand.blend` come back the
+Brand values set once via `set_param()` on a `PARAMS` scene in `lib/design.blend` come back the
 same way as any other custom property — `link()` returns the Scene, index it directly. Don't
 re-hardcode brand hex/font values per shot; link and read:
 
 ```python
-brand = cmt.library.link("lib/brand.blend", "scenes", "PARAMS")
+brand = cmt.library.link("lib/design.blend", "scenes", "PARAMS")
 cmt.text.create(scn, "Ship faster", color=brand["ink_black"], font=vfont)
 ```
 

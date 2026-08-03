@@ -53,7 +53,7 @@ human-readable description from `capture/extracted/asset-descriptions.md` into t
 | `hyperframes.json` | `timeline.toml` (fps, resolution, duration) + `master.blend` |
 | `index.html` | `timeline.toml` + `master.blend` |
 | `audio_meta.json` | `audio/meta.json` |
-| `capture/extracted/tokens.json` | brand parameters in `lib/brand.blend` (`cmt.scene.set_param`) |
+| `capture/extracted/tokens.json` | brand parameters in `lib/design.blend` (`cmt.scene.set_param`) |
 | `capture/extracted/asset-descriptions.md` | `description` per asset in `assets/manifest.json` |
 | `snapshots/` + `descriptions.md` | `.comonteur/review/` |
 
@@ -127,9 +127,9 @@ simplified read. Only simplify with a concrete, stated reason (a verified missin
 an explicit instruction, a real performance concern) — never just because it's less work; log
 it under "Report honestly" below either way.
 
-Build the shared brand pieces into `lib/brand.blend` first and link them back in every shot
+Build the shared brand pieces into `lib/design.blend` first and link them back in every shot
 (`api.md`'s `cmt.library` example) — don't re-hardcode the same hex/font values per shot, or
-`brand.blend` becomes decorative and a human's edit to it stops reaching anything downstream.
+`design.blend` becomes decorative and a human's edit to it stops reaching anything downstream.
 
 ## 6. Assemble
 

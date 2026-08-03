@@ -109,6 +109,7 @@ task — tell the human and offer to draft a GitHub issue at
 | `references/api.md` | Writing any scene content: scenes, text, animation, eases, components, preview, provenance. |
 | `references/timeline.md` | Assembling or changing the edit: `timeline.toml`, anchors, `reconcile`, VSE strips, audio, transitions. |
 | `references/hyperframes-import.md` | Converting an existing HyperFrames project into a comonteur project. |
+| `references/troubleshooting.md` | A previously-working project shows broken/missing data after reopening a `.blend` — fonts, links, or other external references. |
 
 Read the matching reference before the first call in that area — these are command
 contracts, not background reading. Don't read them all speculatively.

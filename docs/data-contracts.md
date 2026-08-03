@@ -57,7 +57,7 @@ them.
 │   └── frames/              # agent-generated scenes, one per shot, persistent & versioned
 │       └── shot-03.blend    #   cmt_id = shot-03 — same purpose as HyperFrames' *.html here
 ├── lib/                     # reusable, human-authored component library. git-lfs.
-│   ├── brand.blend          #   colours, fonts, node groups (assets)
+│   ├── design.blend         #   colours, fonts, node groups (assets)
 │   └── titles.blend         #   human-authored components
 ├── master.blend              # VSE assembly only. Links compositions/** + lib/**. git-lfs.
 │                              # `comonteur:edit` creates it on first run if missing —
@@ -239,7 +239,7 @@ carry over 1:1 too: `compositions/frames/NN-slug.html` becomes
 | `STORYBOARD.md` | `narrative.toml` — keep the `.md` verbatim alongside; it is the human-readable intent |
 | `hyperframes.json` | `timeline.toml` (fps, resolution, duration) + `master.blend` |
 | `audio_meta.json` | `audio/meta.json` |
-| `capture/extracted/tokens.json` | brand parameters in `lib/brand.blend` |
+| `capture/extracted/tokens.json` | brand parameters in `lib/design.blend` |
 | `capture/extracted/asset-descriptions.md` | `description` field per asset in the manifest |
 | `index.html` | `timeline.toml` + `master.blend` |
 | `snapshots/` + `descriptions.md` | `.comonteur/review/` |
