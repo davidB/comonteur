@@ -157,7 +157,7 @@ The deliverable is video + title + description + thumbnail, not video alone.
 - `mise run comonteur:render` — renders `timeline.blend`'s timeline into `renders/` using the
   file's own output settings. Never overwrite a render the human is holding onto without
   asking.
-- `thumbnail/thumbnail.png` renders from a dedicated `compositions/frames/thumbnail.blend`
+- `thumbnail/thumbnail.png` renders from a dedicated `shots/thumbnail.blend`
   reusing the components already in `lib/` — a real frame from the real project, not a
   screenshot.
 - `meta.json`: title, description, tags, chapters.

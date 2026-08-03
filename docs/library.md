@@ -21,7 +21,7 @@ equally to **reduce agent token consumption**: the agent calls
 | `text.py` | text objects, styling, fit-to-box, `measure`/`measure_many` (world-space bounding box — object must be visible at the current frame, `matrix_world` freezes stale for a hidden one), per-character split (preserves color and true left edge), `alpha_path` (Alpha-input fade, distinct from `color_path`'s alpha channel which Blender ignores). `style()`/`create()` color defaults to `shading='flat'` (Emission, since `kind='2d'` scenes have no lights) — pass `shading='lit'` for plain Base Color in lit 3D scenes. |
 | `color.py` | `hex_to_rgba`/`srgb_to_linear` — sRGB hex colors decoded to the linear RGBA Emission/Base Color inputs expect |
 | `vse.py` | assembly, scene strips, transitions, audio |
-| `library.py` | link `lib/*.blend` (component library) and `compositions/frames/*.blend` (per-shot scenes), asset catalog discovery |
+| `library.py` | link `lib/*.blend` (component library) and `shots/*.blend` (per-shot scenes), asset catalog discovery |
 | `project.py` | project-root discovery (`.comonteur/` marker) + portable `//`-relative asset path resolution, used by `library.py`/`journal.py`/`preview.py`/`reconcile.py` |
 | `card.py` | `create()` — image plane + hairline border + soft shadow bundle, the HyperFrames "card" pattern. `reorigin_left()` — re-origin a plane's mesh for edge-anchored scale-growth (progress bars, underline reveals) |
 | `introspect.py` | `outline`, `describe`, `animated_paths`, `find`, `drift` |

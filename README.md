@@ -155,7 +155,7 @@ end of this section).
    of the voiceover.
    ```
 
-3. The agent builds `compositions/frames/<shot>.blend`, renders review frames into
+3. The agent builds `shots/<shot>.blend`, renders review frames into
    `.comonteur/review/`, looks at them, and reports what it did — including anything it
    routed around because you'd claimed it.
 4. Switch to Blender. It's there, live, fully editable. Nudge the keyframe, change the
@@ -302,7 +302,7 @@ mise.toml                pinned tools; mise-tasks/comonteur/ holds the comonteur
 narrative.toml           script/shot intent (STORYBOARD.md kept alongside)
 assets/  audio/  captions/   media + word-level timing, manifest.json generated
 lib/                     your Blender components (brand, titles) — human-authored, git-lfs
-compositions/frames/     one .blend per shot, agent-generated, yours to edit too
+shots/     one .blend per shot, agent-generated, yours to edit too
 timeline.toml            the assembly — authoritative for the edit, not for scene contents
 timeline.blend             links the above into a VSE timeline
 .comonteur/              journal, snapshot, review frames

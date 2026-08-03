@@ -94,7 +94,7 @@ def link(blend_path: str, kind: str, name: str, root: str | None = None) -> Any:
 
 
 def link_scene(blend_path: str, scene_name: str, root: str | None = None) -> Any:
-    """Link a plain generated Scene (compositions/frames/*.blend, SPEC.md §5.1b) for
+    """Link a plain generated Scene (shots/*.blend, SPEC.md §5.1b) for
     use as a VSE Scene strip (M0.7). Unlike link(), not assets_only — these scenes are
     agent-generated, not asset-marked (docs/M4-FINDINGS.md).
     """

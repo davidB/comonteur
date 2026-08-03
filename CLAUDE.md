@@ -263,7 +263,7 @@ Agent writes are grouped into a `journal.batch(...)` context manager: exactly on
 | `anim.py` | `tween`, `stagger`, easing map (GSAP-equivalent), F-curve helpers — real keyframes preferred over baked/driver animation |
 | `text.py` | text objects, styling, fit-to-box, per-character split, multi-color inline spans, karaoke word highlight |
 | `fx.py` | camera/frame-level overlay effects (vignette) |
-| `library.py` | link `lib/*.blend` components and `compositions/frames/*.blend` scenes; asset catalog discovery |
+| `library.py` | link `lib/*.blend` components and `shots/*.blend` scenes; asset catalog discovery |
 | `project.py` | project-root discovery + portable `//`-relative asset path resolution |
 | `introspect.py` | `outline`, `describe`, `animated_paths`, `find`, `drift` — progressive disclosure, token-budgeted, never dumps a full tree |
 | `preview.py` | render frames for agent visual review (`.comonteur/review/`) |
@@ -287,7 +287,7 @@ turns out not to run on Blender's main thread (the documented hard trigger).
 ### Video project layout this tool operates on (docs/data-contracts.md §5.1b)
 
 Distinct from this repo's own layout. A generated project has `lib/` (human-authored
-components, git-lfs), `compositions/frames/*.blend` (one agent-generated scene per shot,
+components, git-lfs), `shots/*.blend` (one agent-generated scene per shot,
 **linked** — not appended — into `timeline.blend` so it stays read-only there),
 `timeline.toml` (assembly source of truth), and `.comonteur/journal.jsonl` +
 `snapshot.json`. Don't confuse this with `addon/`, `skills/`, `tests/` which belong to the

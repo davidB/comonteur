@@ -18,7 +18,7 @@ pytestmark = pytest.mark.pure
 def test_walk_up_finds_marker(tmp_path: Path) -> None:
     root = tmp_path / "proj"
     (root / ".comonteur").mkdir(parents=True)
-    nested = root / "compositions" / "frames"
+    nested = root / "shots"
     nested.mkdir(parents=True)
 
     assert project._walk_up(str(nested), ".comonteur") == str(root)
@@ -33,9 +33,9 @@ def test_walk_up_falls_back_to_start_when_marker_absent(tmp_path: Path) -> None:
 
 def test_to_link_path_relative_to_current_blend() -> None:
     target = "/proj/lib/design.blend"
-    current = "/proj/compositions/frames/shot-03.blend"
+    current = "/proj/shots/shot-03.blend"
 
-    assert project._to_link_path(target, current) == "//../../lib/design.blend"
+    assert project._to_link_path(target, current) == "//../lib/design.blend"
 
 
 def test_to_link_path_same_dir_as_current_blend() -> None:

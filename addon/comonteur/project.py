@@ -6,7 +6,7 @@ breaking links: `bpy.data.libraries.load()` and VSE strip creation need Blender'
 is opened — not baked in once), not a bare relative string, which Blender/os resolve
 against the process's cwd instead. A caller only knows a project-root-relative logical
 name ("lib/design.blend"); the //-relative form depends on where the *current* .blend
-sits (timeline.blend at the root, compositions/frames/*.blend one level down), so
+sits (timeline.blend at the root, shots/*.blend one level down), so
 resolution goes: logical name -> absolute (anchored on the project root) -> //-relative
 (anchored on the current .blend's own directory).
 

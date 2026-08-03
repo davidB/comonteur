@@ -16,7 +16,7 @@ audio_codec = "AAC"          # optional — only set on the scene when given
 
 [[shots]]
 id = "shot-01"
-source = {kind = "scene", blend = "compositions/frames/shot-01.blend", scene = "GEN_hook"}
+source = {kind = "scene", blend = "shots/shot-01.blend", scene = "GEN_hook"}
 start = 0                          # absolute frames
 duration = 90                      # frames
 
@@ -36,7 +36,7 @@ duration = 300
 
 [[shots]]
 id = "caption-card"
-source = {kind = "scene", blend = "compositions/frames/caption-card.blend", scene = "GEN_caption"}
+source = {kind = "scene", blend = "shots/caption-card.blend", scene = "GEN_caption"}
 overlay_of = "talking-head-03"     # same start/duration as talking-head-03, channel picked for you
 
 [[audio]]

@@ -65,7 +65,7 @@ transcription itself stays an external pipeline (§5.7) — captions ingest norm
 asset-library component discovery, brand params.
 
 ### M4 — VSE assembly
-`reconcile.py`, `timeline.toml` → strips, scene strips from `compositions/frames/*`, audio,
+`reconcile.py`, `timeline.toml` → strips, scene strips from `shots/*`, audio,
 transitions.
 
 ### M5 — Validation

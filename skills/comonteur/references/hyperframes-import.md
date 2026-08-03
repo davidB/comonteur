@@ -31,8 +31,8 @@ Carried over unchanged: `assets/**`, `capture/`, `renders/`, `thumbnail/`, root 
 `CLAUDE.md` / `AGENTS.md` stay exactly as they are. comonteur ships its contract in this skill
 and never writes or edits a project's agent-instruction files.
 
-`compositions/frames/NN-slug.html` → `compositions/frames/NN-slug.blend`, same path, one
-Blender scene each, `cmt_id = NN-slug`.
+`compositions/frames/NN-slug.html` → `shots/NN-slug.blend` — same slug, comonteur's own
+folder name, one Blender scene each, `cmt_id = NN-slug`.
 
 Two exclusions:
 
@@ -140,7 +140,7 @@ caption timing simply doesn't apply; on-screen text duration and the music itsel
 pacing.
 
 Finally: the deliverable is video + title + description + thumbnail, not video alone.
-`thumbnail/thumbnail.png` renders from a dedicated `compositions/frames/thumbnail.blend`
+`thumbnail/thumbnail.png` renders from a dedicated `shots/thumbnail.blend`
 reusing the components already in `lib/` — a still from the real project, not a screenshot.
 
 ## Delegate the mechanical pass

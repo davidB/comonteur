@@ -300,7 +300,7 @@ Two link functions, and picking the wrong one fails:
 
 - `link()` is `assets_only=True` — for human-authored, asset-marked components in
   `lib/design.blend`, `lib/titles.blend`.
-- `link_scene()` is not — for agent-generated shot scenes in `compositions/frames/*.blend`,
+- `link_scene()` is not — for agent-generated shot scenes in `shots/*.blend`,
   which are plain scenes, never asset-marked (`library.py:83`).
 
 Both link, never append, so the data stays read-only where used. Both tag provenance only if

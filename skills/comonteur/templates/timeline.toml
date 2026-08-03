@@ -9,7 +9,7 @@ resolution = [1920, 1080]
 
 [[shots]]
 id = "shot-01"
-source = {kind = "scene", blend = "compositions/frames/shot-01.blend", scene = "shot-01"}
+source = {kind = "scene", blend = "shots/shot-01.blend", scene = "shot-01"}
 start = 0
 duration = 90
 

@@ -34,7 +34,7 @@ def scene_shot(
         "id": shot_id,
         "source": {
             "kind": "scene",
-            "blend": "compositions/frames/shot-01.blend",
+            "blend": "shots/shot-01.blend",
             "scene": "GEN_hook",
         },
         "start": start,
@@ -208,7 +208,7 @@ def test_load_parses_real_toml(tmp_path: Path) -> None:
     path = tmp_path / "timeline.toml"
     path.write_text(
         'fps = 30\nresolution = [1920, 1080]\n\n[[shots]]\nid = "shot-01"\n'
-        'source = {kind = "scene", blend = "compositions/frames/shot-01.blend", '
+        'source = {kind = "scene", blend = "shots/shot-01.blend", '
         'scene = "GEN_hook"}\n'
         "start = 0\nduration = 90\n"
     )

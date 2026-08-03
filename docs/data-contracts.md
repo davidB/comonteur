@@ -53,13 +53,12 @@ them.
 ├── captions/
 ├── narrative.toml          # HyperFrames-equivalent: STORYBOARD.md kept alongside verbatim
 ├── capture/                # copied unchanged, if imported from a HyperFrames project — §5.4
-├── compositions/
-│   └── frames/              # agent-generated scenes, one per shot, persistent & versioned
-│       └── shot-03.blend    #   cmt_id = shot-03 — same purpose as HyperFrames' *.html here
-├── lib/                     # reusable, human-authored component library. git-lfs.
+├── shots/                    # agent-generated scenes, one per shot, persistent & versioned
+│   └── shot-03.blend         #   cmt_id = shot-03 — same purpose as HyperFrames' *.html here
+├── lib/                     # reusable component library — usually human-authored. git-lfs.
 │   ├── design.blend         #   colours, fonts, node groups (assets)
 │   └── titles.blend         #   human-authored components
-├── timeline.blend            # VSE assembly only. Links compositions/** + lib/**. git-lfs.
+├── timeline.blend            # VSE assembly only. Links shots/** + lib/**. git-lfs.
 │                              # `comonteur:edit` creates it on first run if missing —
 │                              # the one exception to "the agent never saves" (§4.5).
 ├── timeline.toml             # authoritative for assembly (§5.2)
@@ -74,15 +73,29 @@ them.
 ```
 
 This is the same root layout as a HyperFrames project — see §5.4 for the field-by-field
-adapter and the two reference project trees it's built from. `lib/`, `timeline.blend`,
-`timeline.toml`, `.comonteur/` are the only new names, needed because HyperFrames has no
-equivalent of a reusable Blender component library, `index.html`, `hyperframes.json`, or
-a mutation journal.
+adapter and the two reference project trees it's built from. `lib/`, `shots/`,
+`timeline.blend`, `timeline.toml`, `.comonteur/` are the only new names, needed because
+HyperFrames has no equivalent of a reusable Blender component library, `index.html`,
+`hyperframes.json`, or a mutation journal. `shots/` isn't HyperFrames' `compositions/frames/`
+name kept verbatim — comonteur isn't only ever imported from HyperFrames (a from-scratch or
+Remotion-sourced project has no HyperFrames tree to mirror), so the folder gets its own name;
+the importer maps `compositions/frames/NN-slug.html` to `shots/NN-slug.blend` rather than
+copying the path unchanged (§5.4).
 
-Agent-generated scenes live in their own `compositions/frames/*.blend` and are **linked**
+Agent-generated scenes live in their own `shots/*.blend` and are **linked**
 into `timeline.blend`, not appended. Linked data is read-only there, which is
 exactly the guarantee wanted. Library Overrides are the escape hatch when the timeline
 genuinely needs a local tweak.
+
+`lib/` being "human-authored" is the common case, not a rule the addon enforces:
+`workflows.md`'s from-scratch path has the agent build `lib/design.blend` itself from brand
+tokens (a design description), and the HyperFrames importer does the same from
+`capture/extracted/tokens.json`. The real distinction `shots/` vs. `lib/` draws is *scope*,
+not authorship — `shots/*.blend` is this project's own timeline, tied to a `timeline.toml`
+shot id; `lib/*.blend` is meant to outlive one project. A shot the human wants to reuse
+across future videos (a CTA, a chapter-title card) is promoted the same way any other
+component is: asset-mark the scene (§9) and move/link it into a `lib/*.blend` — no separate
+mechanism needed.
 
 **M0.7 must verify: can a linked Scene be used as a VSE Scene strip?** If not, the
 layout collapses to a single `timeline.blend` and the "never write the same file" property
@@ -108,7 +121,7 @@ audio_codec = "AAC"          # optional — only set on the scene when given
 
 [[shots]]
 id = "shot-01"
-source = {kind = "scene", blend = "compositions/frames/shot-01.blend", scene = "GEN_hook"}
+source = {kind = "scene", blend = "shots/shot-01.blend", scene = "GEN_hook"}
 start = 0
 duration = 90
 
@@ -122,7 +135,7 @@ transition = {type = "cross", duration = 0.4}
 
 [[shots]]
 id = "caption-card"
-source = {kind = "scene", blend = "compositions/frames/caption-card.blend", scene = "GEN_caption"}
+source = {kind = "scene", blend = "shots/caption-card.blend", scene = "GEN_caption"}
 overlay_of = "shot-02"      # inherits shot-02's start/duration; addon picks the channel
 
 [[audio]]
@@ -242,10 +255,10 @@ acceptance case.
 
 Most of the root is now an **identity mapping** — `assets/**`, `capture/`, `renders/`,
 `thumbnail/`, root `meta.json`, `CLAUDE.md`/`AGENTS.md` carry over unchanged — the last two
-literally so: comonteur neither generates nor edits them. Shot files
-carry over 1:1 too: `compositions/frames/NN-slug.html` becomes
-`compositions/frames/NN-slug.blend`, same path, one Blender scene each,
-`cmt_id = NN-slug`. What remains is genuinely translated:
+literally so: comonteur neither generates nor edits them. Shot files map 1:1 by slug, just
+under comonteur's own folder name: `compositions/frames/NN-slug.html` becomes
+`shots/NN-slug.blend`, one Blender scene each, `cmt_id = NN-slug`. What remains is genuinely
+translated:
 
 | HyperFrames | comonteur |
 |---|---|
@@ -293,7 +306,7 @@ motion directly from the BGM track. Treat this as a normal mode, not a degraded 
 The deliverable is video **+ title + description + thumbnail**, not video alone.
 
 Root `meta.json` carries title, description, tags, chapters. `thumbnail/thumbnail.png`
-is rendered from a dedicated Blender scene (`compositions/frames/thumbnail.blend`) — a
+is rendered from a dedicated Blender scene (`shots/thumbnail.blend`) — a
 still render from the real project beats an HTML screenshot, and reuses the brand
 components already in `lib/`.
 

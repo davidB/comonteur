@@ -44,7 +44,7 @@ DIRS = [
     "assets",
     "audio",
     "captions",
-    "compositions/frames",
+    "shots",
     "lib",
     "renders",
     "thumbnail",
