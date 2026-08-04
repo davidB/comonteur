@@ -162,12 +162,22 @@ def walk_files(directory: Path) -> list[Path]:
 
 
 def build_manifest(assets_dir: Path, out_path: Path) -> dict[str, Any]:
+    # `description` has no producer here (it's hand-edited or set by an import step) and
+    # this function otherwise fully regenerates the manifest — read the previous manifest
+    # so a hand-added description survives a rebuild instead of being silently wiped.
+    previous: dict[str, Any] = {}
+    if out_path.exists():
+        previous = json.loads(out_path.read_text(encoding="utf-8"))
+
     manifest: dict[str, Any] = {}
     for entry in walk_files(assets_dir):
         rel = entry.relative_to(assets_dir).as_posix()
         if rel == "manifest.json":
             continue
         asset = probe_asset(entry, rel)
+        old = previous.get(asset["sha256"])
+        if old and "description" in old:
+            asset["description"] = old["description"]
         manifest[asset["sha256"]] = asset
     # Sort the top level only, mirroring the Rust BTreeMap keyed by sha256: byte-stable
     # across runs so git sees no diff when nothing changed. Not `sort_keys=True` — that

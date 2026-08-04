@@ -4,6 +4,7 @@ Ported from cli/src/manifest.rs's #[cfg(test)] module when the Rust CLI was diss
 mise tasks. parse_probe() is tested against literal ffprobe fixtures — no subprocess.
 """
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -115,6 +116,35 @@ def test_probe_asset_falls_back_to_sha256_when_ffprobe_cant_read_it(
     assert "sha256" in entry
     assert "duration" not in entry
     assert "codec" not in entry
+
+
+def test_build_manifest_preserves_description_across_rebuild(tmp_path: Path) -> None:
+    assets_dir = tmp_path / "assets"
+    assets_dir.mkdir()
+    (assets_dir / "brand.woff2").write_bytes(b"not-a-media-file")
+    out_path = assets_dir / "manifest.json"
+
+    manifest.build_manifest(assets_dir, out_path)
+    sha = next(iter(manifest.build_manifest(assets_dir, out_path)))
+    written = json.loads(out_path.read_text(encoding="utf-8"))
+    written[sha]["description"] = "brand wordmark"
+    out_path.write_text(json.dumps(written), encoding="utf-8")
+
+    rebuilt = manifest.build_manifest(assets_dir, out_path)
+    assert rebuilt[sha]["description"] == "brand wordmark"
+
+
+def test_build_manifest_new_asset_has_no_description(tmp_path: Path) -> None:
+    assets_dir = tmp_path / "assets"
+    assets_dir.mkdir()
+    (assets_dir / "a.woff2").write_bytes(b"aaa")
+    out_path = assets_dir / "manifest.json"
+    manifest.build_manifest(assets_dir, out_path)
+
+    (assets_dir / "b.woff2").write_bytes(b"bbb")
+    rebuilt = manifest.build_manifest(assets_dir, out_path)
+    b_entry = next(e for e in rebuilt.values() if e["path"] == "b.woff2")
+    assert "description" not in b_entry
 
 
 def test_walk_files_skips_dotfiles_and_recurses(tmp_path: Path) -> None:
