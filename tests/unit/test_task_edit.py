@@ -45,6 +45,7 @@ def _read_timeline(timeline_blend: Path) -> dict:
         "    'filepath': scn.render.filepath,\n"
         "    'has_video_editing': ws is not None,\n"
         "    'file_browser_dir': fb_dir,\n"
+        "    'object_count': len(scn.objects),\n"
         "}))\n"
     )
     proc = subprocess.run(
@@ -78,6 +79,7 @@ def test_creates_timeline_blend_from_timeline_toml(tmp_path: Path) -> None:
     assert info["filepath"] == "//renders/"
     assert info["has_video_editing"] is True
     assert info["file_browser_dir"] == f"{tmp_path}/"
+    assert info["object_count"] == 0
 
 
 def test_second_run_is_a_no_op(tmp_path: Path) -> None:

@@ -49,14 +49,16 @@ def _render_settings_from_timeline(root: Path) -> dict[str, Any]:
     }
 
 
-def ensure_timeline(root: Path) -> None:
+def ensure_timeline(root: Path) -> bool:
     """Create `timeline.blend` if it doesn't exist yet — the one exception to "the
     agent never saves the .blend" (docs/architecture.md §4.5): nothing to clobber on
     a brand-new file, and every later `edit`/`render` run still refuses to re-save.
+
+    Returns whether it was just created (vs. already existing).
     """
     timeline_blend = root / "timeline.blend"
     if timeline_blend.exists():
-        return
+        return False
     settings_json = json.dumps(_render_settings_from_timeline(root))
     script = f"""
 import importlib
@@ -89,18 +91,39 @@ scn = bpy.context.scene
 with journal.batch("create timeline.blend"):
     scn.name = "timeline"
     provenance.tag(scn, "timeline")
+    # Default startup scene, not a clean one (scene.new_scene() also needs
+    # bpy.context.window, unavailable here) — strip its stock cube/camera/light.
+    for obj in list(scn.objects):
+        bpy.data.objects.remove(obj, do_unlink=True)
     if scn.sequence_editor is None:
         scn.sequence_editor_create()
     cmt_reconcile.apply_render_settings(scn, settings)
 bpy.ops.wm.save_as_mainfile(filepath={str(timeline_blend)!r})
 """
     blender_headless(script)
+    return True
+
+
+# `workspace.append_activate`'s "activate" half — and any direct write to
+# `Window.workspace`/`Window.screen` — is a no-op under `blender -b` (background mode):
+# there's no real window for WM_window_set_active_workspace to redraw, so the file gets
+# saved with the stock "Layout" workspace still active (verified: it silently keeps its
+# old value even immediately after assignment, in the same process). Switching only takes
+# effect with a real GUI window, so it runs here as a `--python-expr` in the *interactive*
+# launch, once, right after a fresh timeline.blend is created.
+_ACTIVATE_VIDEO_EDITING = (
+    "import bpy\n"
+    "ws = bpy.data.workspaces.get('Video Editing')\n"
+    "if ws and bpy.context.window:\n"
+    "    bpy.context.window.workspace = ws\n"
+)
 
 
 def main(argv: list[str]) -> int:
     exe = require_blender()
-    ensure_timeline(Path.cwd())
-    cmd = [exe, "timeline.blend", *argv]
+    just_created = ensure_timeline(Path.cwd())
+    extra = ["--python-expr", _ACTIVATE_VIDEO_EDITING] if just_created else []
+    cmd = [exe, "timeline.blend", *extra, *argv]
     # execvp hands the terminal to Blender outright; Windows has no equivalent (it would
     # spawn and return), so there we wait and pass the exit code back.
     if os.name == "posix":
