@@ -182,10 +182,13 @@ def split_spans(
     heading), since split_chars() + style_spans() costs one object per glyph even when
     only 2 are ever restyled independently.
 
-    Gaps between spans (whitespace in the source body) advance the cursor by
-    size * space_width_factor per skipped char -- same fallback split_chars() uses for a
-    zero-width space glyph, so word spacing matches. Preserves obj's base color, same as
-    split_chars(); a span's props (e.g. {"color": ...}) restyle on top of it.
+    Text not covered by any span -- leading text before the first span, a skipped range
+    between two spans, or trailing text after the last span -- is preserved as its own
+    unstyled (base color/font) object, so a partial span list still renders the full
+    string; only a gap that's pure whitespace is collapsed into a cursor advance of
+    size * space_width_factor per char instead of becoming an object (same fallback
+    split_chars() uses for a zero-width space glyph). A span's props (e.g. {"color": ...})
+    restyle on top of the base color/font, same as split_chars().
     """
     scene = next(s for s in bpy.data.scenes if obj.name in s.objects)
     body, base_name, base_size, base_font = obj.data.body, obj.name, obj.data.size, obj.data.font
@@ -194,18 +197,12 @@ def split_spans(
     left_x = measure(obj)["min"][0]
     bpy.data.objects.remove(obj, do_unlink=True)
 
-    parts = []
+    parts: list[Any] = []
     cursor_x = left_x
-    prev_end = 0
-    for i, span in enumerate(spans):
-        start, end = span[0], span[1]
-        props = span[2] if len(span) > 2 else {}
-        cursor_x += sum(
-            base_size * space_width_factor for ch in body[prev_end:start] if ch.isspace()
-        )
-        part_obj = create(
-            scene, body[start:end], name=f"{base_name}.{i}", size=base_size, font=base_font
-        )
+
+    def emit(text: str, name: str, props: dict[str, Any]) -> None:
+        nonlocal cursor_x
+        part_obj = create(scene, text, name=name, size=base_size, font=base_font)
         part_obj.location = origin.copy()
         part_obj.location.x = cursor_x
         if color is not None:
@@ -214,8 +211,25 @@ def split_spans(
             style(part_obj, **props)
         bpy.context.view_layer.update()
         cursor_x += part_obj.dimensions.x + spacing
-        prev_end = end
         parts.append(part_obj)
+
+    def emit_gap(text: str, name: str) -> None:
+        nonlocal cursor_x
+        if not text:
+            return
+        if text.strip():
+            emit(text, name, {})
+        else:
+            cursor_x += sum(base_size * space_width_factor for ch in text if ch.isspace())
+
+    prev_end = 0
+    for i, span in enumerate(spans):
+        start, end = span[0], span[1]
+        props = span[2] if len(span) > 2 else {}
+        emit_gap(body[prev_end:start], f"{base_name}.gap{i}")
+        emit(body[start:end], f"{base_name}.{i}", props)
+        prev_end = end
+    emit_gap(body[prev_end:], f"{base_name}.gap{len(spans)}")
     return parts
 
 

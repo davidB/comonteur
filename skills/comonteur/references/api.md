@@ -111,8 +111,10 @@ cmt.text.split_spans(title, [
 ```
 
 `word_spans(body)` gives whitespace-delimited `(start, end)` pairs; pass hand-picked indices
-instead for spans finer than a whole word. `split_spans()` preserves the original object's
-base color/font and gaps between spans stay at the source spacing.
+instead for spans finer than a whole word — a partial span list is fine, since any text your
+spans don't cover (leading, trailing, or between spans) is kept as its own unstyled
+pass-through object in the original base color/font. Only a pure-whitespace gap is collapsed
+into spacing instead of becoming an object.
 
 Only fall back to `split_chars()` + `style_spans()` when the granularity itself needs to be
 per-character — real letter-level animation (typewriter reveal, per-letter stagger/tilt), not

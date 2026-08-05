@@ -33,3 +33,25 @@ bsdf0 = parts[0].data.materials[0].node_tree.nodes["Principled BSDF"]
 assert close(tuple(bsdf0.inputs["Emission Color"].default_value), RED)
 bsdf1 = parts[1].data.materials[0].node_tree.nodes["Principled BSDF"]
 assert close(tuple(bsdf1.inputs["Emission Color"].default_value), BLUE)
+
+# Issue #7: a partial span list (not covering the whole body) used to silently drop the
+# uncovered text instead of passing it through unstyled.
+FIRE_ORANGE = (0.9, 0.4, 0.1, 1.0)
+
+with cmt.journal.batch("fixture 2"):
+    accent_title = cmt.text.create(scn, "leading text and weekly status")
+
+accent_body = accent_title.data.body
+accent_start = accent_body.index("weekly")
+with cmt.journal.batch("split spans partial"):
+    accent_parts = cmt.text.split_spans(
+        accent_title, [(accent_start, len(accent_body), {"color": FIRE_ORANGE})]
+    )
+
+assert len(accent_parts) == 2, [p.name for p in accent_parts]
+assert accent_parts[0].data.body == accent_body[:accent_start], accent_parts[0].data.body
+assert accent_parts[1].data.body == "weekly status", accent_parts[1].data.body
+assert accent_parts[1].location.x > accent_parts[0].location.x, (
+    accent_parts[0].location.x,
+    accent_parts[1].location.x,
+)
