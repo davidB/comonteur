@@ -35,7 +35,6 @@ from _common import tasks_dir
 # `.gitignore`/`.gitattributes` are static and inert — this task never runs `git`/`git lfs`
 # itself; version control is entirely up to whoever manages the project.
 ROOT_FILES = [
-    "narrative.toml",
     "timeline.toml",
     "meta.json",
     ".gitignore",

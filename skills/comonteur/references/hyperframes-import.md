@@ -49,7 +49,7 @@ human-readable description from `capture/extracted/asset-descriptions.md` into t
 
 | HyperFrames | comonteur |
 |---|---|
-| `STORYBOARD.md` | `narrative.toml` — keep the `.md` verbatim alongside, it's the human-readable intent |
+| `STORYBOARD.md` | fully transcribed into `timeline.toml`'s per-shot/doc-level `notes` and intent fields — nothing dropped; the `.md` becomes a read-only archive afterward |
 | `hyperframes.json` | `timeline.toml` (fps, resolution, duration) + `timeline.blend` |
 | `index.html` | `timeline.toml` + `timeline.blend` |
 | `audio_meta.json` | `audio/meta.json` |
@@ -61,7 +61,7 @@ Use the tasks for the ingest steps rather than hand-writing outputs (`comonteur:
 them — see `workflows.md`):
 
 ```bash
-mise run comonteur:ingest_narrative    # validate what you wrote
+mise run comonteur:reconcile           # validate timeline.toml's shot intents + assembly
 mise run comonteur:convert_fonts       # web fonts are .woff2; Blender cannot load those
 mise run comonteur:ingest_manifest     # assets/ -> assets/manifest.json
 ```
@@ -158,7 +158,7 @@ yourself. Give that subagent:
 - the source project root and target project root
 - the identity-mapping list and the translated-files table above, verbatim
 - instruction to run the three ingest/font-conversion tasks listed in step 2
-  (`mise run comonteur:ingest_narrative`, `ingest_manifest`, `convert_fonts`), and to report
+  (`mise run comonteur:reconcile`, `ingest_manifest`, `convert_fonts`), and to report
   back what it copied, translated, and skipped (missing files, files it wasn't sure how to
   map)
 

@@ -5,7 +5,6 @@ parser rejects turns the documented first run into an error message, which is ex
 of thing nobody notices from inside the repo — the maintainer always has a real timeline.toml.
 """
 
-import tomllib
 from pathlib import Path
 
 import pytest
@@ -16,7 +15,6 @@ pytestmark = pytest.mark.task
 TEMPLATES = Path(__file__).resolve().parents[2] / "skills" / "comonteur" / "templates"
 
 reconcile = load("reconcile")
-ingest_narrative = load("ingest_narrative")
 
 
 def test_timeline_template_passes_reconcile() -> None:
@@ -27,6 +25,7 @@ def test_timeline_template_passes_reconcile() -> None:
     assert doc["shots"], "the template must ship at least one usable [[shots]] block"
     assert doc["fps"] == 30
     assert doc["resolution"] == [1920, 1080]
+    assert doc["shots"][0].get("intent"), "the shipped shot must state its intent too"
 
 
 def test_timeline_template_resolves_to_frames() -> None:
@@ -38,11 +37,6 @@ def test_timeline_template_resolves_to_frames() -> None:
     for shot in resolved["shots"]:
         assert isinstance(shot["start_frame"], int), shot
         assert shot["duration_frames"] > 0, shot
-
-
-def test_narrative_template_passes_ingest() -> None:
-    doc = tomllib.loads((TEMPLATES / "narrative.toml").read_text())
-    ingest_narrative.validate(doc)
 
 
 def test_meta_template_is_valid_json() -> None:

@@ -51,7 +51,6 @@ them.
 ├── assets/                 # same as HyperFrames — manifest.json generated alongside
 ├── audio/
 ├── captions/
-├── narrative.toml          # HyperFrames-equivalent: STORYBOARD.md kept alongside verbatim
 ├── capture/                # copied unchanged, if imported from a HyperFrames project — §5.4
 ├── shots/                    # agent-generated scenes, one per shot, persistent & versioned
 │   └── shot-03.blend         #   cmt_id = shot-03 — same purpose as HyperFrames' *.html here
@@ -61,7 +60,7 @@ them.
 ├── timeline.blend            # VSE assembly only. Links shots/** + lib/**. git-lfs.
 │                              # `comonteur:edit` creates it on first run if missing —
 │                              # the one exception to "the agent never saves" (§4.5).
-├── timeline.toml             # authoritative for assembly (§5.2)
+├── timeline.toml             # shot intent + authoritative assembly, one file (§5.2)
 ├── .comonteur/
 │   ├── journal.jsonl
 │   ├── snapshot.json         # last agent-written values, for drift/claim derivation
@@ -107,12 +106,18 @@ never runs `git`/`git lfs` itself.
 
 ### 5.2 `timeline.toml` — authoritative
 
-The only file the agent treats as desired-state. Governs assembly only; says nothing
-about scene interiors.
+The only file the agent treats as desired-state, for assembly — says nothing about scene
+interiors. It also carries each shot's production intent (`intent`, `target_duration`, `vo`,
+`broll`, `notes`) in the same `[[shots]]` table as its assembly fields: one shot list, one
+`id`, rather than a separate intent file that could silently drift out of sync with the
+assembly (an earlier design split these into `timeline.toml` + `narrative.toml`; nothing ever
+derived one from the other, so nothing caught a shot renamed in one and not the other —
+merging them removes that drift class entirely).
 
 ```toml
 fps = 30
 resolution = [1920, 1080]
+# video / voiceover / brand — "this project" header, plus any doc-level `notes` (see below)
 
 [encode]
 video_codec = "H265"        # optional, default "H265" — any scene.render.ffmpeg.codec identifier
@@ -121,12 +126,17 @@ audio_codec = "AAC"          # optional — only set on the scene when given
 
 [[shots]]
 id = "shot-01"
+intent = "Names the pain before anything else."
+target_duration = 4.0        # aspirational — distinct from the authoritative `duration` below
 source = {kind = "scene", blend = "shots/shot-01.blend", scene = "GEN_hook"}
 start = 0
 duration = 90
 
 [[shots]]
 id = "shot-02"
+intent = "Proves the claim with real footage of the product."
+vo = "line of narration"
+broll = "assets/broll_terminal.mp4"
 source = {kind = "movie", path = "assets/broll_terminal.mp4"}
 anchor = {word = "observability", occurrence = 1, offset = -0.2}
 duration = 120
@@ -135,14 +145,35 @@ transition = {type = "cross", duration = 0.4}
 
 [[shots]]
 id = "caption-card"
+intent = "Labels what's on screen in shot-02."
 source = {kind = "scene", blend = "shots/caption-card.blend", scene = "GEN_caption"}
 overlay_of = "shot-02"      # inherits shot-02's start/duration; addon picks the channel
+
+[[shots]]
+id = "shot-05"
+intent = "Not yet built — planned during bootstrap, before its .blend exists."
+target_duration = 5.0
+# no `source` yet: a valid intent-only stub, excluded from the resolved plan until
+# assembly fields (source/start-or-anchor/duration) are added once the shot is authored.
 
 [[audio]]
 id = "vo"
 path = "audio/narration.wav"
 start = 0
 ```
+
+`notes` (optional, per shot and at the document's top level) is a freeform markdown string —
+comments, directives for the human/agent to adjust the shot, complementary description, links
+to references/resources/inspiration, even pseudo-code fragments. It's the one bounded field
+that captures whatever a source doc/tool contributes beyond the fields above (a HyperFrames
+`STORYBOARD.md`'s `persuasion`/`beat`/`blueprint`/`rules`/`narrativeRole`/`keyMessage`/
+on-screen text/asset roles at shot level; palette/motion-grammar/negative-list/distribution
+metadata at document level) — never validated beyond "must be a string if present." Deliberately
+*not* arbitrary extra TOML keys (every source tool would invent its own vocabulary, so there'd
+be no stable schema to point at) and *not* raw `#` comments (they don't reliably associate
+with one shot, and `tomllib` strips them on parse — anything that ever reads-and-rewrites this
+file would silently destroy them). One named field keeps the schema fixed forever while still
+being lossless.
 
 `transition` (optional, on a shot) applies a crossfade between that shot and the one
 immediately before it; `duration` is seconds, like `anchor.offset` — both are timed
@@ -218,7 +249,8 @@ No rendering instructions cross this line. The boundary is conceptual — which 
 files an agent is allowed to treat as upstream-authored input — not a directory: unlike
 earlier drafts, these live at project root (§5.1b), same as in a HyperFrames project.
 
-- `narrative.toml` — shots: intent, target duration, VO reference, b-roll reference.
+- `timeline.toml`'s per-shot intent fields (`intent`, `target_duration`, `vo`, `broll`,
+  `notes` — §5.2) — formerly a separate `narrative.toml`, now merged into the one shot list.
 - `assets/manifest.json` — content-addressed; per asset: sha256, path, duration, fps,
   resolution, has_alpha, codec (from `ffprobe`).
 - `audio/*.wav`
@@ -237,13 +269,13 @@ see §5.7), so Whisper is a primary path, not a fallback. Use synthesis timing m
 whenever the audio *was* synthesized, since they avoid ASR error on proper nouns and
 technical terms.
 
-**Implementation (M2):** `mise-tasks/comonteur/ingest_{narrative,manifest,captions}.py` —
-a first-cut
-`narrative.toml` schema (`shots: [{id, intent, target_duration, vo, broll}]`),
-`ffprobe`-backed manifest building, and word-level caption normalization into
-`{"words": [{"word", "start", "end"}]}`. Caption ingest normalizes JSON that already
-exists (Whisper's `segments[].words[]`, or upstream-supplied TTS timing marks) — it does
-not invoke `whisper` itself; that stays an external pipeline per §5.7.
+**Implementation (M2):** `mise-tasks/comonteur/ingest_{manifest,captions}.py` plus
+`reconcile.py`'s validation pass over `timeline.toml`'s intent fields
+(`shots: [{id, intent, target_duration, vo, broll, notes}]`) — `ffprobe`-backed manifest
+building, and word-level caption normalization into `{"words": [{"word", "start", "end"}]}`.
+Caption ingest normalizes JSON that already exists (Whisper's `segments[].words[]`, or
+upstream-supplied TTS timing marks) — it does not invoke `whisper` itself; that stays an
+external pipeline per §5.7.
 
 ### 5.4 HyperFrames project adapter
 
@@ -262,7 +294,7 @@ translated:
 
 | HyperFrames | comonteur |
 |---|---|
-| `STORYBOARD.md` | `narrative.toml` — keep the `.md` verbatim alongside; it is the human-readable intent |
+| `STORYBOARD.md` | fully transcribed into `timeline.toml`'s per-shot/doc-level `notes` and intent fields (§5.2) — nothing dropped. The `.md` is kept afterward only as a read-only archive, never re-consulted by tooling. |
 | `hyperframes.json` | `timeline.toml` (fps, resolution, duration) + `timeline.blend` |
 | `audio_meta.json` | `audio/meta.json` |
 | `capture/extracted/tokens.json` | brand parameters in `lib/design.blend` |
@@ -270,6 +302,10 @@ translated:
 | `index.html` | `timeline.toml` + `timeline.blend` |
 | `snapshots/` + `descriptions.md` | `.comonteur/review/` |
 | `frame.md` | same convention, generated by the skill |
+
+This importer isn't built yet (M5, §10) — noted here so its implementation follows the
+merged-file design: transcribe every `STORYBOARD.md` field into `timeline.toml`, then archive
+the `.md`, rather than the earlier "keep the `.md` as the real intent" approach.
 
 **Known-hard: timing.** There is no timeline data file. Shot **order** is the filename
 numeric prefix; shot **durations** and all GSAP timing live inside the HTML/JS. Import is

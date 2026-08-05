@@ -28,7 +28,7 @@ def project(tmp_path: Path) -> Path:
 
 
 def test_init_scaffolds_the_documented_tree(project: Path) -> None:
-    for name in ("narrative.toml", "timeline.toml", "meta.json", "mise.toml"):
+    for name in ("timeline.toml", "meta.json", "mise.toml"):
         assert (project / name).is_file(), name
     tasks = {p.stem for p in (project / "mise-tasks" / "comonteur").glob("*.py")}
     assert "reconcile" in tasks and "init" in tasks, tasks

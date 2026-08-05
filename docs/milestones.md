@@ -52,13 +52,15 @@ both enabled; MCP socket reachable; `ffmpeg`/`ffprobe` on PATH; git-lfs initiali
 project layout valid; journal readable. Cheap to write, pays for itself immediately.
 
 ### M2 — Production contract
-`narrative.toml` + manifest ingest, ffprobe, TTS timing-mark captions, Whisper fallback.
+`timeline.toml`'s intent fields (§5.2/§5.3) + manifest ingest, ffprobe, TTS timing-mark
+captions, Whisper fallback.
 
 Originally shipped as `cli/`, a Rust crate (`comonteur ingest {narrative,manifest,captions}`).
-Now `comonteur:ingest_{narrative,manifest,captions}` — one `uv run --script` Python file each,
-shipped inside the skill; see §7.5/§8 for why the Rust split was reversed. Whisper
-transcription itself stays an external pipeline (§5.7) — captions ingest normalizes its
-`transcript.json` output rather than invoking `whisper`.
+Now `comonteur:ingest_{manifest,captions}` plus `reconcile.py`'s validation pass absorbing
+what a separate `narrative.toml`/`ingest_narrative.py` used to check — one `uv run --script`
+Python file per remaining task, shipped inside the skill; see §7.5/§8 for why the Rust split
+was reversed. Whisper transcription itself stays an external pipeline (§5.7) — captions
+ingest normalizes its `transcript.json` output rather than invoking `whisper`.
 
 ### M3 — Scene authoring
 `anim.py`, `text.py`, fit-to-box, per-character stagger via String to Curves, Actions/NLA,

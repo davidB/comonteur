@@ -44,7 +44,6 @@ TASK_SCRIPTS = [
     "edit",
     "ingest_captions",
     "ingest_manifest",
-    "ingest_narrative",
     "init",
     "install",
     "install_addon",
@@ -179,12 +178,11 @@ def check_mcp() -> None:
 
 def check_project(root: Path) -> None:
     """Project checks run only inside a project — nothing here is fatal to the toolchain."""
-    if not ((root / "narrative.toml").is_file() or (root / "timeline.toml").is_file()):
+    if not (root / "timeline.toml").is_file():
         return
     print(f"\nproject ({root})")
     checks = [
-        ("narrative.toml", "shot intents live here"),
-        ("timeline.toml", "the assembly lives here"),
+        ("timeline.toml", "shot intents + the assembly live here"),
         (
             "timeline.blend",
             "create and save it in Blender — the agent never saves for you",

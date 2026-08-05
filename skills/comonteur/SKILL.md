@@ -77,8 +77,8 @@ Break one of these and you corrupt the project silently.
 This is the loop for one shot. For work around it — starting a project, ingest, assembly,
 delivery — read `references/workflows.md` first.
 
-1. **Read the intent.** `narrative.toml` (and `STORYBOARD.md` if present) for what the shot
-   says; `timeline.toml` for where it sits.
+1. **Read the intent.** The shot's `timeline.toml` entry — `intent`, `notes`, and where it
+   sits in the assembly.
 2. **Read the scene before writing to it.** `cmt.introspect.outline(scn)`,
    `describe(obj, "data")`, `animated_paths(scn)`. These are capped and truncated on purpose
    (`introspect.py:1`). Never dump `bpy.data` or walk a whole tree — that burns the context

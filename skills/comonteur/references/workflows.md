@@ -19,11 +19,10 @@ The menu, as `init` installs it:
 | `comonteur:install` | install/repair the toolchain (both add-ons + MCP server), then doctor |
 | `comonteur:install_addon` / `install_mcp` | the two halves of `install`, runnable on their own |
 | `comonteur:init` | top up this project's scaffold (add-only) |
-| `comonteur:ingest_narrative` | validate `narrative.toml` |
 | `comonteur:ingest_manifest` | `assets/` → `assets/manifest.json` |
 | `comonteur:ingest_captions <in.json> [--kind whisper\|tts]` | word timings → `captions/vo.json` |
 | `comonteur:convert_fonts` | `.woff`/`.woff2` → `.ttf`/`.otf` |
-| `comonteur:reconcile` | `timeline.toml` → `.comonteur/timeline.resolved.json` |
+| `comonteur:reconcile` | validate `timeline.toml` (shot intents + assembly) → `.comonteur/timeline.resolved.json` |
 | `comonteur:edit` | open `timeline.blend` |
 | `comonteur:render` | render the timeline to `renders/` |
 
@@ -77,7 +76,7 @@ If ambiguous, ask.
    project standardizes on it for everything after `init` anyway.
 
    It creates the project tree, every `comonteur:*` task (`mise-tasks/comonteur/`, from
-   `<skill>/templates/`), and stub `narrative.toml` / `timeline.toml` / `meta.json`. It
+   `<skill>/templates/`), and stub `timeline.toml` / `meta.json`. It
    writes no `AGENTS.md`/`CLAUDE.md` — this skill is the contract, and a project's own
    agent-instruction files belong to the human. It's add-only: an existing folder with
    footage, a `.blend`, or its own `mise.toml` is a normal input — nothing already there is
@@ -94,15 +93,17 @@ If ambiguous, ask.
    to. Version control is the human's call, on their own or via another tool — not this
    skill's job.
 
-3. **Write `narrative.toml`** from what the human described — `shots: [{id, intent,
-   target_duration, vo, broll}]` — then validate it, don't eyeball it:
+3. **Write each shot's intent directly into `timeline.toml`** from what the human described —
+   `[[shots]]` with `id`, `intent`, and optionally `target_duration`/`vo`/`broll`/`notes` — a
+   shot with no `source` yet is a valid intent-only stub. Then validate it, don't eyeball it:
 
    ```bash
-   mise run comonteur:ingest_narrative
+   mise run comonteur:reconcile
    ```
 
-   Keep any prose brief (`STORYBOARD.md`, `design.md`) verbatim alongside it. The TOML is the
-   machine-readable projection, not a replacement for the human's own words.
+   If a source doc exists (`STORYBOARD.md`, `design.md`), transcribe everything it says into
+   the matching shots' `notes` fields rather than keeping the prose as the real intent — once
+   transcribed, the source doc is a read-only archive, not something to keep re-reading.
 
 4. **Ingest what exists.** Assets and captions only — skip either if there's none:
 
@@ -121,7 +122,7 @@ If ambiguous, ask.
    so shots link them instead of redefining them eight times. `timeline.blend` itself needs no
    manual step — `mise run comonteur:edit` creates it on first run.
 
-6. **Fill in `narrative.toml`'s "This project" header** — what this video is, whether there's
+6. **Fill in `timeline.toml`'s "This project" header** — what this video is, whether there's
    a voiceover, where the brand lives.
 
 7. **Hand back.** Ask the human to open Blender, or run `mise run comonteur:edit` yourself to
@@ -143,9 +144,9 @@ the import workflow's lossiness applies — don't import your own output.
    `assets/` / `audio/` / word-level-caption contract. `init` on that folder is safe — it adds
    what's missing and keeps what the harness produced.
 2. Map its files onto project names using the metadata table in `hyperframes-import.md`
-   (`STORYBOARD.md` → `narrative.toml`, `audio_meta.json` → `audio/meta.json`, tokens →
-   `lib/design.blend`). Metadata only — that document's timing-recovery and shot-rebuilding
-   steps are for imports and have no equivalent here.
+   (`STORYBOARD.md` → `timeline.toml`'s intent/`notes` fields, `audio_meta.json` →
+   `audio/meta.json`, tokens → `lib/design.blend`). Metadata only — that document's
+   timing-recovery and shot-rebuilding steps are for imports and have no equivalent here.
 3. Then from-scratch's steps 2–8, skipping what the harness already produced.
 4. **Prefer `anchor` over absolute `start`** in `timeline.toml` (`timeline.md`). TTS gets
    re-synthesized; anchors survive it, absolute frames don't.
@@ -185,8 +186,8 @@ time — this is about context, not concurrency.
 
 For each shot, launch a foreground `Agent` call (`run_in_background: false` — you need the
 outcome before starting the next shot; the shared Blender instance can't run two at once
-anyway). Hand it a self-contained prompt: the shot's `narrative.toml` entry, its
-`timeline.toml` placement, the project root, and that Blender is already open and
+anyway). Hand it a self-contained prompt: the shot's `timeline.toml` entry (intent, `notes`,
+and its assembly placement), the project root, and that Blender is already open and
 connected — the subagent reaches it through `execute_python` exactly as you would. Shared
 assets under `lib/*.blend` and `assets/` need no separate hand-off: the subagent links the
 same files you would.

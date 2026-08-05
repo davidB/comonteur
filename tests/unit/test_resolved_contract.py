@@ -27,6 +27,7 @@ import reconcile as addon_reconcile  # noqa: E402
 def _doc(**shot: object) -> dict[str, object]:
     base = {
         "id": "shot-01",
+        "intent": "test intent",
         "source": {"kind": "movie", "path": "assets/a.mp4"},
         "start": 0,
         "duration": 30,
@@ -70,10 +71,12 @@ def test_validate_rejects_source_missing_its_keys() -> None:
     assert any("path" in e for e in errors), errors
 
 
-def test_validate_rejects_missing_source() -> None:
+def test_missing_source_is_a_valid_intent_only_stub_not_an_error() -> None:
+    """A shot with no `source` yet isn't malformed — it's not built yet. It's excluded
+    from the resolved plan (test_task_reconcile.py) rather than rejected here."""
     doc = _doc()
     del doc["shots"][0]["source"]
-    assert any("source" in e for e in task.validate(doc)), task.validate(doc)
+    assert task.validate(doc) == []
 
 
 def test_known_source_kinds_agree_with_the_addon() -> None:

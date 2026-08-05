@@ -185,7 +185,7 @@ own `build`/`test`); project tasks ship as files under `mise-tasks/comonteur/` s
 `mise.toml` is never rewritten. `skills/` is Markdown + Python + TOML — no lint/test root, not
 in `[monorepo] config_roots`.
 
-The task scripts are `*.py` with underscored names (`ingest_narrative.py`) because mise strips
+The task scripts are `*.py` with underscored names (`ingest_manifest.py`) because mise strips
 the `.py` from a file task's name and Python cannot import a hyphenated module — the tests
 import them directly. Keep `#!/usr/bin/env -S uv run --script` plus a PEP 723 header on each;
 all are stdlib-only (`dependencies = []`) except `convert_fonts.py`, which needs a Brotli

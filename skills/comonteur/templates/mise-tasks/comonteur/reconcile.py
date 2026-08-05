@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # fmt: off
-#MISE description="Resolve timeline.toml (anchors -> frames) into .comonteur/timeline.resolved.json"
+#MISE description="Validate timeline.toml (shot intents + assembly) and resolve anchors -> frames into .comonteur/timeline.resolved.json"
 #MISE dir="{{config_root}}"
 #MISE sources=["timeline.toml", "audio/transcript.json"]
 #MISE outputs=[".comonteur/timeline.resolved.json"]
@@ -15,11 +15,17 @@
 # ///
 # Step 1 of assembly. Step 2 runs inside Blender: cmt.reconcile.apply() — the add-on never
 # parses a spec file and never reads a transcript.
-"""`timeline.toml` → resolved assembly plan — SPEC.md §5.2/§10 M4. `timeline.toml` is the
-only file this task resolves rather than merely validates: the anchor-relative timing
+"""`timeline.toml` → resolved assembly plan — SPEC.md §5.2/§5.3/§10 M4. `timeline.toml` is
+the only file this task resolves rather than merely validates: the anchor-relative timing
 pipeline ("re-transcribe, re-resolve, done") needs a real word-timing lookup. The output is
 plain JSON (integer frame numbers, no more anchors) that `addon/comonteur/reconcile.py`
 reads with the stdlib `json` module and turns into VSE strips.
+
+`timeline.toml` also carries each shot's production intent (`intent`, `target_duration`,
+`vo`, `broll`, `notes`) — formerly a separate `narrative.toml` — since nothing ever derived
+one file from the other and splitting them let the two shot lists silently drift apart. A
+shot with no `source` yet is an intent-only stub: valid, but excluded from the resolved
+plan until assembly fields are added.
 
 The add-on never imports this script and never parses a spec file: parsing, validation and
 anchor resolution are this side's job, and Blender's bundled interpreter cannot see a uv
@@ -116,9 +122,16 @@ def _overlay_cycle(shot_id: str, overlay_targets: dict[str, str]) -> bool:
     return True
 
 
+def _notes_error(where: str, notes: Any) -> list[str]:
+    if notes is not None and not isinstance(notes, str):
+        return [f"{where}: `notes` must be a string"]
+    return []
+
+
 def validate(doc: dict[str, Any]) -> list[str]:
-    """Pure logic: fail loudly rather than guess (SPEC.md §5.2)."""
+    """Pure logic: fail loudly rather than guess (SPEC.md §5.2/§5.3)."""
     errors: list[str] = []
+    errors.extend(_notes_error("timeline.toml", doc.get("notes")))
     shots = doc.get("shots") or []
     audio = doc.get("audio") or []
     if not shots:
@@ -142,6 +155,17 @@ def validate(doc: dict[str, Any]) -> list[str]:
 
     for i, shot in enumerate(shots):
         shot_id = str(shot.get("id", ""))
+        where = f"shots[{i}] ({shot_id})"
+        if not str(shot.get("intent", "")).strip():
+            errors.append(f"{where}: empty `intent`")
+        target_duration = shot.get("target_duration")
+        if target_duration is not None and target_duration <= 0:
+            errors.append(f"{where}: target_duration must be > 0, got {target_duration}")
+        errors.extend(_notes_error(where, shot.get("notes")))
+
+        if shot.get("source") is None:
+            continue  # intent-only stub — not yet built, excluded from the resolved plan
+
         overlay_of = shot.get("overlay_of")
         if overlay_of is None:
             if not _one_of_start_anchor(shot):
@@ -302,6 +326,8 @@ def resolve(
     resolved_by_id: dict[str, dict[str, Any]] = {}
     pending: list[dict[str, Any]] = []
     for shot in shots_in:
+        if shot.get("source") is None:
+            continue  # intent-only stub — not yet built, not part of the assembly
         shot_id = str(shot.get("id", ""))
         if shot.get("overlay_of") is None:
             resolved_by_id[shot_id] = _resolve_shot(shot, shot_id, transcript, fps)
@@ -330,7 +356,9 @@ def resolve(
             raise SystemExit("overlay_of cycle detected (should have failed validate())")
         pending = still_pending
 
-    shots = [resolved_by_id[str(s.get("id", ""))] for s in shots_in]
+    shots = [
+        resolved_by_id[sid] for s in shots_in if (sid := str(s.get("id", ""))) in resolved_by_id
+    ]
 
     audio: list[dict[str, Any]] = []
     for track in doc.get("audio") or []:

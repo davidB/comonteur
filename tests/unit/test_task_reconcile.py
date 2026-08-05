@@ -1,5 +1,6 @@
 """Pure-logic tests for the `comonteur:reconcile` task script — timeline.toml validation
-and anchor→frame resolution (SPEC.md §5.2/§10 M4).
+(assembly *and* shot intent, formerly `narrative.toml`/`ingest_narrative.py`) and
+anchor→frame resolution (SPEC.md §5.2/§5.3/§10 M4).
 
 Ported from cli/src/timeline.rs's #[cfg(test)] module when the Rust CLI was dissolved into
 mise tasks. This is the logic that lost the Rust compiler, so it carries the most coverage.
@@ -29,9 +30,11 @@ def scene_shot(
     anchor: dict[str, Any] | None = None,
     duration: int | None = 90,
     overlay_of: str | None = None,
+    intent: str = "test intent",
 ) -> dict[str, Any]:
     return {
         "id": shot_id,
+        "intent": intent,
         "source": {
             "kind": "scene",
             "blend": "shots/shot-01.blend",
@@ -208,6 +211,7 @@ def test_load_parses_real_toml(tmp_path: Path) -> None:
     path = tmp_path / "timeline.toml"
     path.write_text(
         'fps = 30\nresolution = [1920, 1080]\n\n[[shots]]\nid = "shot-01"\n'
+        'intent = "Hook"\n'
         'source = {kind = "scene", blend = "shots/shot-01.blend", '
         'scene = "GEN_hook"}\n'
         "start = 0\nduration = 90\n"
@@ -310,3 +314,56 @@ def test_resolve_overlay_of_overlay_chains_inheritance() -> None:
     overlay_b = next(s for s in resolved["shots"] if s["id"] == "overlay-b")
     assert overlay_b["start_frame"] == 10
     assert overlay_b["duration_frames"] == 90
+
+
+# Shot intent (formerly narrative.toml/ingest_narrative.py — absorbed here since nothing
+# ever derived one file from the other, so nothing caught the two shot lists drifting apart).
+
+
+def test_missing_intent_errors() -> None:
+    doc = doc_with([scene_shot("shot-01", start=0, intent="  ")])
+    assert any("empty `intent`" in e for e in timeline.validate(doc))
+
+
+def test_non_positive_target_duration_errors() -> None:
+    shot = scene_shot("shot-01", start=0)
+    shot["target_duration"] = 0
+    assert any("target_duration" in e for e in timeline.validate(doc_with([shot])))
+
+
+def test_notes_must_be_a_string() -> None:
+    shot = scene_shot("shot-01", start=0)
+    shot["notes"] = 123
+    assert any("`notes` must be a string" in e for e in timeline.validate(doc_with([shot])))
+
+
+def test_doc_level_notes_must_be_a_string() -> None:
+    doc = doc_with([scene_shot("shot-01", start=0)])
+    doc["notes"] = 123
+    assert any("`notes` must be a string" in e for e in timeline.validate(doc))
+
+
+def test_notes_content_is_preserved_verbatim() -> None:
+    shot = scene_shot("shot-01", start=0)
+    shot["notes"] = "beat: anxiety | persuasion: Pain validation\nlink: https://example.com"
+    doc = doc_with([shot])
+    doc["notes"] = "doc-level creative direction"
+    assert timeline.validate(doc) == []
+    assert doc["shots"][0]["notes"] == shot["notes"]
+    assert doc["notes"] == "doc-level creative direction"
+
+
+def test_shot_with_no_source_is_a_valid_intent_only_stub() -> None:
+    doc = doc_with([{"id": "shot-99", "intent": "Not built yet.", "target_duration": 5.0}])
+    assert timeline.validate(doc) == []
+
+
+def test_intent_only_stub_is_excluded_from_resolved_output() -> None:
+    doc = doc_with(
+        [
+            scene_shot("shot-01", start=0),
+            {"id": "shot-99", "intent": "Not built yet.", "target_duration": 5.0},
+        ]
+    )
+    resolved = timeline.resolve(doc, None, 30)
+    assert [s["id"] for s in resolved["shots"]] == ["shot-01"]

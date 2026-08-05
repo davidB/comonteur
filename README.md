@@ -150,7 +150,7 @@ end of this section).
 2. Ask for one shot at a time:
 
    ```
-   Read narrative.toml and build the opening shot: a title card reading
+   Read timeline.toml and build the opening shot: a title card reading
    "Ship faster", fading up with a back-ease, over the first 3 seconds
    of the voiceover.
    ```
@@ -188,7 +188,8 @@ Nothing upstream — a brief, your own components, maybe some footage and a voic
    `.gitattributes`, but nothing here ever runs `git` or `git lfs` for you.
 
 2. Tell the agent what the video is — *"a 90-second launch video for X, here's the script"* —
-   and it fills in `narrative.toml`, validates it, and ingests your assets and voiceover.
+   and it fills in each shot's intent in `timeline.toml`, validates it, and ingests your
+   assets and voiceover.
 3. Run `mise run comonteur:edit` — creates `timeline.blend` and opens it — and follow the loop
    above.
 
@@ -200,9 +201,10 @@ Details for the agent: [`skills/comonteur/references/workflows.md`](./skills/com
 You shipped it in HTML and want an editable Blender project out of it.
 
 Say *"import this HyperFrames project"*. The agent copies the tree (most of it maps 1:1),
-translates the metadata (`STORYBOARD.md` → `narrative.toml`, `hyperframes.json` +
-`index.html` → `timeline.toml`), converts the `.woff2` fonts Blender can't load, then
-rebuilds each shot as a Blender scene and previews it.
+translates the metadata (`STORYBOARD.md` fully transcribed into `timeline.toml`'s intent/
+`notes` fields, then kept only as a read-only archive; `hyperframes.json` + `index.html` →
+`timeline.toml`), converts the `.woff2` fonts Blender can't load, then rebuilds each shot as
+a Blender scene and previews it.
 
 **One thing it will stop and ask you.** HyperFrames has no timeline file — durations live
 inside the HTML/JS. The agent recovers the cut list from three sources and shows it to you as
@@ -243,11 +245,10 @@ that set the machine up — is re-runnable from the project afterwards:
 | `comonteur:install` | Install/repair everything, then doctor — chains the two below |
 | `comonteur:init [dir]` | Initialize or top up a project — add-only, never overwrites |
 | `comonteur:doctor` | Toolchain **and** project checks, one ✓/✗ list |
-| `comonteur:ingest_narrative` | Validates `narrative.toml` |
 | `comonteur:ingest_manifest` | `assets/` → `assets/manifest.json` (sha256 + `ffprobe`) |
 | `comonteur:ingest_captions <in.json> [--kind whisper\|tts]` | Normalizes word-level timing |
 | `comonteur:convert_fonts` | `.woff`/`.woff2` → `.ttf`/`.otf` — Blender reads sfnt only |
-| `comonteur:reconcile` | `timeline.toml` → resolved plan the add-on applies |
+| `comonteur:reconcile` | Validates `timeline.toml` (shot intents + assembly) → resolved plan the add-on applies |
 | `comonteur:edit` / `comonteur:render` | Create (first run) and open `timeline.blend` / render the timeline |
 | `comonteur:install_addon [--ref <tag>]` | The comonteur add-on into Blender (symlinked from a checkout, fetched otherwise) |
 | `comonteur:install_mcp` | Blender's MCP add-on **and** the MCP server it talks to |
@@ -299,11 +300,10 @@ A video project — distinct from this repo:
 
 ```
 mise.toml                pinned tools; mise-tasks/comonteur/ holds the comonteur:* tasks
-narrative.toml           script/shot intent (STORYBOARD.md kept alongside)
 assets/  audio/  captions/   media + word-level timing, manifest.json generated
 lib/                     your Blender components (brand, titles) — human-authored, git-lfs
 shots/     one .blend per shot, agent-generated, yours to edit too
-timeline.toml            the assembly — authoritative for the edit, not for scene contents
+timeline.toml            shot intent + the assembly — authoritative for the edit, not scene contents
 timeline.blend             links the above into a VSE timeline
 .comonteur/              journal, snapshot, review frames
 renders/  thumbnail/  meta.json    deliverables

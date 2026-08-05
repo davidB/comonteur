@@ -86,9 +86,11 @@ contact with distribution: the crate was 1151 lines of TOML/JSON-in, JSON-out wi
 performance requirement, and shipping it meant a per-OS/arch release-asset matrix plus a
 `cargo install` fallback that demanded a Rust toolchain the user had no other reason to have.
 
-It is now **four `uv run --script` Python files**, one per subcommand, in
+It is now **three `uv run --script` Python files**, one per subcommand, in
 `skills/comonteur/templates/mise-tasks/comonteur/`:
-`ingest_narrative.py`, `ingest_manifest.py`, `ingest_captions.py`, `reconcile.py`. The
+`ingest_manifest.py`, `ingest_captions.py`, `reconcile.py` — the last of these absorbed what
+was originally a fourth file, `ingest_narrative.py`, once `narrative.toml` merged into
+`timeline.toml` (§5.2/§5.3, no separate file left to validate). The
 orchestration tasks (`install`, `init`, `doctor`, `edit`, `render`, `convert_fonts`,
 `install_addon`, `install_mcp`) followed later, from bash for the same reason a compiled CLI had to go: bash
 hardcoded `~/.config/blender/...`, `readlink -f`, `curl | tar` and `sed -i`, none of which
@@ -269,13 +271,13 @@ effective.
 | `#MISE sources`/`outputs` | `ingest_manifest` (sha256 + `ffprobe` per asset) and `reconcile` — mise skips them when inputs are unchanged. `ingest_manifest` needs `"!assets/manifest.json"` in sources: the output lives in the directory it describes and would otherwise invalidate itself every run |
 | `#MISE env` | `BLENDER_MCP_VERSION` in `install_mcp` — a pinned version appears once per script instead of in each path and comparison |
 | `#MISE depends`/`depends_post`/`wait_for` | `install` is nothing but these three: it depends on `install_addon` + `install_mcp`, `depends_post`s `doctor`, and `install_mcp` `wait_for`s `install_addon` so two background Blenders never race on `wm.save_userpref()`. Verified on file tasks. The catch, also verified: runtime args never reach a dependency — only statically written ones — which is why `--ref` lives on `install_addon` |
-| `#MISE tools` | `ffmpeg` for `ingest_manifest`, `uv` for the four Python tasks — the tool arrives with the task rather than being a prerequisite the user discovers by failing |
-| PEP 723 `# /// script` | the four Python tasks — the header travels with the file, so `uv run --script` provisions the interpreter on first run with no venv to manage and no lockfile to install. All four declare `dependencies = []`; keep it that way |
+| `#MISE tools` | `ffmpeg` for `ingest_manifest`, `uv` for the three Python tasks — the tool arrives with the task rather than being a prerequisite the user discovers by failing |
+| PEP 723 `# /// script` | the three Python tasks — the header travels with the file, so `uv run --script` provisions the interpreter on first run with no venv to manage and no lockfile to install. All three declare `dependencies = []`; keep it that way |
 
 Deliberately not used: `alias` and `depends`. `alias` does not work in file tasks at all
 (verified on mise 2026.7.10: the alias is parsed but never registered, and `mise run` on it
 fails) — which is why the Python task files use underscores rather than keeping the old
-`ingest-narrative` spelling, since Python cannot import a hyphenated module name and the tests
+`ingest-manifest` spelling, since Python cannot import a hyphenated module name and the tests
 import these files directly. `depends` is unused because nothing here is a build graph:
 `reconcile` resolves the timeline, and applying it is a separate step inside Blender.
 
