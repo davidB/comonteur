@@ -30,6 +30,35 @@ editable project**, with clear rules about who owns what.
 file, all directly manipulable. What Blender doesn't give you is a mergeable project
 file. That's the problem this project solves.
 
+## How collaboration works
+
+Every piece of data carries an owner:
+
+| Owner | Meaning |
+|---|---|
+| **agent** | the agent made it and can change it freely |
+| **shared** | You've touched it — the agent works around what you changed |
+| **human** | Yours. The agent only touches it when you explicitly ask |
+
+When you edit something the agent made, it flips to **shared** automatically, and the
+specific properties you changed are recorded as yours. The agent sees this and routes
+around them.
+
+Anything you made from scratch is never modified or deleted without you asking by name.
+
+You can override ownership either way from the comonteur sidebar panel in Blender:
+**Take ownership** or **Return to agent**.
+
+### Reviewing what the agent did
+
+Every change is in `.comonteur/journal.jsonl` — append-only JSONL, one line per property
+written, with the before and after. Readable with any text tool; no binary diffing.
+
+Changes are grouped into labelled batches, each landing as exactly one Blender undo step —
+so `Ctrl+Z` undoes a whole batch, cleanly, and the label tells you which. Reverting an
+older batch from the journal is designed but not yet built (M5.5); today, undo and the
+journal's before/after values are what you have.
+
 ## What you get
 
 - **Bidirectional editing.** The agent creates scenes you can edit. You create scenes it
@@ -63,16 +92,8 @@ ships a ready `.gitignore`/`.gitattributes`, but nothing here runs git for you.
 
 ---
 
-## ⚠️ Security
-
-`comonteur` builds on Blender's official MCP server, which **executes AI-generated Python
-inside Blender with no sandboxing**. Blender's own documentation is explicit about this:
-code can delete your data or send it elsewhere.
-
-Blender recommends running it on a virtual machine, or on a system without access to
-sensitive information. Take that seriously. At minimum, work in a dedicated project
-directory, keep the MCP socket bound to localhost, and don't run it on a machine holding
-client data you can't afford to lose.
+> ⚠️ **Security**: `comonteur` runs AI-generated Python inside Blender with no sandboxing.
+> See [Security](#security) below before pointing it at a machine with sensitive data.
 
 ---
 
@@ -265,34 +286,16 @@ Before a project exists, `init` is runnable straight from the installed skill �
 everything after it is `mise run comonteur:<task>`. Contributors who clone the repo get the
 whole `comonteur:*` menu via symlinks to those same files: one copy, no drift.
 
-## How collaboration works
+## Security
 
-Every piece of data carries an owner:
+`comonteur` builds on Blender's official MCP server, which **executes AI-generated Python
+inside Blender with no sandboxing**. Blender's own documentation is explicit about this:
+code can delete your data or send it elsewhere.
 
-| Owner | Meaning |
-|---|---|
-| **agent** | the agent made it and can change it freely |
-| **shared** | You've touched it — the agent works around what you changed |
-| **human** | Yours. The agent only touches it when you explicitly ask |
-
-When you edit something the agent made, it flips to **shared** automatically, and the
-specific properties you changed are recorded as yours. The agent sees this and routes
-around them.
-
-Anything you made from scratch is never modified or deleted without you asking by name.
-
-You can override ownership either way from the comonteur sidebar panel in Blender:
-**Take ownership** or **Return to agent**.
-
-### Reviewing what the agent did
-
-Every change is in `.comonteur/journal.jsonl` — append-only JSONL, one line per property
-written, with the before and after. Readable with any text tool; no binary diffing.
-
-Changes are grouped into labelled batches, each landing as exactly one Blender undo step —
-so `Ctrl+Z` undoes a whole batch, cleanly, and the label tells you which. Reverting an
-older batch from the journal is designed but not yet built (M5.5); today, undo and the
-journal's before/after values are what you have.
+Blender recommends running it on a virtual machine, or on a system without access to
+sensitive information. Take that seriously. At minimum, work in a dedicated project
+directory, keep the MCP socket bound to localhost, and don't run it on a machine holding
+client data you can't afford to lose.
 
 ## Project layout
 
