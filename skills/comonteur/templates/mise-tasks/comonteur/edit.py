@@ -118,11 +118,22 @@ _ACTIVATE_VIDEO_EDITING = (
     "    bpy.context.window.workspace = ws\n"
 )
 
+# Runs on every open, not just creation: a human can leave a different scene active (e.g.
+# an accidental "+" New Scene click) and save — without this, the file keeps reopening on
+# that empty scene instead of the timeline. Same "-b has no real window" caveat as above.
+_SELECT_TIMELINE_SCENE = (
+    "import bpy\n"
+    "scn = bpy.data.scenes.get('timeline')\n"
+    "if scn and bpy.context.window:\n"
+    "    bpy.context.window.scene = scn\n"
+)
+
 
 def main(argv: list[str]) -> int:
     exe = require_blender()
     just_created = ensure_timeline(Path.cwd())
     extra = ["--python-expr", _ACTIVATE_VIDEO_EDITING] if just_created else []
+    extra += ["--python-expr", _SELECT_TIMELINE_SCENE]
     cmd = [exe, "timeline.blend", *extra, *argv]
     # execvp hands the terminal to Blender outright; Windows has no equivalent (it would
     # spawn and return), so there we wait and pass the exit code back.

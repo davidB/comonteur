@@ -33,7 +33,10 @@ def main(argv: list[str]) -> int:
             "run `mise run comonteur:edit` first — it creates timeline.blend",
         )
     Path("renders").mkdir(parents=True, exist_ok=True)
-    cmd = [exe, "-b", "timeline.blend", "-a", *argv]
+    # Explicit --scene: a human can leave a different scene active in the GUI (e.g. an
+    # accidental "+" New Scene click) and save — without this, "-a" silently renders
+    # whatever scene that was instead of the timeline.
+    cmd = [exe, "-b", "timeline.blend", "--scene", "timeline", "-a", *argv]
     if os.name == "posix":
         os.execvp(exe, cmd)  # noqa: S606 — never returns
     return run(cmd, check=False).returncode
