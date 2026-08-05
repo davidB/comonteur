@@ -167,6 +167,39 @@ def created_by_agent(id_block: Any) -> bool:
     )
 
 
+def record_driver(
+    id_block: Any, path: str, expression: str, variables: dict[str, tuple[Any, str]] | None
+) -> None:
+    """Record that the agent attached/changed a driver on `path` — the formula-install
+    counterpart to set()'s single-value write. Goes through `_state["writes"]` for the
+    same reason record_create() does: that list is what batch() checks before journalling,
+    bumping cmt_rev and undo_pushing at all.
+    """
+    if not _state["active"]:
+        raise RuntimeError("journal.record_driver() must run inside journal.batch()")
+    _state["writes"].append(
+        {
+            "ts": _now(),
+            "batch": _state["batch_id"],
+            "actor": "agent",
+            "op": "driver",
+            "target": target_of(id_block),
+            "path": path,
+            "expression": expression,
+            "variables": (
+                [
+                    {"name": name, "target": target_of(tgt), "target_path": tgt_path}
+                    for name, (tgt, tgt_path) in variables.items()
+                ]
+                if variables
+                else []
+            ),
+        }
+    )
+    if id_block not in _state["touched"]:
+        _state["touched"].append(id_block)
+
+
 def record_flip(id_block: Any) -> None:
     _append(
         {

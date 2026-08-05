@@ -41,24 +41,45 @@ def _animated_paths(id_block: Any) -> set[str]:
     }
 
 
+def _driven_paths(id_block: Any) -> set[str]:
+    """The `a.b[i]`-style paths governed by a driver on `id_block`'s own animation_data.
+
+    Drivers live directly on `AnimData.drivers` (a flat FCurve collection, unlike the
+    layered Action structure `_animated_paths()` has to walk), so no equivalent of
+    `introspect._action_fcurves()` is needed here.
+    """
+    anim_data = getattr(id_block, "animation_data", None)
+    if anim_data is None:
+        return set()
+    return {
+        spelling
+        for fc in anim_data.drivers
+        for spelling in (fc.data_path, f"{fc.data_path}[{fc.array_index}]")
+    }
+
+
 def claimed_paths(id_block: Any) -> set[str]:
     """Fine-grained claim, derived not observed (§4.3): a path the agent wrote whose
     live value no longer matches what the agent last wrote there.
 
-    Animated paths are excluded. Their live value is whatever the F-curve evaluates to at the
-    current playhead, so it matches the journalled value in at most one frame — comparing them
-    reported the agent's own tween as a human claim everywhere else. That is the dangerous
-    direction to be wrong in: the agent must not touch a claimed path, so a false positive
-    makes it abandon its own animation and tell the human they took it over.
+    Animated and driven paths are excluded. Their live value is whatever the F-curve/driver
+    evaluates to at the current playhead, so it matches the journalled value in at most one
+    frame — comparing them reported the agent's own tween/drive() as a human claim everywhere
+    else. That is the dangerous direction to be wrong in: the agent must not touch a claimed
+    path, so a false positive makes it abandon its own animation and tell the human they took
+    it over.
 
-    ponytail: keyframe-level claims (a human dragging the agent's keys) are therefore not
-    detected yet. Detecting them means diffing the F-curve's keyframe values against what the
-    tween wrote, which needs the journal to record the frames as well as the values.
+    ponytail: keyframe-level and driver-expression-level claims (a human dragging the agent's
+    keys, or editing the agent's driver formula) are therefore not detected here — that's
+    what the whole-ID flip in _on_depsgraph_update() is for instead. Detecting them at this
+    finer grain means diffing keyframe values or driver expression text against what was
+    journalled, which needs the journal to record more than it does today.
     """
     animated = _animated_paths(id_block)
+    driven = _driven_paths(id_block)
     claimed = set()
     for path in journal.paths_written_by_agent(id_block):
-        if path in animated:
+        if path in animated or path in driven:
             continue
         if paths.resolve(id_block, path) != journal.last_agent_value(id_block, path):
             claimed.add(path)

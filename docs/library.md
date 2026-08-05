@@ -56,24 +56,46 @@ Must:
 6. Be idempotent by `cmt_id`: if a scene with that id exists, return it rather than
    creating a duplicate.
 
-### 6.2 `anim.py` — real F-curves preferred
+### 6.2 `anim.py` — keyframes by default, drivers for tunable continuous effects
 
-The agent's animation output should be editable in the dope sheet and graph editor,
-so real keyframes on real data paths are the preferred path — not drivers-as-animation
-or baked transforms. `anim.py` only ships keyframe tweens; a driver or baked bake via
-raw `bpy` is a valid escape hatch when a tween can't express the motion, with the same
-untracked/drift caveat as any other raw `bpy` write (§4.4-4.5).
+Keyframes are the default: discrete, narrative-timed events should stay editable in the
+dope sheet and graph editor, so real keyframes on real data paths are preferred there.
+`drive()` is the sanctioned exception, for continuous/procedural effects a human will
+retune by editing a formula rather than dragging keyframes (an idle wobble, a decay
+curve) — no more need to escape to raw `bpy` for that case. `anim.py` records every
+driver it installs through `journal.record_driver()`, same as keyframe writes go through
+`journal.set()`; anything that bypasses that (raw `bpy`) is still untracked drift with
+the usual caveat (§4.4-4.5).
 
 ```python
 anim.tween(obj, "location", index=1, frm=-0.4, to=0.0,
            start=12, dur=20, ease="BACK_OUT")
 anim.stagger(objs, "location", index=1, offset=2, **tween_kwargs)
 anim.idle_jitter(obj, "rotation_euler", 2, amplitude=0.02, cycles=3, start=1, dur=60)
+anim.drive(obj, "rotation_euler", 2, "sin(frame*0.2)*0.02")
+anim.drive_tween(obj, "location", index=1, frm=-0.4, to=0.0,
+                  start=12, dur=20, ease="power2.out")
 ```
+
+`drive_tween` is `tween`'s formula-driven twin: one driver expression easing between
+`frm`/`to` over `[start, start+dur]`, clamped outside that range, instead of two
+keyframes — often simpler for the agent to emit directly, not just easier for a human to
+retune afterward. `ease` reuses `tween`'s GSAP-style names, but only `power1`-`power4`,
+`sine` and `linear` have a closed form as a plain expression; `elastic`/`back`/`bounce`/
+`circ`/`expo` don't (they're piecewise/recursive) and `drive_tween` raises for those —
+use `tween` when the shape needs one of them.
 
 `idle_jitter` is a pre-sampled tween, not a generic curve sampler: it bakes a base
 keyframe, a peak/trough pair per cycle, and a closing base keyframe around the
-path's current value — real F-curves, same as `tween`, just more of them.
+path's current value — real F-curves, same as `tween`, just more of them. `drive()`
+skips the sampling step entirely: the expression itself is what a human tunes.
+
+Provenance stays whole-datablock for both: a human editing a driver's expression flips
+the object's `cmt_origin` to `shared` the same way a moved keyframe or a hand-edited
+value does (§4.3's `depsgraph_update_post` handler doesn't distinguish which kind of
+edit it saw). `provenance.claimed_paths()`'s finer-grained value diff excludes
+driver-governed paths the same way it already excludes animated ones — a driver's
+live-evaluated value can't be diffed against a single "last written" value either.
 
 Easing map (from the discussion — the sets are near-identical by design):
 

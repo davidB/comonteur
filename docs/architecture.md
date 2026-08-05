@@ -78,6 +78,11 @@ This works because the agent only needs to know which of *its own* paths it has 
 Compute on demand in `provenance.claimed_paths()`, not in the handler — the handler must
 stay cheap; it runs on every depsgraph evaluation.
 
+Keyframe-animated and driver-governed paths are excluded from that diff, since their live
+value is whatever the F-curve/driver evaluates to right now, not a stable "last written"
+value to compare — the whole-datablock flip above is what catches a human editing either
+(a moved keyframe or an edited driver expression), not the fine-grained diff.
+
 Risks to validate in M0: handler noise (does it fire on selection-only changes?),
 performance with many datablocks, correctness of `upd.id.original` for linked data.
 A manual `Take ownership` / `Return to agent` operator pair in the sidebar is required

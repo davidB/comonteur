@@ -1,7 +1,12 @@
-"""Real F-curve tweens — SPEC.md §6.2. No drivers-as-animation, no baked transforms.
-Every write goes through journal.set()/keyframe_insert inside journal.batch() — see
-docs/M1-FINDINGS.md ("anim.tween/stagger must go through journal.set() ... or this bug
-comes back per-module").
+"""Real F-curve tweens and drivers — SPEC.md §6.2. No baked transforms. Keyframes
+(tween/stagger/idle_jitter/pulse) are the default for discrete, narrative-timed events —
+dope-sheet editable, matches existing tooling. drive()/drive_tween() are for continuous or
+formula-shaped effects: one expression can be simpler for the agent to emit than a waypoint
+sequence, and stays that way for later retuning — by the agent in a follow-up turn or by a
+human editing the formula text directly, no dope-sheet interaction required either way.
+Every write goes through journal.set()/journal.record_driver()/keyframe_insert inside
+journal.batch() — see docs/M1-FINDINGS.md ("anim.tween/stagger must go through
+journal.set() ... or this bug comes back per-module").
 """
 
 import math
@@ -29,6 +34,49 @@ _EASING = {
     "out": "EASE_OUT",
     "inOut": "EASE_IN_OUT",
 }
+
+
+# Closed-form driver-expression equivalents of the GSAP-named easings above, for
+# drive_tween(). Only power1-4 and sine have a simple closed form; elastic/back/bounce/
+# circ/expo don't (they're piecewise/recursive) — drive_tween() rejects those, use
+# tween() instead. Formulas take `t` (already clamped to [0, 1]) as a sub-expression.
+_EASE_POWERS = {"power1": 2, "power2": 3, "power3": 4, "power4": 5}
+
+
+def _power_formula(n: int, mode: str, t: str) -> str:
+    if mode == "in":
+        return f"(({t})**{n})"
+    if mode == "out":
+        return f"(1-(1-({t}))**{n})"
+    coeff = 2 ** (n - 1)
+    return f"(({coeff}*({t})**{n}) if ({t})<0.5 else (1-(-2*({t})+2)**{n}/2))"
+
+
+def _sine_formula(mode: str, t: str) -> str:
+    if mode == "in":
+        return f"(1-cos(({t})*pi/2))"
+    if mode == "out":
+        return f"sin(({t})*pi/2)"
+    return f"(-(cos(pi*({t}))-1)/2)"
+
+
+def _ease_formula(ease: str | None, t: str) -> str:
+    if ease is None:
+        name, mode = "sine", "inOut"
+    else:
+        name, _, suffix = ease.partition(".")
+        mode = suffix if suffix in ("in", "out", "inOut") else "inOut"
+    if name == "linear":
+        return f"({t})"
+    if name in _EASE_POWERS:
+        return _power_formula(_EASE_POWERS[name], mode, t)
+    if name == "sine":
+        return _sine_formula(mode, t)
+    raise ValueError(
+        f"drive_tween() has no closed-form formula for ease={ease!r} "
+        "(elastic/back/bounce/circ/expo aren't expressible as a plain expression) "
+        "— use tween() for this easing instead"
+    )
 
 
 def _parse_ease(ease: str | None) -> tuple[str, str]:
@@ -140,8 +188,9 @@ def idle_jitter(
     ease: str | None = None,
 ) -> None:
     """Sine-like oscillation around `path[index]`'s current value, baked as real
-    keyframes (§6.2 forbids drivers-as-animation). Pre-sampled tween(), not a
-    generic curve sampler: base -> (peak, trough) per cycle -> base.
+    keyframes — use drive() instead if this should stay tunable as a formula rather
+    than a fixed set of pre-sampled keyframes. Pre-sampled tween(), not a generic
+    curve sampler: base -> (peak, trough) per cycle -> base.
     """
     if not journal.batch_active():
         raise RuntimeError("anim.idle_jitter() must run inside journal.batch()")
@@ -181,6 +230,78 @@ def pulse(
     _sequence(
         obj, path, index, start, dur, [(0.0, base), (0.3, peak), (1.0, base)], interpolation, easing
     )
+
+
+def drive(
+    obj: Any,
+    path: str,
+    index: int | None,
+    expression: str,
+    variables: dict[str, tuple[Any, str]] | None = None,
+) -> None:
+    """Attach a driver to `path[index]`: `expression` is evaluated every frame (it can
+    reference the built-in `frame` name) instead of being pre-sampled into keyframes.
+    Prefer this over tween()/pulse()/idle_jitter() for continuous/procedural effects, or
+    any time a formula is just the more direct thing to emit than a waypoint sequence —
+    one expression can say what several keyframes would otherwise approximate, and it
+    stays that way for retuning later, whether that's the agent adjusting the formula in
+    a follow-up turn or a human editing the text in the Driver Editor. See
+    `drive_tween()` for the common "ease from A to B" case pre-built as an expression.
+    Keep using keyframes for discrete, narrative-timed events: they stay visible and
+    draggable in the dope sheet, a driver's live-evaluated value is not.
+
+    `variables` (name -> (target_id, target_path)) wires a driver input to another
+    datablock's property; most effects don't need it — bake constants straight into
+    `expression` instead (e.g. "sin(frame*0.2)*0.3+0.6"), which is itself the thing a
+    human tunes, no separate variables API required.
+
+    A human editing the expression or variables later flips this object's ownership to
+    `shared` via the same whole-datablock provenance handler that catches a moved
+    keyframe or a hand-edited property (provenance.claimed_paths() excludes
+    driver-governed paths from its finer-grained diff for the same reason it excludes
+    animated ones — see provenance._driven_paths()).
+
+    Must run inside journal.batch().
+    """
+    if not journal.batch_active():
+        raise RuntimeError("anim.drive() must run inside journal.batch()")
+    journal_path = path if index is None else f"{path}[{index}]"
+    fcurve = obj.driver_add(path) if index is None else obj.driver_add(path, index)
+    fcurve.driver.expression = expression
+    for name, (target_id, target_path) in (variables or {}).items():
+        var = fcurve.driver.variables.new()
+        var.name = name
+        var.type = "SINGLE_PROP"
+        var.targets[0].id = target_id
+        var.targets[0].data_path = target_path
+    journal.record_driver(obj, journal_path, expression, variables)
+
+
+def drive_tween(
+    obj: Any,
+    path: str,
+    index: int | None,
+    frm: float,
+    to: float,
+    start: float,
+    dur: float,
+    ease: str | None = None,
+) -> None:
+    """Formula-driven equivalent of tween(): one driver expression that eases from
+    `frm` to `to` over `[start, start+dur]` (clamped to `frm` before and `to` after),
+    instead of two keyframes. `ease` takes the same GSAP-style names as tween()
+    (`"power2.out"`, `"sine.inOut"`, ...), but only power1-4/sine/linear have a closed
+    form — pass one of those or leave `ease=None` (defaults to `sine.inOut`); anything
+    else raises, use tween() for elastic/back/bounce/circ/expo instead.
+
+    Often simpler for the agent to emit directly than orchestrating tween()'s two
+    keyframes, especially when the value is one step in a larger formula-shaped effect.
+    See drive()'s docstring for the keyframe-vs-driver tradeoff and provenance notes.
+    Must run inside journal.batch() (enforced by drive()).
+    """
+    t = f"min(max((frame-{start})/{dur},0),1)"
+    eased = _ease_formula(ease, t)
+    drive(obj, path, index, f"({frm})+(({to})-({frm}))*({eased})")
 
 
 def hard_cut(obj: Any, visible_ranges: Iterable[tuple[int, int]]) -> None:
