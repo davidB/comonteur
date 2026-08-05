@@ -1,4 +1,5 @@
-# [tools]
+[tools]
+ffmpeg = "latest" # ingest_manifest.py shells out to ffprobe; tests that hit it for real need it on PATH
 # uv = "latest"
 # blender = "5.2"
 
