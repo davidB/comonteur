@@ -1,3 +1,32 @@
+## [0.20260805.0] - 2026-08-05
+
+### 🚀 Features
+
+- *(addon)* Add anim.drive(), anim.drive_tween() for driver-based (formula-tunable) animation, wired into provenance/journal
+- *(addon)* Add scene.add_camera() and document the kind="2d" unit convention
+
+### 🐛 Bug Fixes
+
+- *(comonteur)* Preserve manifest description field across ingest_manifest rebuilds
+- *(comonteur)* Activate Video Editing workspace and clear default objects on first comonteur:edit
+- *(comonteur)* Render and reopen timeline.blend on its own scene, not whatever the GUI left active
+- *(comonteur)* Agents may now save timeline.blend
+- *(addon)* Write waypoint values before keyframing in anim._sequence()
+- *(addon)* Set the Principled BSDF's real Alpha input
+- *(addon)* Text.split_spans() was silently dropping any text not covered by a span (leading/trailing/between-span text with non-whitespace content)
+- *(convert_fonts)* Detect subsetted/CDN-shard fonts, stop clobbering good coverage
+- *(addon)* Cascade anim.hard_cut() visibility to child objects
+- *(tests)* Stop leaking blender scratch dirs into system /tmp
+- *(tests)* Declare ffmpeg tool so CI has ffprobe for ingest_manifest tests.
+
+### 🚜 Refactor
+
+- Format
+- [**breaking**] Merge narrative.toml into timeline.toml
+
+### 📚 Documentation
+
+- Reorg README
 ## [0.20260803.0] - 2026-08-03
 
 ### 🚀 Features
@@ -25,6 +54,10 @@
 ### ⚡ Performance
 
 - *(scene)* Tune EEVEE samples/shadows for flat 2D scenes
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* 0.20260803.0
 ## [0.20260802.0] - 2026-08-02
 
 ### 🚀 Features
