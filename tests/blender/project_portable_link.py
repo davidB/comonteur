@@ -14,27 +14,32 @@ import bpy
 
 cmt = _bl.setup()
 
-project_dir = tempfile.mkdtemp(prefix="comonteur_project_")
-os.makedirs(os.path.join(project_dir, ".comonteur"))
-os.makedirs(os.path.join(project_dir, "lib"))
+# dir=os.getcwd() keeps these under the tmp_path isolation the test driver sets via
+# cwd=tmp_path (plain TemporaryDirectory() targets the system /tmp instead).
+with (
+    tempfile.TemporaryDirectory(dir=os.getcwd(), prefix="project_") as project_dir,
+    tempfile.TemporaryDirectory(dir=os.getcwd(), prefix="elsewhere_") as elsewhere_dir,
+):
+    os.makedirs(os.path.join(project_dir, ".comonteur"))
+    os.makedirs(os.path.join(project_dir, "lib"))
 
-lib_path = os.path.join(project_dir, "lib", "design.blend")
-bounce = bpy.data.actions.new("BounceIn")
-bounce.asset_mark()
-bpy.ops.wm.save_as_mainfile(filepath=lib_path)
+    lib_path = os.path.join(project_dir, "lib", "design.blend")
+    bounce = bpy.data.actions.new("BounceIn")
+    bounce.asset_mark()
+    bpy.ops.wm.save_as_mainfile(filepath=lib_path)
 
-cmt.unregister()
-bpy.ops.wm.read_factory_settings(use_empty=True)
-cmt.register()
+    cmt.unregister()
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    cmt.register()
 
-timeline_path = os.path.join(project_dir, "timeline.blend")
-bpy.ops.wm.save_as_mainfile(filepath=timeline_path)
+    timeline_path = os.path.join(project_dir, "timeline.blend")
+    bpy.ops.wm.save_as_mainfile(filepath=timeline_path)
 
-# Simulate the reported bug: Blender's cwd is not the project root.
-os.chdir(tempfile.mkdtemp(prefix="comonteur_elsewhere_"))
+    # Simulate the reported bug: Blender's cwd is not the project root.
+    os.chdir(elsewhere_dir)
 
-linked = cmt.library.link("lib/design.blend", "actions", "BounceIn")
-assert linked.name == "BounceIn", linked.name
+    linked = cmt.library.link("lib/design.blend", "actions", "BounceIn")
+    assert linked.name == "BounceIn", linked.name
 
-lib_block = next(lb for lb in bpy.data.libraries if lb.filepath.endswith("design.blend"))
-assert lib_block.filepath == "//lib/design.blend", lib_block.filepath
+    lib_block = next(lb for lb in bpy.data.libraries if lb.filepath.endswith("design.blend"))
+    assert lib_block.filepath == "//lib/design.blend", lib_block.filepath

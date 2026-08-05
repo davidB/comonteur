@@ -3,6 +3,7 @@ common HyperFrames "card" pattern that was dropped on real shots because buildin
 it by hand per-object was too much.
 """
 
+import os
 import tempfile
 from pathlib import Path
 
@@ -11,7 +12,9 @@ import bpy
 
 cmt = _bl.setup()
 
-with tempfile.TemporaryDirectory() as tmp:
+# dir=os.getcwd() keeps this under the tmp_path isolation the test driver sets via
+# cwd=tmp_path (plain TemporaryDirectory() targets the system /tmp instead).
+with tempfile.TemporaryDirectory(dir=os.getcwd()) as tmp:
     img_path = str(Path(tmp) / "fixture.png")
     img = bpy.data.images.new("fixture", 2, 2)
     img.filepath_raw = img_path
