@@ -106,6 +106,11 @@ mise run comonteur:convert_fonts        # defaults to assets/fonts
 Use the task rather than `fonttools` directly — its CLI has a `decompress` verb for woff2
 only, and plain `.woff` has none, so the raw command quietly converts half your fonts.
 
+A captured font asset can already be missing basic glyphs — a CDN unicode-range shard or a
+subsetted webfont, not a conversion bug, but invisible until a render tofus. `convert_fonts`
+warns when a font (converted or already `.ttf`/`.otf`) is missing basic `A-Z`/`a-z`/`0-9`;
+`--fetch-full` pulls the complete family from Google Fonts when it's one of theirs.
+
 A shot built with a silently-substituted default font looks wrong in a way that's easy to
 miss in a low-res preview. Load-and-apply and the `check_fonts()` gate are in `api.md`'s
 `cmt.text` section — run the check before you call a shot done.

@@ -24,6 +24,15 @@ at `assets/fonts/` (or wherever the `.ttf`/`.otf` files live), and Blender relin
 by filename. Per Text object, you can also force a reload from the Font properties panel's
 font dropdown.
 
+## Only some characters tofu, the rest of the text renders fine
+
+Different bug from the one above — the font *did* load, it's just missing those glyphs. A
+captured font asset can already be a CDN unicode-range shard or a subsetted webfont, not a
+link/path problem, so `check_fonts()` won't catch it (it only flags the builtin-font
+fallback, not partial coverage). Fix: `mise run comonteur:convert_fonts --fetch-full`, which
+warns on missing basic `A-Z`/`a-z`/`0-9` and pulls the complete family from Google Fonts when
+it's one of theirs.
+
 ## "Asset Library 'Online Essentials'" errors in the log
 
 ```

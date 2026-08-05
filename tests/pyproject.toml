@@ -6,8 +6,10 @@ dependencies = []
 
 [dependency-groups]
 # The task scripts declare no runtime dependencies (PEP 723 `dependencies = []`) — they are
-# stdlib-only — so this group carries the test toolchain and nothing else.
-dev = ["pytest>=8", "ruff>=0.8", "mypy>=1.13"]
+# stdlib-only, with one exception. `convert_fonts.py` needs fontTools (see its own PEP 723
+# header), and `_tasks.load()` exec_modules the whole script to test any part of it, so
+# fontTools has to be importable here too.
+dev = ["pytest>=8", "ruff>=0.8", "mypy>=1.13", "fontTools>=4.55"]
 
 [tool.pytest.ini_options]
 # `unit` only: tests/blender/ holds scripts executed *inside* a headless Blender by
@@ -28,8 +30,8 @@ markers = [
 # and running them proves more than checking them would.
 python_version = "3.11"
 
-# `convert_fonts.py` declares fontTools in its own PEP 723 header; this venv has no reason to
-# install it (it ships no py.typed, so mypy would learn nothing from it either).
+# fontTools ships no py.typed, so mypy would learn nothing from it even though it's installed
+# (dev group, for test_task_convert_fonts.py).
 [[tool.mypy.overrides]]
 module = "fontTools.*"
 ignore_missing_imports = true
