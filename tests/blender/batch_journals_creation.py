@@ -39,6 +39,7 @@ entries = [json.loads(line) for line in Path(".comonteur/journal.jsonl").read_te
 creates = [e for e in entries if e["op"] == "create"]
 assert {e["target"] for e in creates} == {
     cmt.journal.target_of(scn),
+    cmt.journal.target_of(scn.camera),
     cmt.journal.target_of(title),
 }, creates
 assert len({e["batch"] for e in creates}) == 1, "one batch must produce one batch id"

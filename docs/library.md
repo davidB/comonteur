@@ -16,7 +16,7 @@ equally to **reduce agent token consumption**: the agent calls
 |---|---|
 | `provenance.py` | tag / flip handler / `claimed_paths` / ownership queries / take-ownership operators |
 | `journal.py` | `batch()` context manager, `set()`, JSONL, snapshot, revert |
-| `scene.py` | `new_scene()` — see §6.1. Scene params interface. |
+| `scene.py` | `new_scene()` — see §6.1. `add_camera()` — ortho camera for the `kind='2d'` unit convention, see §6.1. Scene params interface. |
 | `anim.py` | `tween`, `stagger`, `idle_jitter` (sine wobble, pre-sampled), `hard_cut` (instant show/hide via CONSTANT hide_render/hide_viewport keyframes), easing map, F-curve helpers |
 | `text.py` | text objects, styling, fit-to-box, `measure`/`measure_many` (world-space bounding box — object must be visible at the current frame, `matrix_world` freezes stale for a hidden one), per-character split (preserves color and true left edge), `alpha_path` (Alpha-input fade, distinct from `color_path`'s alpha channel which Blender ignores). `style()`/`create()` color defaults to `shading='flat'` (Emission, since `kind='2d'` scenes have no lights) — pass `shading='lit'` for plain Base Color in lit 3D scenes. |
 | `color.py` | `hex_to_rgba`/`srgb_to_linear` — sRGB hex colors decoded to the linear RGBA Emission/Base Color inputs expect |
@@ -55,6 +55,13 @@ Must:
 5. Tag `cmt_id` / `cmt_origin` / `cmt_rev`.
 6. Be idempotent by `cmt_id`: if a scene with that id exists, return it rather than
    creating a duplicate.
+7. For `kind='2d'`, call `add_camera(scn)`: an `ORTHO` camera, `sensor_fit='VERTICAL'`,
+   `ortho_scale=const.FRAME_HEIGHT` (2.0 units) — the unit convention every `kind='2d'`
+   shot builds against (`text.create(size=1.0)`, `fx.vignette()`'s frame-covering plane).
+   Frame height stays fixed across landscape/portrait `resolution`; only width varies with
+   aspect. `kind='3d'` scenes get no camera and no unit convention — set one up per-shot.
+   `add_camera()` stays independently callable with a different `height`/`distance` for a
+   shot that wants different framing (e.g. a zoom).
 
 ### 6.2 `anim.py` — keyframes by default, drivers for tunable continuous effects
 

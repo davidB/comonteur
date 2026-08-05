@@ -22,17 +22,12 @@ cmt = _bl.setup()
 with cmt.journal.batch("fixture"):
     # kind="2d" pins media_type="VIDEO"/file_format="FFMPEG" (scene.py) — exactly the
     # setting preview.frames() must render past without touching or depending on.
+    # It also auto-creates a camera (scene.add_camera()) at the default 2-unit frame
+    # height — replace it with a 10-unit-tall one to match this test's 10x10 plane.
     scn = cmt.scene.new_scene("shot-preview", kind="2d", fps=30, frame_range=(1, 90))
     quad = cmt.card._plane(scn, "red-card", 10.0, 10.0)
     cmt.card._flat_material(quad, (1.0, 0.0, 0.0, 1.0))
-
-    cam_data = bpy.data.cameras.new("preview-cam")
-    cam_data.type = "ORTHO"
-    cam_data.ortho_scale = 10.0
-    cam_obj = bpy.data.objects.new("preview-cam", cam_data)
-    scn.collection.objects.link(cam_obj)
-    cam_obj.location = (0.0, 0.0, 5.0)
-    scn.camera = cam_obj
+    cmt.scene.add_camera(scn, height=10.0)
 
 SENTINEL = "//renders/final_####"
 scn.render.filepath = SENTINEL

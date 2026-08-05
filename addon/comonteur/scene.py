@@ -47,9 +47,26 @@ def new_scene(
         scn.render.image_settings.media_type = "VIDEO"
         scn.render.image_settings.file_format = "FFMPEG"
         scn.render.ffmpeg.audio_codec = "NONE"
+        add_camera(scn)
 
     provenance.tag(scn, name)
     return scn
+
+
+def add_camera(scn: Any, *, height: float = const.FRAME_HEIGHT, distance: float = 5.0) -> Any:
+    """Ortho camera, `sensor_fit="VERTICAL"` so `height` stays constant across
+    landscape/portrait aspect (only width varies) — the kind="2d" unit convention.
+    """
+    data = bpy.data.cameras.new("Camera")
+    data.type = "ORTHO"
+    data.sensor_fit = "VERTICAL"
+    data.ortho_scale = height
+    obj = bpy.data.objects.new("Camera", data)
+    scn.collection.objects.link(obj)
+    obj.location = (0.0, 0.0, distance)
+    provenance.tag(obj, "Camera")
+    scn.camera = obj
+    return obj
 
 
 def find(cmt_id: str) -> Any:

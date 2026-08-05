@@ -6,7 +6,7 @@ from typing import Any
 
 import bpy
 
-from . import card, provenance
+from . import card, const, provenance
 
 
 def vignette(
@@ -21,7 +21,8 @@ def vignette(
     GSAP/CSS vignettes usually are.
     """
     name = name or "vignette"
-    quad = card._plane(scn, name, 2.0, 2.0)
+    aspect = scn.render.resolution_x / scn.render.resolution_y
+    quad = card._plane(scn, name, const.FRAME_HEIGHT * aspect, const.FRAME_HEIGHT)
 
     mat = bpy.data.materials.new(f"{quad.name}.color")
     mat.use_nodes = True

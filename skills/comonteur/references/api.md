@@ -9,6 +9,7 @@ the source wins — say so, don't work around it.
 ```python
 new_scene(name, *, kind="2d", fps=30, resolution=(1920, 1080),
           frame_range=(1, 90), transparent=True, view_transform=None) -> Scene
+add_camera(scn, *, height=const.FRAME_HEIGHT, distance=5.0) -> Camera
 find(cmt_id) -> Scene | None                                    # read-only
 set_param(scn, name, value, *, min=None, max=None, subtype=None)
 bind_param(obj, name)
@@ -25,6 +26,15 @@ assume `bpy.context.scene` is your shot — pass the returned scene explicitly. 
 `use_fast_gi`/`use_raytracing`/`indirect_light_intensity` off (no lights in a fresh scene, so
 indirect GI just self-illuminates a flat-shaded plane); anything else gets `AgX` and default GI.
 `transparent=True` by default, since shots composite in the VSE.
+
+**Unit convention (`kind="2d"` only):** `new_scene(kind="2d")` also calls `add_camera()` for
+you — an orthographic camera `sensor_fit="VERTICAL"` with `ortho_scale=const.FRAME_HEIGHT`
+(2.0 Blender units). Frame height is always `FRAME_HEIGHT` units regardless of landscape or
+portrait `resolution` — only width varies with aspect. Build shot content in these units
+(`text.create(size=1.0)` is about half the frame height; `fx.vignette()` sizes itself off the
+same constant). Call `add_camera()` again with a different `height`/`distance` if a shot needs
+a different framing (e.g. a zoom). `kind="3d"` scenes get no camera and no unit convention —
+set one up per-shot.
 
 Brand params (`set_param` / `bind_param`) are scene custom properties. Numeric ones propagate
 through drivers; strings don't drive, so `bind_param(text_obj, "headline")` tags the object
