@@ -311,7 +311,10 @@ def hard_cut(obj: Any, visible_ranges: Iterable[tuple[int, int]]) -> None:
 
     Both properties get identical keyframes since hide_viewport also gates preview
     renders and measure()/dimensions (see text.measure()'s docstring) — a cut visible
-    only in the final render but not in preview would silently mismeasure.
+    only in the final render but not in preview would silently mismeasure. Also applies
+    to every descendant (obj.children_recursive), since Blender's hide_render/
+    hide_viewport don't cascade from a parent to its children on their own — without
+    this, hiding a grouping Empty leaves its child objects still rendering.
     """
     if not journal.batch_active():
         raise RuntimeError("anim.hard_cut() must run inside journal.batch()")
@@ -319,10 +322,11 @@ def hard_cut(obj: Any, visible_ranges: Iterable[tuple[int, int]]) -> None:
     for start, end in sorted(visible_ranges):
         events.append((start, False))
         events.append((end + 1, True))
-    for path in ("hide_render", "hide_viewport"):
-        for frame, hidden in events:
-            journal.set(obj, path, hidden)
-            _keyframe(obj, path, None, frame, hidden, "CONSTANT", "EASE_IN_OUT")
+    for target in (obj, *obj.children_recursive):
+        for path in ("hide_render", "hide_viewport"):
+            for frame, hidden in events:
+                journal.set(target, path, hidden)
+                _keyframe(target, path, None, frame, hidden, "CONSTANT", "EASE_IN_OUT")
 
 
 def instance_as_nla(obj: Any, track_name: str, frame_offset: float) -> Any:
