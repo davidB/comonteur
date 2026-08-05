@@ -117,7 +117,13 @@ with journal.batch("retime shot-03"):
   human's undo stack and the tool becomes unusable.
 - `batch_active()` gates the provenance handler.
 - Defer if a modal operator is running (transform/grab). Queue and retry.
-- **The agent never saves the `.blend`.** Save is a human action, always. The one
-  exception: `comonteur:edit` creates and saves a brand-new `timeline.blend` when none
-  exists yet — nothing to clobber. Every later `edit`/`render` run still refuses to
-  re-save an existing file.
+- **Batches save themselves.** On exit, if the batch wrote anything and the file has
+  been saved at least once (`bpy.data.filepath` set), `journal.batch()` bumps
+  `preferences.filepaths.save_version` to at least 2 — so Blender's own
+  `.blend1`/`.blend2` rotation is the backup — then calls `bpy.ops.wm.save_mainfile()`.
+  This runs the same way in headless task scripts and live interactive/MCP sessions:
+  the addon shares the process with any open GUI, so the save writes exactly what's in
+  `bpy.data`, including unsaved human edits, not something behind their back. A
+  brand-new `timeline.blend` has no filepath yet, so its first save still goes through
+  `bpy.ops.wm.save_as_mainfile(...)` in `ensure_timeline()` — after that, every later
+  batch autosaves normally, in the same run or a later one.

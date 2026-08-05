@@ -50,9 +50,10 @@ def _render_settings_from_timeline(root: Path) -> dict[str, Any]:
 
 
 def ensure_timeline(root: Path) -> bool:
-    """Create `timeline.blend` if it doesn't exist yet — the one exception to "the
-    agent never saves the .blend" (docs/architecture.md §4.5): nothing to clobber on
-    a brand-new file, and every later `edit`/`render` run still refuses to re-save.
+    """Create `timeline.blend` if it doesn't exist yet. `journal.batch()` autosaves on
+    exit (docs/architecture.md §4.5), but only once the file has a path —
+    `bpy.ops.wm.save_mainfile()` can't save a file that's never been saved. This is
+    that first save, via `save_as_mainfile`; every batch afterward saves itself.
 
     Returns whether it was just created (vs. already existing).
     """

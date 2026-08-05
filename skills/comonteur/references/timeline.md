@@ -127,7 +127,7 @@ cmt.reconcile.apply(bpy.context.scene, resolved, root)
 `batch()` doesn't nest (see `../SKILL.md` Hard rules). Run it against `timeline.blend`'s scene;
 it creates the sequence editor if there isn't one.
 
-Then preview and tell the human to save.
+Then preview — the batch already saved the file.
 
 ## What `apply()` does
 

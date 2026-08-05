@@ -251,7 +251,11 @@ no rebuild-from-spec recovery path). Every agent write goes through `journal.set
 `exec_python` bypassing it produces untracked drift, surfaced by `introspect.drift()`.
 Agent writes are grouped into a `journal.batch(...)` context manager: exactly one labelled
 `bpy.ops.ed.undo_push()` per batch (never poison the human's undo stack), gated by
-`batch_active()`. **The agent never saves the `.blend`** — save is always a human action.
+`batch_active()`. **Batches save themselves**: on exit, once the file has been saved at
+least once, the batch bumps `preferences.filepaths.save_version` to at least 2 (so
+Blender's native `.blend1`/`.blend2` rotation backs it up) and calls
+`bpy.ops.wm.save_mainfile()`. A never-yet-saved `timeline.blend` still needs its first
+save via `save_as_mainfile` in `ensure_timeline()`.
 
 ### `addon/comonteur/` module map (docs/library.md §6)
 

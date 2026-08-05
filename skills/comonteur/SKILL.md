@@ -48,8 +48,9 @@ Label batches for a human reading an undo menu: `"shot-03: title fade-up"`, not 
 
 Break one of these and you corrupt the project silently.
 
-- **Never save the `.blend`.** No `bpy.ops.wm.save_mainfile()`. Saving is the human's call —
-  saving under them can destroy work you can't see.
+- **Batches save themselves.** `journal.batch()` saves the `.blend` on exit once it's been
+  saved once already (Blender's own `save_version` backup is bumped first). Don't call
+  `bpy.ops.wm.save_mainfile()` yourself — that's a second save path outside the batch.
 - **Never regenerate.** Mutate existing data, never delete-and-recreate it.
   `scene.new_scene()` returns the existing scene when `cmt_id` already exists (`scene.py:20`)
   — that's deliberate, don't route around it. Delete-and-recreate throws away every human
@@ -93,9 +94,6 @@ delivery — read `references/workflows.md` first.
 **Gate: never call a shot done without reading a rendered frame of it.** Blender fails
 silently and visually — text off-canvas, a missing material, an F-curve on the wrong array
 index. Code that ran without error proves nothing here.
-
-**Tell the human to save when you finish.** You can't, and their Blender session holds your
-work in memory only.
 
 **Hit a real gap or bug in comonteur itself** — a missing helper, a wrong doc, a broken mise
 task — tell the human and offer to draft a GitHub issue at

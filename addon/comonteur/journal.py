@@ -101,6 +101,15 @@ def batch(label: str) -> Iterator[str]:
         # runs (tests, CI). Guard rather than crash; GUI sessions are the real path.
         if writes and bpy.context.window is not None:
             bpy.ops.ed.undo_push(message=f"comonteur: {label}")
+        # Autosave: nothing to overwrite until the file has been saved once
+        # (bpy.ops.wm.save_mainfile requires an existing filepath — a brand-new
+        # timeline.blend goes through save_as_mainfile in ensure_timeline() instead).
+        # Bump save_version first so Blender's own .blend1/.blend2 rotation is the backup.
+        if writes and bpy.data.filepath:
+            prefs = bpy.context.preferences.filepaths
+            if prefs.save_version < 2:
+                prefs.save_version = 2
+            bpy.ops.wm.save_mainfile()
 
 
 def set(id_block: Any, path: str, value: Any) -> None:
