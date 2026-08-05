@@ -36,6 +36,7 @@ def _flat_material(obj: Any, rgba: tuple[float, ...]) -> None:
     bsdf.inputs["Base Color"].default_value = (0.0, 0.0, 0.0, color[3])
     bsdf.inputs["Emission Color"].default_value = color
     bsdf.inputs["Emission Strength"].default_value = 1.0
+    bsdf.inputs["Alpha"].default_value = color[3]  # Color socket alpha is ignored by Principled BSDF
 
 
 def _image_material(obj: Any, image: Any) -> None:
@@ -48,6 +49,7 @@ def _image_material(obj: Any, image: Any) -> None:
     tex = nodes.new("ShaderNodeTexImage")
     tex.image = image
     mat.node_tree.links.new(tex.outputs["Color"], bsdf.inputs["Emission Color"])
+    mat.node_tree.links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
     bsdf.inputs["Emission Strength"].default_value = 1.0
 
 
