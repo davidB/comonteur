@@ -38,5 +38,7 @@ with cmt.journal.batch("drive_tween sine.out"):
 bpy.context.scene.frame_set(5)
 assert abs(obj.location[1] - math.sin(math.pi / 4)) < 1e-4, obj.location[1]
 
-unsupported = _bl.raises(ValueError, lambda: cmt.anim.drive_tween(obj, "location", 2, 0, 1, 1, 10, ease="elastic.out"))
+unsupported = _bl.raises(
+    ValueError, lambda: cmt.anim.drive_tween(obj, "location", 2, 0, 1, 1, 10, ease="elastic.out")
+)
 assert unsupported is not None, "elastic has no closed form, drive_tween() must reject it"

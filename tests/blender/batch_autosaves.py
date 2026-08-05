@@ -7,8 +7,8 @@ first save produces a new .blend1 backup and bumps mtime; a no-write batch touch
 import time
 from pathlib import Path
 
-import bpy
 import _bl
+import bpy
 
 cmt = _bl.setup()
 
@@ -25,7 +25,9 @@ with cmt.journal.batch("tag scene"):
     cmt.provenance.tag(scn, "t1")
 
 assert blend_path.stat().st_mtime > mtime_before, "a batch with writes must save the .blend"
-assert bpy.context.preferences.filepaths.save_version >= 2, "save_version must be bumped for backups"
+assert bpy.context.preferences.filepaths.save_version >= 2, (
+    "save_version must be bumped for backups"
+)
 assert (Path.cwd() / "test.blend1").exists(), "the prior version must be backed up as .blend1"
 
 mtime_after_write = blend_path.stat().st_mtime
