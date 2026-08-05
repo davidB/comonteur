@@ -21,3 +21,9 @@ assert row["frame_range"] == (1.0, 21.0), row
 
 written = cmt.journal.paths_written_by_agent(obj)
 assert "rotation_euler[2]" in written, written
+
+fc = obj.animation_data.action.fcurve_ensure_for_datablock(obj, "rotation_euler", index=2)
+values = [kf.co[1] for kf in fc.keyframe_points]
+base = values[0]
+expected = [base, base + 0.1, base - 0.1, base + 0.1, base - 0.1, base]
+assert all(abs(v - e) < 1e-5 for v, e in zip(values, expected)), values

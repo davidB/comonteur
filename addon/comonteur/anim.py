@@ -86,7 +86,9 @@ def _sequence(
     Shared by pulse()/idle_jitter() — both are "base, then offsets of dur, back to
     base"; this keeps the frame math and _keyframe() insert/lookup in one place.
     """
+    journal_path = path if index is None else f"{path}[{index}]"
     for t, value in waypoints:
+        journal.set(obj, journal_path, value)
         _keyframe(obj, path, index, start + dur * t, value, interpolation, easing)
 
 
@@ -146,7 +148,6 @@ def idle_jitter(
     interpolation, easing = _parse_ease(ease)
     journal_path = path if index is None else f"{path}[{index}]"
     base = paths.resolve(obj, journal_path)
-    journal.set(obj, journal_path, base)
 
     cycle = 1.0 / cycles
     waypoints = [(0.0, base)]
@@ -176,7 +177,6 @@ def pulse(
     interpolation, easing = _parse_ease(ease)
     journal_path = path if index is None else f"{path}[{index}]"
     base = paths.resolve(obj, journal_path)
-    journal.set(obj, journal_path, base)
 
     _sequence(
         obj, path, index, start, dur, [(0.0, base), (0.3, peak), (1.0, base)], interpolation, easing
