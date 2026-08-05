@@ -222,7 +222,7 @@ Details for the agent: [`skills/comonteur/references/workflows.md`](./skills/com
 You shipped it in HTML and want an editable Blender project out of it.
 
 Say *"import this HyperFrames project"*. The agent copies the tree (most of it maps 1:1),
-translates the metadata (`STORYBOARD.md` fully transcribed into `timeline.toml`'s intent/
+translates the metadata (`STORYBOARD.md` fully transcribed into `timeline.toml`'s `title`/
 `notes` fields, then kept only as a read-only archive; `hyperframes.json` + `index.html` →
 `timeline.toml`), converts the `.woff2` fonts Blender can't load, then rebuilds each shot as
 a Blender scene and previews it.
@@ -306,7 +306,7 @@ mise.toml                pinned tools; mise-tasks/comonteur/ holds the comonteur
 assets/  audio/  captions/   media + word-level timing, manifest.json generated
 lib/                     your Blender components (brand, titles) — human-authored, git-lfs
 shots/     one .blend per shot, agent-generated, yours to edit too
-timeline.toml            shot intent + the assembly — authoritative for the edit, not scene contents
+timeline.toml            shot title/notes + the assembly — authoritative for the edit, not scene contents
 timeline.blend             links the above into a VSE timeline
 .comonteur/              journal, snapshot, review frames
 renders/  thumbnail/  meta.json    deliverables

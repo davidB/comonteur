@@ -27,7 +27,7 @@ import reconcile as addon_reconcile  # noqa: E402
 def _doc(**shot: object) -> dict[str, object]:
     base = {
         "id": "shot-01",
-        "intent": "test intent",
+        "title": "test title",
         "source": {"kind": "movie", "path": "assets/a.mp4"},
         "start": 0,
         "duration": 30,

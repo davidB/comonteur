@@ -1,5 +1,5 @@
 """Pure-logic tests for the `comonteur:reconcile` task script — timeline.toml validation
-(assembly *and* shot intent, formerly `narrative.toml`/`ingest_narrative.py`) and
+(assembly *and* shot title/notes, formerly `narrative.toml`/`ingest_narrative.py`) and
 anchor→frame resolution (SPEC.md §5.2/§5.3/§10 M4).
 
 Ported from cli/src/timeline.rs's #[cfg(test)] module when the Rust CLI was dissolved into
@@ -30,11 +30,11 @@ def scene_shot(
     anchor: dict[str, Any] | None = None,
     duration: int | None = 90,
     overlay_of: str | None = None,
-    intent: str = "test intent",
+    title: str = "test title",
 ) -> dict[str, Any]:
     return {
         "id": shot_id,
-        "intent": intent,
+        "title": title,
         "source": {
             "kind": "scene",
             "blend": "shots/shot-01.blend",
@@ -211,7 +211,7 @@ def test_load_parses_real_toml(tmp_path: Path) -> None:
     path = tmp_path / "timeline.toml"
     path.write_text(
         'fps = 30\nresolution = [1920, 1080]\n\n[[shots]]\nid = "shot-01"\n'
-        'intent = "Hook"\n'
+        'title = "Hook"\n'
         'source = {kind = "scene", blend = "shots/shot-01.blend", '
         'scene = "GEN_hook"}\n'
         "start = 0\nduration = 90\n"
@@ -316,13 +316,13 @@ def test_resolve_overlay_of_overlay_chains_inheritance() -> None:
     assert overlay_b["duration_frames"] == 90
 
 
-# Shot intent (formerly narrative.toml/ingest_narrative.py — absorbed here since nothing
+# Shot title (formerly narrative.toml/ingest_narrative.py — absorbed here since nothing
 # ever derived one file from the other, so nothing caught the two shot lists drifting apart).
 
 
-def test_missing_intent_errors() -> None:
-    doc = doc_with([scene_shot("shot-01", start=0, intent="  ")])
-    assert any("empty `intent`" in e for e in timeline.validate(doc))
+def test_missing_title_errors() -> None:
+    doc = doc_with([scene_shot("shot-01", start=0, title="  ")])
+    assert any("empty `title`" in e for e in timeline.validate(doc))
 
 
 def test_non_positive_target_duration_errors() -> None:
@@ -353,16 +353,16 @@ def test_notes_content_is_preserved_verbatim() -> None:
     assert doc["notes"] == "doc-level creative direction"
 
 
-def test_shot_with_no_source_is_a_valid_intent_only_stub() -> None:
-    doc = doc_with([{"id": "shot-99", "intent": "Not built yet.", "target_duration": 5.0}])
+def test_shot_with_no_source_is_a_valid_title_only_stub() -> None:
+    doc = doc_with([{"id": "shot-99", "title": "Not built yet.", "target_duration": 5.0}])
     assert timeline.validate(doc) == []
 
 
-def test_intent_only_stub_is_excluded_from_resolved_output() -> None:
+def test_title_only_stub_is_excluded_from_resolved_output() -> None:
     doc = doc_with(
         [
             scene_shot("shot-01", start=0),
-            {"id": "shot-99", "intent": "Not built yet.", "target_duration": 5.0},
+            {"id": "shot-99", "title": "Not built yet.", "target_duration": 5.0},
         ]
     )
     resolved = timeline.resolve(doc, None, 30)

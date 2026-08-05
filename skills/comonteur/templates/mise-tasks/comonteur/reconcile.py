@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # fmt: off
-#MISE description="Validate timeline.toml (shot intents + assembly) and resolve anchors -> frames into .comonteur/timeline.resolved.json"
+#MISE description="Validate timeline.toml (shot titles/notes + assembly) and resolve anchors -> frames into .comonteur/timeline.resolved.json"
 #MISE dir="{{config_root}}"
 #MISE sources=["timeline.toml", "audio/transcript.json"]
 #MISE outputs=[".comonteur/timeline.resolved.json"]
@@ -21,10 +21,10 @@ pipeline ("re-transcribe, re-resolve, done") needs a real word-timing lookup. Th
 plain JSON (integer frame numbers, no more anchors) that `addon/comonteur/reconcile.py`
 reads with the stdlib `json` module and turns into VSE strips.
 
-`timeline.toml` also carries each shot's production intent (`intent`, `target_duration`,
+`timeline.toml` also carries each shot's production intent (`title`, `target_duration`,
 `vo`, `broll`, `notes`) — formerly a separate `narrative.toml` — since nothing ever derived
 one file from the other and splitting them let the two shot lists silently drift apart. A
-shot with no `source` yet is an intent-only stub: valid, but excluded from the resolved
+shot with no `source` yet is a title-only stub: valid, but excluded from the resolved
 plan until assembly fields are added.
 
 The add-on never imports this script and never parses a spec file: parsing, validation and
@@ -156,15 +156,15 @@ def validate(doc: dict[str, Any]) -> list[str]:
     for i, shot in enumerate(shots):
         shot_id = str(shot.get("id", ""))
         where = f"shots[{i}] ({shot_id})"
-        if not str(shot.get("intent", "")).strip():
-            errors.append(f"{where}: empty `intent`")
+        if not str(shot.get("title", "")).strip():
+            errors.append(f"{where}: empty `title`")
         target_duration = shot.get("target_duration")
         if target_duration is not None and target_duration <= 0:
             errors.append(f"{where}: target_duration must be > 0, got {target_duration}")
         errors.extend(_notes_error(where, shot.get("notes")))
 
         if shot.get("source") is None:
-            continue  # intent-only stub — not yet built, excluded from the resolved plan
+            continue  # title-only stub — not yet built, excluded from the resolved plan
 
         overlay_of = shot.get("overlay_of")
         if overlay_of is None:
@@ -327,7 +327,7 @@ def resolve(
     pending: list[dict[str, Any]] = []
     for shot in shots_in:
         if shot.get("source") is None:
-            continue  # intent-only stub — not yet built, not part of the assembly
+            continue  # title-only stub — not yet built, not part of the assembly
         shot_id = str(shot.get("id", ""))
         if shot.get("overlay_of") is None:
             resolved_by_id[shot_id] = _resolve_shot(shot, shot_id, transcript, fps)

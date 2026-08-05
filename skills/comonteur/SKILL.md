@@ -77,7 +77,7 @@ Break one of these and you corrupt the project silently.
 This is the loop for one shot. For work around it — starting a project, ingest, assembly,
 delivery — read `references/workflows.md` first.
 
-1. **Read the intent.** The shot's `timeline.toml` entry — `intent`, `notes`, and where it
+1. **Read the intent.** The shot's `timeline.toml` entry — `title`, `notes`, and where it
    sits in the assembly.
 2. **Read the scene before writing to it.** `cmt.introspect.outline(scn)`,
    `describe(obj, "data")`, `animated_paths(scn)`. These are capped and truncated on purpose

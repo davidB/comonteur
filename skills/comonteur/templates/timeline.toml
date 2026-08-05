@@ -1,15 +1,15 @@
-# Shot intent + the assembly — authoritative for the edit, silent about scene interiors.
+# Shot title + the assembly — authoritative for the edit, silent about scene interiors.
 # Validate/resolve with: mise run comonteur:reconcile   (then cmt.reconcile.apply() in Blender)
 #
 # A shot's position is an absolute `start` (frames) or an `anchor` — a transcript word,
 # occurrence index and signed offset in seconds. Prefer anchors when there is a voiceover:
 # re-recording the audio then only needs a re-transcribe, not a re-timed edit.
 #
-# Per shot: id (stable, matches shots/<id>.blend), intent (required), and optionally
+# Per shot: id (stable, matches shots/<id>.blend), title (required), and optionally
 # target_duration (seconds, aspirational — distinct from the authoritative `duration` once a
 # shot is built), vo (line of narration), broll (asset reference), notes (freeform markdown:
 # comments, directives, links, pseudo-code — anything that doesn't need its own field).
-# A shot with no `source` yet is an intent-only stub — valid, just not assembled yet.
+# A shot with no `source` yet is a title-only stub — valid, just not assembled yet.
 #
 # This project — fill these in once, they orient everyone who opens the file:
 #   video:      one line — what this video is and who it's for
@@ -22,7 +22,7 @@ resolution = [1920, 1080]
 
 [[shots]]
 id = "shot-01"
-intent = "Replace me — what this shot has to communicate, in one or two sentences."
+title = "Replace me — what this shot has to communicate, in one or two sentences."
 target_duration = 3.0
 source = {kind = "scene", blend = "shots/shot-01.blend", scene = "shot-01"}
 start = 0
@@ -35,7 +35,7 @@ duration = 90
 #
 # [[shots]]
 # id = "shot-02"
-# intent = "What this shot has to communicate."
+# title = "What this shot has to communicate."
 # source = {kind = "movie", path = "assets/broll.mp4"}
 # anchor = {word = "faster", occurrence = 1, offset = -0.2}
 # duration = 120

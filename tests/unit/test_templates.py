@@ -25,7 +25,7 @@ def test_timeline_template_passes_reconcile() -> None:
     assert doc["shots"], "the template must ship at least one usable [[shots]] block"
     assert doc["fps"] == 30
     assert doc["resolution"] == [1920, 1080]
-    assert doc["shots"][0].get("intent"), "the shipped shot must state its intent too"
+    assert doc["shots"][0].get("title"), "the shipped shot must state its title too"
 
 
 def test_timeline_template_resolves_to_frames() -> None:

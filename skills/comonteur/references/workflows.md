@@ -94,8 +94,8 @@ If ambiguous, ask.
    skill's job.
 
 3. **Write each shot's intent directly into `timeline.toml`** from what the human described —
-   `[[shots]]` with `id`, `intent`, and optionally `target_duration`/`vo`/`broll`/`notes` — a
-   shot with no `source` yet is a valid intent-only stub. Then validate it, don't eyeball it:
+   `[[shots]]` with `id`, `title`, and optionally `target_duration`/`vo`/`broll`/`notes` — a
+   shot with no `source` yet is a valid title-only stub. Then validate it, don't eyeball it:
 
    ```bash
    mise run comonteur:reconcile
@@ -144,7 +144,7 @@ the import workflow's lossiness applies — don't import your own output.
    `assets/` / `audio/` / word-level-caption contract. `init` on that folder is safe — it adds
    what's missing and keeps what the harness produced.
 2. Map its files onto project names using the metadata table in `hyperframes-import.md`
-   (`STORYBOARD.md` → `timeline.toml`'s intent/`notes` fields, `audio_meta.json` →
+   (`STORYBOARD.md` → `timeline.toml`'s `title`/`notes` fields, `audio_meta.json` →
    `audio/meta.json`, tokens → `lib/design.blend`). Metadata only — that document's
    timing-recovery and shot-rebuilding steps are for imports and have no equivalent here.
 3. Then from-scratch's steps 2–8, skipping what the harness already produced.
@@ -186,7 +186,7 @@ time — this is about context, not concurrency.
 
 For each shot, launch a foreground `Agent` call (`run_in_background: false` — you need the
 outcome before starting the next shot; the shared Blender instance can't run two at once
-anyway). Hand it a self-contained prompt: the shot's `timeline.toml` entry (intent, `notes`,
+anyway). Hand it a self-contained prompt: the shot's `timeline.toml` entry (`title`, `notes`,
 and its assembly placement), the project root, and that Blender is already open and
 connected — the subagent reaches it through `execute_python` exactly as you would. Shared
 assets under `lib/*.blend` and `assets/` need no separate hand-off: the subagent links the

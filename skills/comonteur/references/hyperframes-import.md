@@ -49,13 +49,65 @@ human-readable description from `capture/extracted/asset-descriptions.md` into t
 
 | HyperFrames | comonteur |
 |---|---|
-| `STORYBOARD.md` | fully transcribed into `timeline.toml`'s per-shot/doc-level `notes` and intent fields — nothing dropped; the `.md` becomes a read-only archive afterward |
+| `STORYBOARD.md` | copy/pasted verbatim into `timeline.toml`'s per-shot `notes` (see convention below), `title` = the frame's own heading — the `.md` becomes a read-only archive afterward |
 | `hyperframes.json` | `timeline.toml` (fps, resolution, duration) + `timeline.blend` |
 | `index.html` | `timeline.toml` + `timeline.blend` |
 | `audio_meta.json` | `audio/meta.json` |
 | `capture/extracted/tokens.json` | brand parameters in `lib/design.blend` (`cmt.scene.set_param`) |
 | `capture/extracted/asset-descriptions.md` | `description` per asset in `assets/manifest.json` |
 | `snapshots/` + `descriptions.md` | `.comonteur/review/` |
+
+**Copy/paste `notes`, don't paraphrase it.** A STORYBOARD frame section has its own field
+vocabulary — `blueprint`, `persuasion`, `beat`, `rules`, `roles`, `focal`, `asset_candidates`,
+`narrativeRole`, `keyMessage`, plus the prose scene/sub-beat description. Paraphrasing that
+into a hand-written summary is a summarization step, and a summarization step can silently
+drop a field — that's exactly what happened importing this skill's own sample project: every
+one of 8 shots lost its `rules:` line (the named animation/layout technique — `split-tilt-cards`,
+`spring-pop-entrance`, `svg-path-draw` — distinct from `blueprint`, which is the composition
+template) because it read close enough to `blueprint` prose to merge in and vanish, and one
+shot lost a pixel-precise overlay-composition spec (`1920x900 top-anchored, 180px caption
+band`) the same way. Copy-paste has no summarization step, so it can't do that:
+
+- `title` = the frame's own heading, verbatim (`## Frame 1 — Red somewhere` → `title = "Red
+  somewhere"`). Mechanical, not a hand-authored paraphrase — `notes` carries the substance.
+- `notes` = the frame's full body, copy/pasted, minus whatever already has a structured home
+  in `timeline.toml` (`duration`/`transition_in` → the `transition` field; `src`/`source` →
+  `source`/`start`/`duration`), then a `----` line, then your own commentary (timing-recovery
+  notes, simplifications made and why, deviations from the source).
+
+Worked example, Frame 1 from a STORYBOARD like this skill's own sample:
+
+```toml
+[[shots]]
+id = "01-red-somewhere"
+title = "Red somewhere"
+target_duration = 4.5
+source = {kind = "scene", blend = "shots/01-red-somewhere.blend", scene = "01-red-somewhere"}
+start = 0
+duration = 135
+notes = '''
+scene: Bare dark canvas, massive lowercase on-screen type states the pain cold
+status: animated
+type: hook
+persuasion: Pain validation
+beat: anxiety
+blueprint: kinetic-type-beats
+rules: discrete-text-sequence, sine-wave-loop
+
+Scene 1 (0.0-1.8s): Solid ink-black field, centered. "Your CI is red somewhere." hard-cut
+FLASHES in - bold cream type, dead-center, ~50% of frame width - no fade/slide. Camera locked.
+Scene 2 (1.8-2.0s): hard cut clears the line (instant, no crossfade).
+Scene 3 (2.0-4.0s): "You just don't know where." flashes in at the same center anchor, the
+word "where" underlined in one quick left->right fire-orange draw. Holds to end - subtle
+jitter only, no breathing.
+
+narrativeRole: Names the pain in the viewer's own words before anything else.
+keyMessage: You have a hidden failure somewhere in your repos right now.
+----
+fps assumed 30 (not in hyperframes.json, confirmed with human). First shot, no incoming
+transition.
+'''
+```
 
 Use the tasks for the ingest steps rather than hand-writing outputs (`comonteur:init` installs
 them — see `workflows.md`):
@@ -171,3 +223,9 @@ push them into the cheap-model subagent.
 End the import with what didn't survive: every timing number you had to ask about, every font
 that needed converting, every GSAP effect you approximated rather than reproduced. A list of
 known lossy spots is worth more to the human than a claim that it all came across.
+
+Before that, run the transcription check the copy-paste convention exists to make trivial:
+for each shot, diff its STORYBOARD frame section against what's in its `notes` — everything
+above the `----` line should be that section, verbatim, minus only what moved to a structured
+`timeline.toml` field. Anything that doesn't reconcile is a field you paraphrased instead of
+copied; fix it before moving on, don't just note it and continue.
