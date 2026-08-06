@@ -49,8 +49,34 @@ def scene_shot(
     }
 
 
-def doc_with(shots: list[dict[str, Any]], audio: list[dict[str, Any]] | None = None) -> dict:
-    return {"fps": 30, "resolution": [1920, 1080], "shots": shots, "audio": audio or []}
+def doc_with(
+    shots: list[dict[str, Any]],
+    audio: list[dict[str, Any]] | None = None,
+    background: list[dict[str, Any]] | None = None,
+) -> dict:
+    return {
+        "fps": 30,
+        "resolution": [1920, 1080],
+        "shots": shots,
+        "audio": audio or [],
+        "background": background or [],
+    }
+
+
+def bg_entry(
+    bg_id: str,
+    source: dict[str, Any] | None = None,
+    start: int | None = None,
+    anchor: dict[str, Any] | None = None,
+    duration: int | None = 90,
+) -> dict[str, Any]:
+    return {
+        "id": bg_id,
+        "source": source or {"kind": "color", "value": "#1a1a1a"},
+        "start": start,
+        "anchor": anchor,
+        "duration": duration,
+    }
 
 
 def test_valid_doc_has_no_errors() -> None:
@@ -367,3 +393,143 @@ def test_title_only_stub_is_excluded_from_resolved_output() -> None:
     )
     resolved = timeline.resolve(doc, None, 30)
     assert [s["id"] for s in resolved["shots"]] == ["shot-01"]
+
+
+# `[[background]]` — sequential, non-overlapping segments on a channel below all shots.
+
+
+def test_background_absent_resolves_to_empty_list() -> None:
+    doc = doc_with([scene_shot("shot-01", start=0)])
+    assert timeline.resolve(doc, None, 30)["background"] == []
+
+
+def test_valid_background_list_has_no_errors() -> None:
+    doc = doc_with(
+        [scene_shot("shot-01", start=0)],
+        background=[bg_entry("bg-01", start=0, duration=90)],
+    )
+    assert timeline.validate(doc) == []
+
+
+def test_background_empty_id_errors() -> None:
+    doc = doc_with([scene_shot("shot-01", start=0)], background=[bg_entry("", start=0)])
+    assert any("empty `id`" in e for e in timeline.validate(doc))
+
+
+def test_background_duplicate_id_errors() -> None:
+    doc = doc_with(
+        [scene_shot("shot-01", start=0)],
+        background=[
+            bg_entry("bg-01", start=0, duration=90),
+            bg_entry("bg-01", start=90),
+        ],
+    )
+    assert any("duplicate id" in e for e in timeline.validate(doc))
+
+
+def test_background_id_colliding_with_shot_id_errors() -> None:
+    doc = doc_with(
+        [scene_shot("shot-01", start=0)],
+        background=[bg_entry("shot-01", start=0)],
+    )
+    assert any("collides with a shot/audio id" in e for e in timeline.validate(doc))
+
+
+def test_background_missing_duration_on_non_last_entry_errors() -> None:
+    doc = doc_with(
+        [scene_shot("shot-01", start=0)],
+        background=[
+            bg_entry("bg-01", start=0, duration=None),
+            bg_entry("bg-02", start=90, duration=90),
+        ],
+    )
+    assert any("duration is required" in e for e in timeline.validate(doc))
+
+
+def test_background_last_entry_may_omit_duration() -> None:
+    doc = doc_with(
+        [scene_shot("shot-01", start=0)],
+        background=[
+            bg_entry("bg-01", start=0, duration=90),
+            bg_entry("bg-02", start=90, duration=None),
+        ],
+    )
+    assert timeline.validate(doc) == []
+
+
+def test_background_out_of_order_start_errors() -> None:
+    doc = doc_with(
+        [scene_shot("shot-01", start=0)],
+        background=[
+            bg_entry("bg-01", start=90, duration=30),
+            bg_entry("bg-02", start=0, duration=30),
+        ],
+    )
+    assert any("before the previous entry" in e for e in timeline.validate(doc))
+
+
+def test_background_unknown_source_kind_errors() -> None:
+    doc = doc_with(
+        [scene_shot("shot-01", start=0)],
+        background=[bg_entry("bg-01", source={"kind": "solid"}, start=0)],
+    )
+    assert any("unknown source.kind" in e for e in timeline.validate(doc))
+
+
+def test_background_color_requires_hex_value() -> None:
+    doc = doc_with(
+        [scene_shot("shot-01", start=0)],
+        background=[bg_entry("bg-01", source={"kind": "color", "value": "red"}, start=0)],
+    )
+    assert any("must be `#rrggbb`" in e for e in timeline.validate(doc))
+
+
+def test_background_all_kinds_are_valid() -> None:
+    kinds = [
+        {"kind": "color", "value": "#00ff00"},
+        {"kind": "image", "path": "assets/bg.png"},
+        {"kind": "movie", "path": "assets/bg.mp4"},
+        {"kind": "scene", "blend": "shots/bg.blend", "scene": "GEN_bg"},
+    ]
+    doc = doc_with(
+        [scene_shot("shot-01", start=0)],
+        background=[
+            bg_entry(f"bg-{i}", source=k, start=i * 30, duration=30) for i, k in enumerate(kinds)
+        ],
+    )
+    assert timeline.validate(doc) == []
+
+
+def test_resolve_background_color_converts_hex_to_float_rgb() -> None:
+    doc = doc_with(
+        [scene_shot("shot-01", start=0)],
+        background=[bg_entry("bg-01", source={"kind": "color", "value": "#ff0000"}, start=0)],
+    )
+    resolved = timeline.resolve(doc, None, 30)["background"][0]
+    assert resolved["source"]["value"] == [1.0, 0.0, 0.0]
+
+
+def test_resolve_background_last_entry_fills_to_frame_end() -> None:
+    doc = doc_with(
+        [scene_shot("shot-01", start=0, duration=300)],
+        background=[bg_entry("bg-01", start=0, duration=None)],
+    )
+    resolved = timeline.resolve(doc, None, 30)["background"][0]
+    assert resolved["start_frame"] == 0
+    assert resolved["duration_frames"] == 300
+
+
+def test_resolve_background_passes_through_non_color_kinds() -> None:
+    doc = doc_with(
+        [scene_shot("shot-01", start=0)],
+        background=[
+            bg_entry(
+                "bg-01",
+                source={"kind": "scene", "blend": "shots/bg.blend", "scene": "GEN_bg"},
+                start=0,
+                duration=90,
+            )
+        ],
+    )
+    resolved = timeline.resolve(doc, None, 30)["background"][0]
+    assert resolved["source"] == {"kind": "scene", "blend": "shots/bg.blend", "scene": "GEN_bg"}

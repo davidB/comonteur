@@ -14,6 +14,17 @@ video_codec = "H265"        # optional, default "H265" — any scene.render.ffmp
 video_container = "MPEG4"   # optional — auto-picked per codec when omitted
 audio_codec = "AAC"          # optional — only set on the scene when given
 
+[[background]]
+id = "bg-intro"
+source = {kind = "color", value = "#0a0a0a"}
+start = 0
+duration = 300
+
+[[background]]
+id = "bg-body"
+source = {kind = "image", path = "assets/bg_body.png"}
+start = 300               # duration omitted on the LAST entry only -> fills to the end
+
 [[shots]]
 id = "shot-01"
 source = {kind = "scene", blend = "shots/shot-01.blend", scene = "GEN_hook"}
@@ -64,6 +75,12 @@ start = 0
 - Paths are relative to the project root.
 - `[encode]` is optional; its values pass straight through to Blender's FFmpeg codec/format
   enums unvalidated — an invalid identifier fails at apply time, not at resolve time.
+- `[[background]]` (optional) chains solid-color/image/movie/scene backgrounds in sequence
+  below every shot, so a shot with a transparent film doesn't render as a gray rectangle. Same
+  `id`/`source`/`start`/`anchor` fields as a shot; `source.kind` adds `"color"` (`value =
+  "#rrggbb"`) alongside `"image"`/`"movie"`/`"scene"`. `duration` is required on every entry
+  except the last, which fills to the timeline's end. No `transition`/`overlay_of` fields —
+  entries are plain sequential cuts, one channel (see "Channel layout" below).
 
 Known gap: `in` resolves to `in_frame` but `reconcile.apply()` doesn't yet write it to the
 strip (`reconcile.py:250` reconciles `frame_start`, `frame_final_duration` and `channel`
@@ -93,8 +110,10 @@ A transcript is required if any shot or audio entry uses `anchor`.
 
 The resolved JSON is plain: `{fps, resolution, shots: [{id, source, start_frame,
 duration_frames, in_frame, transition: {type, duration_frames}}], audio: [{id, path,
-start_frame}]}`. No TOML, no anchors, no seconds. Note `transition.type` — `kind` is the key
-inside `source`; mixing them up gets a silent fallback to a cross dissolve.
+start_frame}], background: [{id, source, start_frame, duration_frames}]}`. No TOML, no
+anchors, no seconds — a `color` source's `value` is already `[r, g, b]` floats (0-1), not
+a `#rrggbb` string. Note `transition.type` — `kind` is the key inside `source`; mixing them
+up gets a silent fallback to a cross dissolve.
 
 **A transitioned shot's `start_frame`/`duration_frames` are not its authored values.** A
 `CROSS` effect only blends across the frame range where its two shots actually overlap, and
@@ -156,14 +175,26 @@ passes:
 ```
 1     CHANNEL_AUDIO        SOUND — voiceover/dialogue, and any with_audio shot's own audio
 2-4   reserved              human audio (music/SFX/ambience) — no timeline.toml schema yet
-5     CHANNEL_SHOTS_A       shots, alternating with channel 6
-6     CHANNEL_SHOTS_B
-7     CHANNEL_TRANSITIONS   CROSS effect, above both shot channels
-8+    overlay                `overlay_of` shots, human video overlay (PiP, B-roll insert),
+5     CHANNEL_BACKGROUND    `[[background]]` entries, sequential and non-overlapping
+6     CHANNEL_SHOTS_A       shots, alternating with channel 7
+7     CHANNEL_SHOTS_B
+8     CHANNEL_TRANSITIONS   CROSS effect, above both shot channels
+9+    overlay                `overlay_of` shots, human video overlay (PiP, B-roll insert),
                              titles/subtitles/karaoke — addon-allocated, see below
 ```
 
-Shots alternate channel by position (even index → 5, odd → 6) rather than sitting on one
+`CHANNEL_BACKGROUND` holds every `[[background]]` entry, one strip per entry, placed
+back-to-back at each entry's resolved `start_frame`/`duration_frames` — below both shot
+channels, so a shot's default transparent film always has something composited under it.
+No alternation, no crossfade between entries: they're expected non-overlapping, so one
+channel is enough (unlike shots, which need two channels for a CROSS to have overlap to
+blend across). Background ids are prefixed `bg:` internally (`bg:<id>`) so
+`reconcile_background()` and `reconcile_shots()` can each ignore the other's SCENE/MOVIE
+strips — both passes can create those types (`kind = "scene"`/`"movie"` is valid for
+both), and without the prefix each pass's diff() would see the other's strips as
+unrecognized strays and delete them.
+
+Shots alternate channel by position (even index → 6, odd → 7) rather than sitting on one
 fixed channel: a transitioned shot's frame range overlaps the previous shot's (see above), and
 two strips can't usefully occupy the same channel at once — Blender neither rejects nor
 blends that overlap, it just silently renders garbage. `channel` is therefore a synced field
@@ -174,14 +205,14 @@ manually, in which case reconcile leaves it alone like any other claimed field. 
 shots sit outside this alternation entirely and never shift it.
 
 An `overlay_of` shot's channel is picked, not authored: the addon scans upward from above
-its target's channel (and above 7, so it never lands on the shot/transition rows) for the
+its target's channel (and above 8, so it never lands on the shot/transition rows) for the
 lowest channel with nothing occupying its time range — skipping both other agent strips and
 any human content already sitting there. It's re-derived on every reconcile rather than
 stored as a synced field, so it stays out of the way of whatever else is on those channels.
 
 Strips are matched by `cmt_id`, which is the shot's `id` (transitions use
-`<shot-id>:transition`, a `with_audio` shot's companion sound strip uses `<shot-id>:audio`).
-So:
+`<shot-id>:transition`, a `with_audio` shot's companion sound strip uses `<shot-id>:audio`,
+a background entry uses `bg:<id>`). So:
 
 - id in the plan, not in the VSE → **create**
 - in both → **update only the fields that changed and aren't claimed**

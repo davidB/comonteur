@@ -47,13 +47,13 @@ assert scn.render.use_sequencer is True
 
 shot1 = strips["shot-01"]
 assert shot1.type == "MOVIE"
-assert shot1.channel == cmt.reconcile.CHANNEL_SHOTS_A == 5
+assert shot1.channel == cmt.reconcile.CHANNEL_SHOTS_A == 6
 assert shot1.frame_start == 0
 assert int(shot1.frame_final_duration) == 90
 
 shot2 = strips["shot-02"]
 assert shot2.type == "MOVIE"
-assert shot2.channel == cmt.reconcile.CHANNEL_SHOTS_B == 6
+assert shot2.channel == cmt.reconcile.CHANNEL_SHOTS_B == 7
 assert shot2.frame_start == 75
 assert int(shot2.frame_final_duration) == 135
 
@@ -62,7 +62,7 @@ assert shot1.frame_start < shot2.frame_start < shot1.frame_start + shot1.frame_f
 
 transition = strips["shot-02:transition"]
 assert transition.type == "CROSS"
-assert transition.channel == cmt.reconcile.CHANNEL_TRANSITIONS == 7
+assert transition.channel == cmt.reconcile.CHANNEL_TRANSITIONS == 8
 assert transition.frame_start == 75
 assert int(transition.frame_final_duration) == 15
 
@@ -97,7 +97,7 @@ assert remaining == {"shot-01"}
 assert scn.render.ffmpeg.audio_codec == "NONE"
 
 # --- overlay_of: intent in the resolved plan, channel allocated dynamically by apply() ---
-# Only shot-01 (channel 5) remains in the scene. Two overlays both target it and are
+# Only shot-01 (channel 6) remains in the scene. Two overlays both target it and are
 # resolved in the same apply() call, so they must land on different channels even though
 # neither exists yet when allocation starts.
 resolved_with_overlays = {
@@ -128,18 +128,18 @@ cmt.reconcile.apply(scn, resolved_with_overlays, "/project")
 strips = {s.name: s for s in se.strips}
 overlay1 = strips["overlay-01"]
 overlay2 = strips["overlay-02"]
-assert overlay1.channel == 8  # max(shot-01's channel 5 + 1, CHANNEL_TRANSITIONS + 1)
-assert overlay2.channel == 9  # 8 already claimed by overlay-01 within the same apply()
+assert overlay1.channel == 9  # max(shot-01's channel 6 + 1, CHANNEL_TRANSITIONS + 1)
+assert overlay2.channel == 10  # 9 already claimed by overlay-01 within the same apply()
 
 # Idempotent: re-applying the same plan doesn't move either overlay.
 cmt.reconcile.apply(scn, resolved_with_overlays, "/project")
 strips = {s.name: s for s in se.strips}
-assert strips["overlay-01"].channel == 8
-assert strips["overlay-02"].channel == 9
+assert strips["overlay-01"].channel == 9
+assert strips["overlay-02"].channel == 10
 
-# A human strip sitting on channel 10, overlapping the overlays' time range, must not be
-# clobbered — a third overlay targeting shot-01 has to skip past it to channel 11.
-se.strips.new_effect(name="human-pip", type="COLOR", channel=10, frame_start=0, length=90)
+# A human strip sitting on channel 11, overlapping the overlays' time range, must not be
+# clobbered — a third overlay targeting shot-01 has to skip past it to channel 12.
+se.strips.new_effect(name="human-pip", type="COLOR", channel=11, frame_start=0, length=90)
 resolved_with_third_overlay = {
     **resolved_with_overlays,
     "shots": [
@@ -157,7 +157,7 @@ resolved_with_third_overlay = {
 }
 cmt.reconcile.apply(scn, resolved_with_third_overlay, "/project")
 strips = {s.name: s for s in se.strips}
-assert strips["overlay-01"].channel == 8
-assert strips["overlay-02"].channel == 9
-assert strips["overlay-03"].channel == 11
-assert strips["human-pip"].channel == 10  # untouched — not agent-owned
+assert strips["overlay-01"].channel == 9
+assert strips["overlay-02"].channel == 10
+assert strips["overlay-03"].channel == 12
+assert strips["human-pip"].channel == 11  # untouched — not agent-owned

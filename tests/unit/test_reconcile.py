@@ -131,6 +131,19 @@ def test_scene_range_omits_audio_codec_when_absent() -> None:
     assert "audio_codec" not in reconcile.scene_range(resolved)
 
 
+def test_channel_ordering_is_bottom_up() -> None:
+    assert (
+        reconcile.CHANNEL_BACKGROUND
+        < reconcile.CHANNEL_SHOTS_A
+        < reconcile.CHANNEL_SHOTS_B
+        < reconcile.CHANNEL_TRANSITIONS
+    )
+
+
+def test_background_channel_is_reserved() -> None:
+    assert reconcile.CHANNEL_BACKGROUND in reconcile._RESERVED_CHANNELS
+
+
 def test_dropped_agent_owned_id_with_claimed_field_is_not_deleted() -> None:
     # VSE strips aren't ID datablocks, so the automatic origin flip (SPEC.md §4.3)
     # never fires for a strip edit (docs/M4-FINDINGS.md) — origin can stay "agent"

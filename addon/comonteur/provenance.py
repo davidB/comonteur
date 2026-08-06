@@ -81,7 +81,9 @@ def claimed_paths(id_block: Any) -> set[str]:
     for path in journal.paths_written_by_agent(id_block):
         if path in animated or path in driven:
             continue
-        if paths.resolve(id_block, path) != journal.last_agent_value(id_block, path):
+        if journal.jsonable(paths.resolve(id_block, path)) != journal.last_agent_value(
+            id_block, path
+        ):
             claimed.add(path)
     return claimed
 

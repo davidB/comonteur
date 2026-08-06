@@ -13,23 +13,32 @@ try:
 except ImportError:  # imported standalone (tests/unit/test_reconcile.py, no bpy/package)
     import const  # type: ignore[no-redef]
 
-# Bottom-up, matching pro NLE convention: audio at the bottom, video in the middle,
-# overlay/titles reserved at the top. Video and audio ranges are never interleaved.
+# Bottom-up, matching pro NLE convention: audio at the bottom, then background, then
+# video, then overlay/titles reserved at the top. Video and audio ranges are never
+# interleaved.
 CHANNEL_AUDIO = 1  # SOUND — voiceover/dialogue, and any with_audio movie shot's own audio
 # 2-4 reserved: human audio (music/SFX/ambience) — timeline.toml has no schema for these
 # roles yet, so a human adds them by hand; kept next to dialogue at the bottom of the stack.
-CHANNEL_SHOTS_A = 5
-CHANNEL_SHOTS_B = 6  # shots alternate A/B by position so any two temporally adjacent shots
+CHANNEL_BACKGROUND = 5  # `[[background]]` entries — sequential, non-overlapping, below
+# every shot channel so a shot's default transparent film always has something under it.
+CHANNEL_SHOTS_A = 6
+CHANNEL_SHOTS_B = 7  # shots alternate A/B by position so any two temporally adjacent shots
 # sit on different channels — required for a CROSS effect between them to have a real
 # overlapping frame range to blend across (same channel can't display two strips at once).
-CHANNEL_TRANSITIONS = 7  # CROSS effect, above both shot channels
-# 8-9 reserved: human video overlay (PiP, B-roll insert), and where `overlay_of` shots get
+CHANNEL_TRANSITIONS = 8  # CROSS effect, above both shot channels
+# 9-10 reserved: human video overlay (PiP, B-roll insert), and where `overlay_of` shots get
 # dynamically allocated a channel (see _allocate_overlay_channel) — never a fixed constant,
 # since a project may already have human content sitting there.
-# 10+ reserved: titles/subtitles/karaoke overlay, topmost — nothing agent-side writes here
+# 11+ reserved: titles/subtitles/karaoke overlay, topmost — nothing agent-side writes here
 # yet (comonteur's text objects live in-scene, not as VSE text strips).
 _SHOT_CHANNELS = (CHANNEL_SHOTS_A, CHANNEL_SHOTS_B)
-_RESERVED_CHANNELS = {CHANNEL_AUDIO, CHANNEL_SHOTS_A, CHANNEL_SHOTS_B, CHANNEL_TRANSITIONS}
+_RESERVED_CHANNELS = {
+    CHANNEL_AUDIO,
+    CHANNEL_BACKGROUND,
+    CHANNEL_SHOTS_A,
+    CHANNEL_SHOTS_B,
+    CHANNEL_TRANSITIONS,
+}
 
 
 def _allocate_overlay_channel(
@@ -282,6 +291,72 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
         provenance.tag(strip, item["id"])
         return strip
 
+    def create_background_strip(item: dict[str, Any]) -> Any:
+        source = item["source"]
+        kind = source["kind"]
+        if kind == "color":
+            strip = se.strips.new_effect(
+                name=item["id"],
+                type="COLOR",
+                channel=item["channel"],
+                frame_start=1,
+                length=item["frame_final_duration"],
+            )
+            journal.set(strip, "color", tuple(source["value"]))
+        elif kind == "image":
+            path = project.to_link_path(source["path"], project_root)
+            strip = se.strips.new_image(
+                name=item["id"], filepath=path, channel=item["channel"], frame_start=1
+            )
+        elif kind == "movie":
+            path = project.to_link_path(source["path"], project_root)
+            strip = se.strips.new_movie(
+                name=item["id"], filepath=path, channel=item["channel"], frame_start=1
+            )
+        elif kind == "scene":
+            linked = library.link_scene(source["blend"], source["scene"], root=project_root)
+            strip = se.strips.new_scene(
+                name=item["id"], scene=linked, channel=item["channel"], frame_start=1
+            )
+        else:
+            raise ValueError(f"unknown background source kind: {kind!r}")
+        provenance.tag(strip, item["id"])
+        return strip
+
+    def reconcile_background(background: list[dict[str, Any]]) -> None:
+        """`[[background]]` entries, sequential and non-overlapping on one channel — no
+        A/B alternation like shots since there's no crossfade between them (yet). Ids are
+        prefixed `bg:` and both this pass and `reconcile_shots` filter by it: background
+        can create SCENE/MOVIE strips just like shots, and without partitioning by id
+        each pass's diff() would see the other's strips as unrecognized strays and delete
+        them (the same live-in-batch stray-deletion bug `reconcile_shot_audio` guards
+        against for SOUND strips).
+        """
+        fields = ("frame_start", "frame_final_duration", "channel")
+        desired = [
+            {
+                "id": f"bg:{b['id']}",
+                "source": b["source"],
+                "frame_start": b["start_frame"],
+                "frame_final_duration": b["duration_frames"],
+                "channel": CHANNEL_BACKGROUND,
+            }
+            for b in background
+        ]
+        bg_plan, existing = plan_for(
+            desired,
+            ("COLOR", "IMAGE", "MOVIE", "SCENE"),
+            fields,
+            id_filter=lambda cid: cid.startswith("bg:"),
+        )
+        for item in bg_plan.to_create:
+            strip = create_background_strip(item)
+            write_fields(strip, {f: item[f] for f in fields})
+        for update in bg_plan.to_update:
+            write_fields(existing[update["id"]], update["fields"])
+        for cmt_id in bg_plan.to_delete:
+            se.strips.remove(existing[cmt_id])
+
     def reconcile_shots(shots: list[dict[str, Any]]) -> dict[str, Any]:
         # channel alternates by position, not a fixed constant: a shot with a transition
         # must overlap the previous one in time, which requires them on different
@@ -346,7 +421,11 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
                 pending.remove(s)
 
         desired = [desired_by_id[s["id"]] for s in shots]
-        shot_plan, existing = plan_for(desired, ("SCENE", "MOVIE"), fields)
+        # id_filter excludes `bg:`-prefixed background strips — reconcile_background owns
+        # those, same reasoning as reconcile_audio's split from reconcile_shot_audio.
+        shot_plan, existing = plan_for(
+            desired, ("SCENE", "MOVIE"), fields, id_filter=lambda cid: not cid.startswith("bg:")
+        )
 
         for item in shot_plan.to_create:
             strip = create_shot_strip(item)
@@ -445,6 +524,7 @@ def apply(scene: Any, resolved: dict[str, Any], project_root: str) -> None:
         # comonteur assembles the timeline in the VSE, not the 3D viewport — render
         # must read from the sequencer or `comonteur:render` produces the wrong frame.
         journal.set(scene, "render.use_sequencer", True)
+        reconcile_background(resolved.get("background", []))
         shots = resolved.get("shots", [])
         shot_strips = reconcile_shots(shots)
         reconcile_audio(resolved.get("audio", []))

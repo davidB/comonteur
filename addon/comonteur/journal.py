@@ -49,18 +49,25 @@ def _read_all() -> Iterator[dict[str, Any]]:
                 yield json.loads(line)
 
 
-def _jsonable(value: Any) -> Any:
+def jsonable(value: Any) -> Any:
     """bpy hands back Vector / Color / bpy_prop_array for anything vector-shaped, and none of
     them are JSON-serializable. Coerce here rather than at the call site: `set()` is documented
     as the escape hatch for arbitrary properties, so array-valued writes are expected, and a
     TypeError would otherwise surface at batch exit with the batch already half-flushed.
+
+    Not module-private: `provenance.claimed_paths()` also calls this, on the *live* value it
+    reads back from the strip/object, so it compares against `last_agent_value()`'s journalled
+    form on equal footing — `mathutils.Color`/`Vector`/`bpy_prop_array` compare unequal to a
+    plain list even when every element matches (`Color(...) != [0.1, 0.1, 0.1]` is `True` in
+    Blender), which made any vector-valued `journal.set()` write look human-claimed the instant
+    it was created, with nothing having touched it.
     """
     if isinstance(value, (str, bytes)) or value is None:
         return value
     if isinstance(value, (int, float, bool)):
         return value
     try:
-        return [_jsonable(v) for v in value]
+        return [jsonable(v) for v in value]
     except TypeError:
         return repr(value)
 
@@ -126,8 +133,8 @@ def set(id_block: Any, path: str, value: Any) -> None:
             "op": "set",
             "target": target_of(id_block),
             "path": path,
-            "old": _jsonable(old),
-            "new": _jsonable(new),
+            "old": jsonable(old),
+            "new": jsonable(new),
         }
     )
     if id_block not in _state["touched"]:

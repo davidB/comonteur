@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import sys
 import tomllib
 from pathlib import Path
@@ -90,20 +91,46 @@ def _one_of_start_anchor(entry: dict[str, Any]) -> bool:
 # a typo'd kind must fail at `mise run comonteur:reconcile`, not halfway through apply().
 SOURCE_KINDS = {"scene": ("blend", "scene"), "movie": ("path",)}
 
+# `[[background]]` reuses the same `source` shape but a shot can't be `kind="color"` (no
+# use case), so this is a separate table rather than widening SOURCE_KINDS.
+BACKGROUND_SOURCE_KINDS = {
+    "color": ("value",),
+    "image": ("path",),
+    "movie": ("path",),
+    "scene": ("blend", "scene"),
+}
+_HEX_COLOR_RE = re.compile(r"#[0-9a-fA-F]{6}")
 
-def _source_errors(i: int, shot_id: str, source: Any) -> list[str]:
-    where = f"shots[{i}] ({shot_id})"
+
+def _source_kind_errors(
+    where: str, source: Any, kind_table: dict[str, tuple[str, ...]]
+) -> list[str]:
     if not isinstance(source, dict):
         return [f"{where}: `source` is required"]
     kind = source.get("kind")
-    if kind not in SOURCE_KINDS:
-        known = ", ".join(sorted(SOURCE_KINDS))
+    if kind not in kind_table:
+        known = ", ".join(sorted(kind_table))
         return [f"{where}: unknown source.kind {kind!r} — expected one of {known}"]
     return [
         f"{where}: source.kind={kind!r} requires `{key}`"
-        for key in SOURCE_KINDS[kind]
+        for key in kind_table[kind]
         if not str(source.get(key, "")).strip()
     ]
+
+
+def _source_errors(i: int, shot_id: str, source: Any) -> list[str]:
+    return _source_kind_errors(f"shots[{i}] ({shot_id})", source, SOURCE_KINDS)
+
+
+def _background_errors(i: int, bg_id: str, entry: dict[str, Any]) -> list[str]:
+    where = f"background[{i}] ({bg_id})"
+    source = entry.get("source")
+    errors = _source_kind_errors(where, source, BACKGROUND_SOURCE_KINDS)
+    if isinstance(source, dict) and source.get("kind") == "color":
+        value = source.get("value", "")
+        if not _HEX_COLOR_RE.fullmatch(str(value)):
+            errors.append(f"{where}: source.value {value!r} must be `#rrggbb`")
+    return errors
 
 
 def _overlay_cycle(shot_id: str, overlay_targets: dict[str, str]) -> bool:
@@ -211,6 +238,39 @@ def validate(doc: dict[str, Any]) -> list[str]:
             audio_ids.add(track_id)
         if not _one_of_start_anchor(track):
             errors.append(f"audio[{i}] ({track_id}): exactly one of `start`/`anchor` must be set")
+
+    background = doc.get("background") or []
+    background_ids: set[str] = set()
+    for i, entry in enumerate(background):
+        bg_id = str(entry.get("id", ""))
+        if not bg_id.strip():
+            errors.append(f"background[{i}]: empty `id`")
+        elif bg_id in background_ids:
+            errors.append(f"background[{i}]: duplicate id {bg_id!r}")
+        elif bg_id in shot_ids or bg_id in audio_ids:
+            errors.append(f"background[{i}]: id {bg_id!r} collides with a shot/audio id")
+        else:
+            background_ids.add(bg_id)
+
+    last_start: float | None = None
+    for i, entry in enumerate(background):
+        bg_id = str(entry.get("id", ""))
+        where = f"background[{i}] ({bg_id})"
+        if not _one_of_start_anchor(entry):
+            errors.append(f"{where}: exactly one of `start`/`anchor` must be set")
+        duration = entry.get("duration")
+        is_last = i == len(background) - 1
+        if duration is None:
+            if not is_last:
+                errors.append(f"{where}: duration is required except on the last entry")
+        elif duration <= 0:
+            errors.append(f"{where}: duration must be > 0, got {duration}")
+        start = entry.get("start")
+        if start is not None:
+            if last_start is not None and start < last_start:
+                errors.append(f"{where}: start {start} is before the previous entry's start")
+            last_start = start
+        errors.extend(_background_errors(i, bg_id, entry))
 
     return errors
 
@@ -371,6 +431,31 @@ def resolve(
             }
         )
 
+    # frame_end for a background entry that omits `duration` (last entry only, per
+    # validate()) — same derivation as addon/comonteur/reconcile.py's scene_range(),
+    # duplicated here since the two sides don't share code across the Blender boundary.
+    ends = [s["start_frame"] + s["duration_frames"] for s in shots]
+    frame_end = max(ends) if ends else 0
+
+    background: list[dict[str, Any]] = []
+    for entry in doc.get("background") or []:
+        bg_id = str(entry.get("id", ""))
+        start_frame = resolve_position(bg_id, entry, transcript, fps)
+        source = dict(entry["source"])
+        if source.get("kind") == "color":
+            hexval = str(source["value"]).lstrip("#")
+            source["value"] = [int(hexval[i : i + 2], 16) / 255 for i in (0, 2, 4)]
+        duration = entry.get("duration")
+        duration_frames = duration if duration is not None else max(frame_end - start_frame, 0)
+        background.append(
+            {
+                "id": bg_id,
+                "source": source,
+                "start_frame": start_frame,
+                "duration_frames": duration_frames,
+            }
+        )
+
     encode = doc.get("encode") or {}
     return {
         "fps": doc.get("fps"),
@@ -380,6 +465,7 @@ def resolve(
         "audio_codec": encode.get("audio_codec"),
         "shots": shots,
         "audio": audio,
+        "background": background,
     }
 
 
@@ -410,7 +496,8 @@ def main(argv: list[str]) -> None:
     out_path.write_text(json.dumps(resolved, indent=2), encoding="utf-8")
     print(
         f"wrote {out_path} ({len(resolved['shots'])} shot(s), "
-        f"{len(resolved['audio'])} audio track(s))"
+        f"{len(resolved['audio'])} audio track(s), "
+        f"{len(resolved['background'])} background entries)"
     )
 
 

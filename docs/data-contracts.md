@@ -124,6 +124,18 @@ video_codec = "H265"        # optional, default "H265" — any scene.render.ffmp
 video_container = "MPEG4"   # optional — auto-picked per codec when omitted
 audio_codec = "AAC"          # optional — only set on the scene when given
 
+[[background]]
+id = "bg-intro"
+source = {kind = "color", value = "#0a0a0a"}
+start = 0
+duration = 300
+
+[[background]]
+id = "bg-body"
+source = {kind = "image", path = "assets/bg_body.png"}
+start = 300
+# duration omitted on the LAST entry only -> extends to the timeline's resolved frame_end
+
 [[shots]]
 id = "shot-01"
 title = "Names the pain before anything else."
@@ -196,6 +208,18 @@ resolved values. There is no `channel` field: `timeline.toml` expresses the rela
 `_allocate_overlay_channel` owns picking an actual free VSE channel above the target,
 skipping the shot/transition rows and anything else already occupying that time range
 (see `skills/comonteur/references/timeline.md` "Channel layout").
+
+`[[background]]` (optional) is a list, same shape as `[[shots]]`/`[[audio]]`, chained in
+sequence rather than a single global entry — each entry's `id`/`source`/`start`/`anchor`
+work exactly like a shot's, and `source.kind` adds `"color"` (`value = "#rrggbb"`) to
+`"image"`/`"movie"`/`"scene"`. `duration` is required on every entry except the last,
+which extends to the timeline's resolved end when omitted — no separate global-span
+field needed. Entries are non-overlapping and sit on one VSE channel below every shot
+channel, so a shot's default transparent film always has something composited under it;
+a shot with its own full-opacity content (e.g. a chapter splash screen) simply paints
+over the background for its own time range — no flag needed, plain z-order. No
+crossfade between background entries as of M4 (see
+`skills/comonteur/references/timeline.md` "Channel layout" for the channel it occupies).
 
 `[encode]` is optional and, unlike `transition.type`, its values are **not** enum-checked
 by `reconcile.py` — `video_codec`/`video_container`/`audio_codec` pass straight through to
