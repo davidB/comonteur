@@ -5,6 +5,7 @@ from . import (  # noqa: F401
     card,
     doctor,
     fx,
+    gn,
     introspect,
     journal,
     library,

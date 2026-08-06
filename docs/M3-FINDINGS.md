@@ -27,6 +27,16 @@ simpler than wiring GN and satisfies the F-curve mandate directly; String to Cur
 stays available for future *procedural* (non-keyframed) text effects but is not on
 `text.py`'s critical path.
 
+**Amendment (post-M3):** the rejection above is about *per-instance* keyframing
+specifically — still correct, GN instances aren't independently keyframeable. It is not a
+rejection of GN for per-character *timing* in general: `gn.char_reveal()` (docs/library.md
+§6.2) drives a per-character stagger from **one** keyframed `Progress` modifier input, with
+each character's delay computed from its instance `Index` inside the node tree instead of
+from a per-instance keyframe. Confirmed working live (build, keyframe, save/reload,
+`introspect`/`provenance` visibility) before that module was written. `split_chars()` is
+still the right tool when characters need independent Objects; `gn.char_reveal()` is for a
+uniform timing effect across a string.
+
 ## Check 2 — Asset catalog discovery, headless
 
 **Scriptable headless via `assets_only`.** `bpy.data.libraries.load()` takes an

@@ -80,3 +80,40 @@ def animated_paths(scene: Any, max_lines: int = 60) -> list[dict[str, Any]]:
     if total > len(out):
         out.append({"truncated": total - len(out)})
     return out
+
+
+def gn_inputs(obj: Any, max_lines: int = 60) -> list[dict[str, Any]]:
+    """Named inputs (identifier + current value) of every Geometry Nodes modifier on obj —
+    what gn.input_path() needs to resolve a socket name, without groping for a Socket_N
+    identifier by trial and error (see gn.py's module docstring for why that lookup exists
+    at all). Skips Geometry-typed sockets (not a scalar value to display) and any socket
+    kind whose properties struct exposes no `.value` (Object/Image/Material inputs — none
+    of comonteur's own effects use them yet).
+    """
+    out: list[dict[str, Any]] = []
+    total = 0
+    for mod in obj.modifiers:
+        if mod.type != "NODES" or mod.node_group is None:
+            continue
+        for item in mod.node_group.interface.items_tree:
+            if item.item_type != "SOCKET" or item.in_out != "INPUT":
+                continue
+            if item.socket_type == "NodeSocketGeometry":
+                continue
+            sock = getattr(mod.properties.inputs, item.identifier)
+            if not hasattr(sock, "value"):
+                continue
+            total += 1
+            if len(out) >= max_lines:
+                continue
+            out.append(
+                {
+                    "modifier": mod.name,
+                    "name": item.name,
+                    "identifier": item.identifier,
+                    "value": sock.value,
+                }
+            )
+    if total > len(out):
+        out.append({"truncated": total - len(out)})
+    return out

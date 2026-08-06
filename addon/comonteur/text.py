@@ -1,7 +1,12 @@
 """Text objects — SPEC.md §6 module table: styling, fit-to-box, per-character split.
-Per docs/M3-FINDINGS.md (Check 1), per-character stagger uses real per-character
-Objects, not a Geometry Nodes String to Curves tree — GN instances aren't
-independently keyframeable, and §6.2 requires real F-curves.
+
+split_chars()/split_spans() give each character/span its own Object, for cases that need
+independent ownership, positioning, or per-character material overrides. For a uniform
+timing/reveal effect across a whole string (a stagger, a wipe-in), prefer gn.char_reveal()
+(§6.2) instead: one keyframed Progress input, no per-character Objects or keyframes at all.
+docs/M3-FINDINGS.md (Check 1) found GN instances aren't independently keyframeable — true,
+and still why split_chars() exists — but that isn't the only way to drive per-character
+timing from Geometry Nodes; see gn.py's module docstring.
 """
 
 from typing import Any, Literal

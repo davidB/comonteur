@@ -98,8 +98,11 @@ animating, since it mutates `data.size` — and it only ever shrinks, never grow
 object is removed — keep the returned list, not the original reference. Space glyphs measure
 zero width and fall back to `size * space_width_factor`; raise that factor if spacing looks
 tight. Reason it exists: Geometry Nodes *String to Curves* yields one multi-spline object
-whose instances can't be keyframed independently — real per-character animation needs real
-per-character objects.
+whose instances can't be keyframed independently, so *independent* per-character
+animation/positioning needs real per-character objects. For a uniform reveal/stagger across a
+whole string — most "letters fly in one after another" asks — prefer `cmt.gn.char_reveal()`
+instead: one keyframed input, no per-character objects at all. Reach for `split_chars()` when
+characters need independent control beyond timing (e.g. per-character material overrides).
 
 `measure()` is a read-only bounding box in world space — `{"width", "height", "depth", "min",
 "max"}`, `min`/`max` as `(x, y, z)` tuples. Use it to position an underline or accent against
@@ -270,6 +273,45 @@ cmt.anim.pulse(obj, "data.materials[0].node_tree.nodes[\"Principled BSDF\"].inpu
 `pulse()` is a single spike — base → `peak` at 30% of `dur` → back to base at `dur` — not a
 repeating wobble. Use it for a flash/pop; use `idle_jitter()` for a sustained breathing hold.
 
+## `cmt.gn` — Geometry Nodes effects (non-baked, tunable)
+
+```python
+char_reveal(name="CMT Char Reveal") -> NodeTree
+apply(obj, node_group, name=None) -> Modifier
+input_path(mod, socket_name) -> str
+```
+
+`char_reveal()` builds (once — idempotent by name) a reusable node group that reveals a
+string's characters left to right from a **single** `Progress` input (0-1); each
+character's delay comes from its instance index inside the node tree, not from a
+per-character keyframe. Non-destructive and asset-marked, so it joins the project's
+reusable-effect catalog (Blender's Asset Browser, "Current File") the first time it's built.
+Use this — not `split_chars()` + `stagger()` — for a uniform reveal/wipe-in across a whole
+string; see `cmt.text`'s `split_chars()` entry for when independent per-character objects
+are still the right call.
+
+```python
+ng = cmt.gn.char_reveal()
+mod = cmt.gn.apply(title, ng)
+cmt.anim.tween(title, cmt.gn.input_path(mod, "Progress"), None,
+                frm=0.0, to=1.0, start=1, dur=40, ease="power2.out")
+```
+
+`apply()` adds the node group as a `NODES` modifier and returns it. `input_path(mod,
+"Progress")` resolves the socket's real `Socket_N` identifier to the RNA path
+`anim.tween()`/`stagger()`/`drive()` need — **don't hand-type `Socket_N`**, it's
+auto-generated and not stable across rebuilds. Set a non-animated input (e.g. `String`,
+`Spacing`, `Window`) the same way any other object property is set inside a batch:
+
+```python
+cmt.introspect.gn_inputs(title)          # list current inputs by name, to find what to set
+```
+
+A GN modifier input is an ordinary object RNA path — `anim.tween()`/`stagger()`/`drive()`
+animate it exactly like `location` or any other property, no special calls needed. Once
+built, other effects (shapes, not just text) can reuse the same `apply()`/`input_path()`
+pair with a different node group.
+
 ## `cmt.card` — image + border + shadow bundle
 
 ```python
@@ -334,16 +376,21 @@ cmt.text.create(scn, "Ship faster", color=brand["ink_black"], font=vfont)
 outline(scene, max_lines=60) -> str
 describe(id_block, path="", max_lines=40) -> str
 animated_paths(scene, max_lines=60) -> list[dict]
+gn_inputs(obj, max_lines=60) -> list[dict]
 ```
 
 `outline()` gives collections and objects with their origin tag — start here.
 `describe(obj, "data")` walks a dotted path and lists attribute names, capped.
 `animated_paths()` returns `{object, data_path, index, keys, frame_range}` per F-curve — how
-you find what's already animated before adding to it. When the cap bites it appends a final
-`{"truncated": N}` entry — check for that before assuming you've seen the whole scene; raise
-`max_lines` or narrow the scene if you need the rest.
+you find what's already animated before adding to it. Already covers a keyframed Geometry
+Nodes modifier input, same as any other object property — no separate GN call needed there.
+`gn_inputs(obj)` returns `{modifier, name, identifier, value}` per named input across every
+Geometry Nodes modifier on `obj` — use it to see current values before calling
+`cmt.gn.input_path()`. When the cap bites it appends a final `{"truncated": N}` entry — check
+for that before assuming you've seen the whole scene; raise `max_lines` or narrow the scene
+if you need the rest.
 
-All three are capped and truncated on purpose. `drift()` and `find()` don't exist yet — don't
+All four are capped and truncated on purpose. `drift()` and `find()` don't exist yet — don't
 call them.
 
 ## `cmt.preview` — look at your work *(read-only, but see below)*

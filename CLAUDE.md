@@ -265,6 +265,7 @@ save via `save_as_mainfile` in `ensure_timeline()`.
 | `journal.py` | `batch()` context manager, `set()`, JSONL, snapshot, revert |
 | `scene.py` | `new_scene()` — deterministic baseline, never inherits `bpy.context.scene` state |
 | `anim.py` | `tween`, `stagger`, easing map (GSAP-equivalent), F-curve helpers — real keyframes preferred over baked/driver animation |
+| `gn.py` | Geometry Nodes effect builders (`char_reveal`, `apply`, `input_path`) — non-baked, tunable procedural VFX; a GN modifier input is an ordinary object RNA path, so `anim.py` animates it with no changes |
 | `text.py` | text objects, styling, fit-to-box, per-character split, multi-color inline spans, karaoke word highlight |
 | `fx.py` | camera/frame-level overlay effects (vignette) |
 | `library.py` | link `lib/*.blend` components and `shots/*.blend` scenes; asset catalog discovery |

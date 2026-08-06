@@ -18,6 +18,7 @@ equally to **reduce agent token consumption**: the agent calls
 | `journal.py` | `batch()` context manager, `set()`, JSONL, snapshot, revert |
 | `scene.py` | `new_scene()` — see §6.1. `add_camera()` — ortho camera for the `kind='2d'` unit convention, see §6.1. Scene params interface. |
 | `anim.py` | `tween`, `stagger`, `idle_jitter` (sine wobble, pre-sampled), `hard_cut` (instant show/hide via CONSTANT hide_render/hide_viewport keyframes), easing map, F-curve helpers |
+| `gn.py` | Geometry Nodes effect builders (`char_reveal`, `apply`, `input_path`) — non-baked procedural VFX, see §6.2 |
 | `text.py` | text objects, styling, fit-to-box, `measure`/`measure_many` (world-space bounding box — object must be visible at the current frame, `matrix_world` freezes stale for a hidden one), per-character split (preserves color and true left edge), `alpha_path` (Alpha-input fade, distinct from `color_path`'s alpha channel which Blender ignores). `style()`/`create()` color defaults to `shading='flat'` (Emission, since `kind='2d'` scenes have no lights) — pass `shading='lit'` for plain Base Color in lit 3D scenes. |
 | `color.py` | `hex_to_rgba`/`srgb_to_linear` — sRGB hex colors decoded to the linear RGBA Emission/Base Color inputs expect |
 | `vse.py` | assembly, scene strips, transitions, audio |
@@ -63,16 +64,46 @@ Must:
    `add_camera()` stays independently callable with a different `height`/`distance` for a
    shot that wants different framing (e.g. a zoom).
 
-### 6.2 `anim.py` — keyframes by default, drivers for tunable continuous effects
+### 6.2 `anim.py`/`gn.py` — non-baked and tunable, by keyframe or by node graph
 
-Keyframes are the default: discrete, narrative-timed events should stay editable in the
-dope sheet and graph editor, so real keyframes on real data paths are preferred there.
-`drive()` is the sanctioned exception, for continuous/procedural effects a human will
-retune by editing a formula rather than dragging keyframes (an idle wobble, a decay
-curve) — no more need to escape to raw `bpy` for that case. `anim.py` records every
-driver it installs through `journal.record_driver()`, same as keyframe writes go through
-`journal.set()`; anything that bypasses that (raw `bpy`) is still untracked drift with
-the usual caveat (§4.4-4.5).
+The hard rule is not "must literally be an F-curve" — it's **non-baked**: an effect must
+stay expressed as a real, inspectable, tunable parameter (a keyframe, a driver formula, or
+a GN modifier input), never as a baked/pre-sampled result that can only be regenerated, not
+adjusted, by a user, an agent in a later turn, or automatically in response to another
+object. Keyframes are the default expression of that for discrete, narrative-timed events —
+they stay editable in the dope sheet and graph editor. `drive()` is the sanctioned exception
+for continuous/procedural effects a human will retune by editing a formula rather than
+dragging keyframes (an idle wobble, a decay curve). `anim.py` records every driver it
+installs through `journal.record_driver()`, same as keyframe writes go through
+`journal.set()`; anything that bypasses that (raw `bpy`) is still untracked drift with the
+usual caveat (§4.4-4.5).
+
+`gn.py` is a third expression of the same non-baked rule, for effects a per-object keyframe
+sequence can't express cleanly — a per-character stagger being the motivating case (see
+below). A GN modifier input is an ordinary Object RNA path
+(`modifiers["Name"].properties.inputs.Socket_N.value` — Blender 5.2's post-idprop API; the
+older `modifier["Socket_N"]` idprop form now raises `TypeError`), so `anim.tween()`/
+`stagger()`/`drive()` already animate a GN input with **zero code changes**, and
+`introspect.animated_paths()`/`provenance.claimed_paths()` already see a keyframed GN input
+for free, the same as any other object property — confirmed live, not assumed. `gn.py`'s own
+job is narrower: build the node graphs, and resolve a named input to that RNA path
+(`gn.input_path()`, same "resolve the real identifier, don't hand-type it" precedent as
+`text.color_path()`/`text.alpha_path()`).
+
+`gn.char_reveal()` is the concrete case this rule was re-examined for: it reveals
+String-to-Curves characters left-to-right from a **single** keyframed `Progress` input
+(0-1) — each character's delay is computed from its instance `Index` *inside the node
+tree* (`index * Spacing`, mapped through a `Window`), not from N per-character keyframes.
+Zero per-instance keyframes, fully non-destructive, and the whole stagger is retuned by
+changing one or two modifier inputs rather than touching individual objects — a compliant,
+arguably purer expression of "non-baked and tunable" than per-character F-curves would be,
+not a workaround. `docs/M3-FINDINGS.md` Check 1 rejected a per-instance-keyframed GN
+approach for exactly this case; that rejection still holds (GN instances genuinely aren't
+independently keyframeable), it just wasn't the only way to drive per-character timing from
+GN. `text.split_chars()`/`split_spans()` remain the right tool when characters need
+independently ownable/positionable *Objects* (e.g. per-character material overrides beyond
+what a `Set Material Index` node can express) — `gn.char_reveal()` is for a uniform
+timing/reveal effect across a string, not independent per-character control.
 
 ```python
 anim.tween(obj, "location", index=1, frm=-0.4, to=0.0,
@@ -128,7 +159,10 @@ One Geometry Nodes tree dumped naively will exceed the whole spec in tokens.
 - `outline(scene, depth=1)` → shallow tree: collections, object names, types, counts.
   Hard cap on lines; truncate with `… +N more`.
 - `describe(datapath, depth=1)` → drill down to one node.
-- `animated_paths(scene)` → which RNA paths carry F-curves, key counts, frame ranges.
+- `animated_paths(scene)` → which RNA paths carry F-curves, key counts, frame ranges. Already
+  covers a keyframed GN modifier input — no GN-specific code needed, see §6.2.
+- `gn_inputs(obj)` → named inputs (identifier + current value) of every Geometry Nodes
+  modifier on `obj`, so `gn.input_path()` doesn't have to be resolved by trial and error.
 - `find(type=, name~=, tag=)` → targeted lookup.
 - `drift()` → untracked changes vs `.comonteur/snapshot.json`.
 
@@ -183,5 +217,11 @@ Parameter interface, once a component is chosen: custom properties on the Scene 
   object's `data.body`.
 - Geometry Nodes modifier inputs are the other good interface — typed, with UI. The
   **String to Curves** node gives per-character instances, which is how GSAP-style
-  `SplitText` staggers are done natively.
-  **⚠ The GN modifier property Python API changed in 5.2 — verify before building on it (M0.3).**
+  `SplitText` staggers are done natively (see `gn.char_reveal()`, §6.2).
+  **5.2's modifier-input API is confirmed** (M0.3 resolved): read/write via
+  `modifier.properties.inputs.Socket_N.value`, keyframe via
+  `obj.keyframe_insert('modifiers["Name"].properties.inputs.Socket_N.value')` — the old
+  idprop form (`modifier["Socket_N"]`) raises `TypeError` on 5.2. `gn.py` builds a node
+  group's `Socket_N` sockets and marks the result `asset_mark()`ed, so a project's first
+  call to `gn.char_reveal()` seeds its reusable-effect catalog for free — no separate
+  starter-asset file to ship or maintain.
