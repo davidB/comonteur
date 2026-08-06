@@ -105,6 +105,7 @@ task — tell the human and offer to draft a GitHub issue at
 |---|---|
 | `references/workflows.md` | Starting a project, or deciding which workflow a directory is: order of work, ingest, rendering, delivery. Also covers delegating shots to a subagent when building more than a couple in one session. |
 | `references/api.md` | Writing any scene content: scenes, text, animation, eases, components, preview, provenance. |
+| `references/vfx-recipes.md` | A named look (spring-pop, underline draw, card tilt, scale-swap, typewriter, shatter) — which `cmt.*` calls to combine, and how to install/reuse the GN VFX asset library. |
 | `references/timeline.md` | Assembling or changing the edit: `timeline.toml`, anchors, `reconcile`, VSE strips, audio, transitions. |
 | `references/hyperframes-import.md` | Converting an existing HyperFrames project into a comonteur project. |
 | `references/troubleshooting.md` | A previously-working project shows broken/missing data after reopening a `.blend` — fonts, links, or other external references. |

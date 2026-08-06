@@ -37,7 +37,7 @@ DEPS_EXEMPT = {"convert_fonts": "WOFF2 needs a Brotli decoder; the stdlib has no
 
 
 def test_tasks_are_discovered() -> None:
-    assert len(TASKS) == 11, [p.stem for p in TASKS]
+    assert len(TASKS) == 12, [p.stem for p in TASKS]
 
 
 @pytest.mark.parametrize("task", TASKS, ids=lambda p: p.stem)

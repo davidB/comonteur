@@ -277,6 +277,8 @@ repeating wobble. Use it for a flash/pop; use `idle_jitter()` for a sustained br
 
 ```python
 char_reveal(name="CMT Char Reveal") -> NodeTree
+typewriter(name="CMT Typewriter") -> NodeTree
+fracture(name="CMT Fracture") -> NodeTree
 apply(obj, node_group, name=None) -> Modifier
 input_path(mod, socket_name) -> str
 ```
@@ -311,6 +313,22 @@ A GN modifier input is an ordinary object RNA path — `anim.tween()`/`stagger()
 animate it exactly like `location` or any other property, no special calls needed. Once
 built, other effects (shapes, not just text) can reuse the same `apply()`/`input_path()`
 pair with a different node group.
+
+`typewriter()` types a string in character-by-character with a blinking cursor — nests
+`char_reveal()`'s own node group rather than duplicating its reveal formula, and defaults
+`Window` much smaller (a near-instant per-character pop, not a smooth grow). `String` and
+`Progress` are ordinary modifier inputs, same as `char_reveal()` — a human can retype the
+line or rescrub the reveal directly in the Modifier panel, no agent call needed. The cursor
+blinks from Scene Time (`BlinkHz`), not keyframes, so it keeps blinking through any hold.
+
+`fracture()` shatters/explodes a mesh from a single `Progress` input — unlike
+`char_reveal()`'s unused `Geometry` passthrough, this one operates on the object's own mesh.
+`Distance` sets the max explode radius, `Scale` shrinks each fragment toward its own centroid
+(gaps between pieces), `Seed` reseeds the per-face random directions.
+
+See `references/vfx-recipes.md` for named-look recipes (spring-pop, underline draw, card
+tilt, scale-swap, typewriter, shatter) and how to install/reuse the project's GN VFX asset
+library (`comonteur:init_gn_library`).
 
 ## `cmt.card` — image + border + shadow bundle
 

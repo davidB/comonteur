@@ -45,6 +45,7 @@ TASK_SCRIPTS = [
     "ingest_captions",
     "ingest_manifest",
     "init",
+    "init_gn_library",
     "install",
     "install_addon",
     "install_mcp",

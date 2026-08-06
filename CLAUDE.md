@@ -163,7 +163,7 @@ bootstrap. The add-on is the one artifact still delivered, and `install_addon` o
 whole question (checkout → symlink; `--source`/`--copy` → package; otherwise fetch `--ref`).
 
 **Every task has exactly one copy, in `skills/comonteur/templates/mise-tasks/comonteur/`** —
-which is also what `init` installs into a project, so a project gets all twelve tasks including
+which is also what `init` installs into a project, so a project gets all thirteen tasks including
 `install`/`init`/`doctor`/`install_*` and can repair itself. Two directory symlinks point at that
 one copy: `skills/comonteur/scripts` (short bootstrap path) and `mise-tasks/comonteur` (so a
 checkout gets the whole `comonteur:*` menu). Edit the template copy, never a symlink; adding a

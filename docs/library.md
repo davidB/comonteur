@@ -18,7 +18,7 @@ equally to **reduce agent token consumption**: the agent calls
 | `journal.py` | `batch()` context manager, `set()`, JSONL, snapshot, revert |
 | `scene.py` | `new_scene()` — see §6.1. `add_camera()` — ortho camera for the `kind='2d'` unit convention, see §6.1. Scene params interface. |
 | `anim.py` | `tween`, `stagger`, `idle_jitter` (sine wobble, pre-sampled), `hard_cut` (instant show/hide via CONSTANT hide_render/hide_viewport keyframes), easing map, F-curve helpers |
-| `gn.py` | Geometry Nodes effect builders (`char_reveal`, `apply`, `input_path`) — non-baked procedural VFX, see §6.2 |
+| `gn.py` | Geometry Nodes effect builders (`char_reveal`, `typewriter`, `fracture`, `apply`, `input_path`) — non-baked procedural VFX, see §6.2 |
 | `text.py` | text objects, styling, fit-to-box, `measure`/`measure_many` (world-space bounding box — object must be visible at the current frame, `matrix_world` freezes stale for a hidden one), per-character split (preserves color and true left edge), `alpha_path` (Alpha-input fade, distinct from `color_path`'s alpha channel which Blender ignores). `style()`/`create()` color defaults to `shading='flat'` (Emission, since `kind='2d'` scenes have no lights) — pass `shading='lit'` for plain Base Color in lit 3D scenes. |
 | `color.py` | `hex_to_rgba`/`srgb_to_linear` — sRGB hex colors decoded to the linear RGBA Emission/Base Color inputs expect |
 | `vse.py` | assembly, scene strips, transitions, audio |
@@ -224,4 +224,15 @@ Parameter interface, once a component is chosen: custom properties on the Scene 
   idprop form (`modifier["Socket_N"]`) raises `TypeError` on 5.2. `gn.py` builds a node
   group's `Socket_N` sockets and marks the result `asset_mark()`ed, so a project's first
   call to `gn.char_reveal()` seeds its reusable-effect catalog for free — no separate
-  starter-asset file to ship or maintain.
+  starter-asset file to ship or maintain. `gn.typewriter()` nests `char_reveal()`'s own
+  node group (a Group node) rather than duplicating its reveal formula — component reuse
+  one level down, same principle. `gn.fracture()` follows the same idempotent-by-name +
+  `asset_mark()` shape but, unlike the other two, operates on the incoming mesh rather than
+  an unused `Geometry` passthrough.
+
+  A project's own catalog (whatever `gn.*` calls have run in its `timeline.blend`) only
+  lives in that one file — gone the moment a new project starts fresh. `lib/gn-vfx.blend`
+  is the convention for a *persistent*, project-independent GN-effects library (distinct
+  from `lib/design.blend`'s colors/fonts/titles): `comonteur:init_gn_library` builds it
+  add-only by calling every `gn.*` effect once and saving the result, so it's generated on
+  demand rather than vendored — the "no shipped starter-asset file" rule above still holds.
